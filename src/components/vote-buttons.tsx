@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 import { handleVote } from '@/lib/actions';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { type VoteType } from '@/lib/types';
 
 type VoteButtonsProps = {
