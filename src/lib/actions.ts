@@ -63,7 +63,7 @@ export async function createPost(formData: FormData) {
             transaction.update(userDocRef, { xp: newXp });
             
             const postCollectionRef = collection(db, 'posts');
-            transaction.set(doc(postCollectionRef), { ...postData, anonName: userData.anonName });
+            transaction.set(doc(postCollectionRef), { ...postData, anonName: userData.anonName, xp: userData.xp });
         });
 
         revalidatePath('/');

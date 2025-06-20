@@ -19,6 +19,7 @@ export interface Post {
   upvotes: number;
   downvotes: number;
   commentCount: number;
+  xp: number;
 }
 
 export interface Comment {
@@ -30,6 +31,7 @@ export interface Comment {
   createdAt: Timestamp;
   upvotes: number;
   downvotes: number;
+  xp: number;
 }
 
 export type VoteType = 'up' | 'down';
