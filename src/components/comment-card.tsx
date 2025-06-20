@@ -25,7 +25,7 @@ export function CommentCard({ comment }: CommentCardProps) {
         <span className="font-code text-accent">{comment.anonName}</span>
         <UserBadge xp={comment.xp} className="ml-2" />
         <Dot />
-        <span>{comment.createdAt ? formatDistanceToNow(comment.createdAt.toDate()) : '...'} ago</span>
+        <span>{comment.createdAt ? formatDistanceToNow(typeof comment.createdAt === 'string' ? new Date(comment.createdAt) : comment.createdAt.toDate()) : '...'} ago</span>
       </div>
       <p className="text-sm text-foreground/90 whitespace-pre-wrap">{comment.content}</p>
       <div className="self-start mt-1">
