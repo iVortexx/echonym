@@ -24,7 +24,7 @@ export async function createPost(rawInput: unknown, userId: string) {
     const validation = PostSchema.safeParse(rawInput);
 
     if (!validation.success) {
-        return { error: "Invalid post data. Please check your input." };
+        return { error: validation.error.issues.map(i => i.message).join(', ') };
     }
     
     const { title, content, tag, imageBase64 } = validation.data;
@@ -71,6 +71,9 @@ export async function createPost(rawInput: unknown, userId: string) {
 
     } catch (e: any) {
         console.error("Error creating post:", e);
+        if (e.code === 'permission-denied') {
+            return { error: "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes." };
+        }
         return { error: e.message || "Failed to create post." };
     }
 }
@@ -132,6 +135,9 @@ export async function createComment(rawInput: unknown, userId: string) {
         return { success: true };
     } catch(e: any) {
         console.error("Error creating comment:", e);
+        if (e.code === 'permission-denied') {
+            return { error: "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes." };
+        }
         return { error: e.message || "Failed to create comment." };
     }
 }
@@ -238,9 +244,12 @@ export async function handleVote(
         }
 
         return { success: true };
-    } catch (e) {
+    } catch (e: any) {
         console.error("Vote transaction failed: ", e);
-        return { error: "Failed to process vote." };
+        if (e.code === 'permission-denied') {
+            return { error: "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes." };
+        }
+        return { error: e.message || "Failed to process vote." };
     }
 }
 
@@ -252,8 +261,12 @@ export async function getTagSuggestions(content: string) {
     try {
         const result = await suggestTags({ content });
         return { tags: result.tags };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching tag suggestions:", error);
+        // Don't show an error to the user if the key is just missing.
+        if (error.status === 'FAILED_PRECONDITION') {
+            return { tags: [] }; 
+        }
         return { tags: [] };
     }
 }
