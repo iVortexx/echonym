@@ -32,24 +32,25 @@ export async function createPost(rawInput: unknown, userId: string) {
     const userDocRef = doc(db, 'users', userId);
     
     try {
-        let imageUrl: string | undefined = undefined;
-        if (imageBase64) {
-            const storageRef = ref(storage, `posts/${userId}/${Date.now()}`);
-            const snapshot = await uploadString(storageRef, imageBase64, 'data_url');
-            imageUrl = await getDownloadURL(snapshot.ref);
-        }
-
-        const postData = {
+        const postPayload: any = {
             userId: userId,
             title,
             content,
-            tag,
-            imageUrl,
             createdAt: serverTimestamp(),
             upvotes: 0,
             downvotes: 0,
             commentCount: 0,
         };
+        
+        if (tag) {
+            postPayload.tag = tag;
+        }
+
+        if (imageBase64) {
+            const storageRef = ref(storage, `posts/${userId}/${Date.now()}`);
+            const snapshot = await uploadString(storageRef, imageBase64, 'data_url');
+            postPayload.imageUrl = await getDownloadURL(snapshot.ref);
+        }
         
         await runTransaction(db, async (transaction) => {
             const userDoc = await transaction.get(userDocRef);
@@ -62,7 +63,7 @@ export async function createPost(rawInput: unknown, userId: string) {
             transaction.update(userDocRef, { xp: newXp });
             
             const postCollectionRef = collection(db, 'posts');
-            transaction.set(doc(postCollectionRef), { ...postData, anonName: userData.anonName, xp: userData.xp });
+            transaction.set(doc(postCollectionRef), { ...postPayload, anonName: userData.anonName, xp: userData.xp });
         });
 
         revalidatePath('/');
