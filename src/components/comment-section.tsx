@@ -44,15 +44,16 @@ export function CommentSection({ postId, initialComments }: CommentSectionProps)
     if (!newComment.trim() || !user) return;
 
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append('content', newComment);
-      formData.append('postId', postId);
+      const commentData = {
+        content: newComment,
+        postId: postId,
+      };
       
-      const result = await createComment(formData, user.uid);
+      const result = await createComment(commentData, user.uid);
       if (result?.error) {
         toast({
           title: 'Error',
-          description: 'Failed to post comment.',
+          description: typeof result.error === 'string' ? result.error : 'Failed to post comment.',
           variant: 'destructive',
         });
       } else {

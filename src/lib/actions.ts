@@ -16,16 +16,15 @@ const PostSchema = z.object({
 });
 
 // The user's UID is passed from the client, as server actions don't have auth context.
-export async function createPost(formData: FormData, userId: string) {
+export async function createPost(rawInput: unknown, userId: string) {
     if (!userId) {
-        throw new Error("You must be logged in to post.");
+        return { error: "You must be logged in to post." };
     }
 
-    const rawData = Object.fromEntries(formData.entries());
-    const validation = PostSchema.safeParse(rawData);
+    const validation = PostSchema.safeParse(rawInput);
 
     if (!validation.success) {
-        return { error: validation.error.flatten().fieldErrors };
+        return { error: "Invalid post data. Please check your input." };
     }
     
     const { title, content, tag, imageBase64 } = validation.data;
@@ -55,7 +54,7 @@ export async function createPost(formData: FormData, userId: string) {
         await runTransaction(db, async (transaction) => {
             const userDoc = await transaction.get(userDocRef);
             if (!userDoc.exists()) {
-                throw "User document does not exist!";
+                throw new Error("User document does not exist! Cannot create post.");
             }
             const userData = userDoc.data() as User;
             const newXp = userData.xp + 10;
@@ -69,9 +68,9 @@ export async function createPost(formData: FormData, userId: string) {
         revalidatePath('/');
         return { success: true };
 
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error creating post:", e);
-        return { error: "Failed to create post." };
+        return { error: e.message || "Failed to create post." };
     }
 }
 
@@ -80,16 +79,15 @@ const CommentSchema = z.object({
     postId: z.string(),
 });
 
-export async function createComment(formData: FormData, userId: string) {
+export async function createComment(rawInput: unknown, userId: string) {
      if (!userId) {
-        throw new Error("You must be logged in to comment.");
+        return { error: "You must be logged in to comment." };
     }
     
-    const rawData = Object.fromEntries(formData.entries());
-    const validation = CommentSchema.safeParse(rawData);
+    const validation = CommentSchema.safeParse(rawInput);
 
     if (!validation.success) {
-        return { error: validation.error.flatten().fieldErrors };
+        return { error: "Invalid comment data." };
     }
     
     const { content, postId } = validation.data;
@@ -103,7 +101,7 @@ export async function createComment(formData: FormData, userId: string) {
             const postDoc = await transaction.get(postDocRef);
 
             if (!userDoc.exists() || !postDoc.exists()) {
-                throw "User or Post document does not exist!";
+                throw new Error("User or Post document does not exist!");
             }
 
             const userData = userDoc.data() as User;
@@ -131,9 +129,9 @@ export async function createComment(formData: FormData, userId: string) {
 
         revalidatePath(`/post/${postId}`);
         return { success: true };
-    } catch(e) {
+    } catch(e: any) {
         console.error("Error creating comment:", e);
-        return { error: "Failed to create comment." };
+        return { error: e.message || "Failed to create comment." };
     }
 }
 

@@ -88,14 +88,7 @@ export function PostForm() {
     }
 
     startTransition(async () => {
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value) {
-          formData.append(key, value);
-        }
-      });
-
-      const result = await createPost(formData, user.uid);
+      const result = await createPost(data, user.uid);
       if (result?.error) {
         toast({
           title: 'Error',
