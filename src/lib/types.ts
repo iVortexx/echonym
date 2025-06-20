@@ -10,12 +10,12 @@ export interface User {
 export interface Post {
   id: string;
   userId: string;
-  anonName: string;
+  anonName:string;
   title: string;
   content: string;
   imageUrl?: string;
   tag?: string;
-  createdAt: Timestamp;
+  createdAt: Timestamp | string;
   upvotes: number;
   downvotes: number;
   commentCount: number;
@@ -28,7 +28,7 @@ export interface Comment {
   userId: string;
   anonName: string;
   content: string;
-  createdAt: Timestamp;
+  createdAt: Timestamp | string;
   upvotes: number;
   downvotes: number;
   xp: number;

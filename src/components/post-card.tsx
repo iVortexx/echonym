@@ -26,7 +26,7 @@ export function PostCard({ post, isLink = true }: PostCardProps) {
           <span className="font-code text-accent">{post.anonName}</span>
           <UserBadge xp={post.xp} className="ml-2" />
           <Dot />
-          <span>{post.createdAt ? formatDistanceToNow(post.createdAt.toDate()) : '...'} ago</span>
+          <span>{post.createdAt ? formatDistanceToNow(typeof post.createdAt === 'string' ? new Date(post.createdAt) : post.createdAt.toDate()) : '...'} ago</span>
         </div>
       </CardHeader>
       <CardContent className="p-0">
