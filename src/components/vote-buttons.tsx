@@ -25,10 +25,11 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
   const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
   const [score, setScore] = useState(upvotes - downvotes);
 
+  // This effect syncs the score if the parent component gets new data,
+  // without resetting the user's optimistic vote selection.
   useEffect(() => {
     setScore(upvotes - downvotes);
-    setUserVote(null);
-  }, [upvotes, downvotes, itemId]);
+  }, [upvotes, downvotes]);
 
   const onVote = (voteType: VoteType) => {
     if (!user) {
@@ -36,17 +37,25 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
       return;
     }
     
+    if (isPending) {
+      return;
+    }
+
     const previousVote = userVote;
     const previousScore = score;
     
+    // Optimistically update UI
     let newScore = score;
     if (userVote === voteType) {
+      // Undoing the vote
       setUserVote(null);
       newScore += (voteType === 'up' ? -1 : 1);
     } else if (userVote !== null) {
+      // Changing the vote
       setUserVote(voteType);
       newScore += (voteType === 'up' ? 2 : -2);
     } else {
+      // Casting a new vote
       setUserVote(voteType);
       newScore += (voteType === 'up' ? 1 : -1);
     }
@@ -56,6 +65,7 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
       const result = await handleVote(user.uid, itemId, itemType, voteType, postId);
       if (result?.error) {
         toast({ title: "Vote failed", description: result.error, variant: "destructive" });
+        // On error, revert the optimistic update
         setUserVote(previousVote);
         setScore(previousScore);
       }
