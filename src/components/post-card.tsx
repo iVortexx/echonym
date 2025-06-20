@@ -33,7 +33,7 @@ export function PostCard({ post, isLink = true }: PostCardProps) {
         <p className="text-foreground/80 whitespace-pre-wrap line-clamp-4">{post.content}</p>
         {post.imageUrl && (
           <div className="mt-4 relative aspect-video w-full overflow-hidden rounded-lg border">
-            <Image src={post.imageUrl} alt={post.title} fill className="object-cover" />
+            <Image src={post.imageUrl} alt={post.title} sizes="100vw" className="w-full h-full object-cover" />
           </div>
         )}
       </CardContent>
