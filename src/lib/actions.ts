@@ -121,6 +121,7 @@ export async function createComment(formData: FormData) {
                 postId,
                 userId: currentUser.uid,
                 anonName: userData.anonName,
+                xp: userData.xp,
                 content,
                 createdAt: serverTimestamp(),
                 upvotes: 0,
@@ -141,14 +142,19 @@ export async function createComment(formData: FormData) {
 export async function handleVote(
     itemId: string, 
     itemType: 'post' | 'comment', 
-    voteType: VoteType
+    voteType: VoteType,
+    postId?: string,
 ) {
     const currentUser = auth.currentUser;
-    if (!currentUser) throw new Error("Not authenticated");
+    if (!currentUser) return { error: "Not authenticated" };
+
+    if (itemType === 'comment' && !postId) {
+        return { error: "Post ID is missing for comment vote." };
+    }
 
     const itemRef = itemType === 'post' 
         ? doc(db, "posts", itemId) 
-        : doc(db, "comments", itemId); // Note: This path assumes comments is a root collection. The schema says subcollection. This needs adjustment.
+        : doc(db, `posts/${postId}/comments/${itemId}`);
 
     const { uid } = currentUser;
     const voteQuery = query(
@@ -227,13 +233,8 @@ export async function handleVote(
             }
         });
         
-        // This is a hack for comment votes revalidation
-        if (itemType === 'comment') {
-            const commentDoc = (await getDocs(query(collection(db, 'comments'), where('id', '==', itemId)))).docs[0];
-            if(commentDoc) {
-                const postId = commentDoc.data().postId;
-                revalidatePath(`/post/${postId}`);
-            }
+        if (itemType === 'comment' && postId) {
+            revalidatePath(`/post/${postId}`);
         } else {
             revalidatePath(`/`);
             revalidatePath(`/post/${itemId}`);

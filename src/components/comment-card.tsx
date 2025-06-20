@@ -34,6 +34,7 @@ export function CommentCard({ comment }: CommentCardProps) {
           itemType="comment"
           upvotes={comment.upvotes}
           downvotes={comment.downvotes}
+          postId={comment.postId}
         />
       </div>
     </motion.div>

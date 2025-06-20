@@ -14,9 +14,10 @@ type VoteButtonsProps = {
   itemType: 'post' | 'comment';
   upvotes: number;
   downvotes: number;
+  postId?: string;
 };
 
-export function VoteButtons({ itemId, itemType, upvotes, downvotes }: VoteButtonsProps) {
+export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: VoteButtonsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -35,7 +36,7 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes }: VoteButton
     setVoted(current => (current === voteType ? null : voteType));
 
     startTransition(async () => {
-      const result = await handleVote(itemId, itemType, voteType);
+      const result = await handleVote(itemId, itemType, voteType, postId);
       if (result?.error) {
         toast({ title: "Vote failed", description: result.error, variant: "destructive" });
         // Revert optimistic update on failure
