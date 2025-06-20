@@ -13,7 +13,6 @@ export interface Post {
   anonName:string;
   title: string;
   content: string;
-  imageUrl?: string;
   tag?: string;
   createdAt: Timestamp | string;
   upvotes: number;

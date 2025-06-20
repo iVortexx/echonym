@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
@@ -21,10 +21,14 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
   const { user } = useAuth();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  
-  // Note: For a production app, the initial vote state would be fetched from the DB.
-  // For this project, we'll keep it client-side for simplicity.
-  const [voted, setVoted] = useState<'up' | 'down' | null>(null);
+
+  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
+  const [score, setScore] = useState(upvotes - downvotes);
+
+  useEffect(() => {
+    setScore(upvotes - downvotes);
+    setUserVote(null);
+  }, [upvotes, downvotes, itemId]);
 
   const onVote = (voteType: VoteType) => {
     if (!user) {
@@ -32,15 +36,28 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
       return;
     }
     
-    // Optimistic update
-    setVoted(current => (current === voteType ? null : voteType));
+    const previousVote = userVote;
+    const previousScore = score;
+    
+    let newScore = score;
+    if (userVote === voteType) {
+      setUserVote(null);
+      newScore += (voteType === 'up' ? -1 : 1);
+    } else if (userVote !== null) {
+      setUserVote(voteType);
+      newScore += (voteType === 'up' ? 2 : -2);
+    } else {
+      setUserVote(voteType);
+      newScore += (voteType === 'up' ? 1 : -1);
+    }
+    setScore(newScore);
 
     startTransition(async () => {
       const result = await handleVote(user.uid, itemId, itemType, voteType, postId);
       if (result?.error) {
         toast({ title: "Vote failed", description: result.error, variant: "destructive" });
-        // Revert optimistic update on failure
-        setVoted(voted);
+        setUserVote(previousVote);
+        setScore(previousScore);
       }
     });
   };
@@ -50,19 +67,19 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
       <Button
         variant="ghost"
         size="icon"
-        className={cn("h-8 w-8", { "text-accent bg-accent/10": voted === 'up' })}
+        className={cn("h-8 w-8 rounded-full", { "text-primary bg-primary/10": userVote === 'up' })}
         onClick={() => onVote('up')}
         disabled={isPending}
       >
         <ArrowUp className="w-5 h-5" />
       </Button>
-      <span className="font-medium tabular-nums min-w-[2ch] text-center">
-        {upvotes - downvotes}
+      <span className="font-bold tabular-nums min-w-[2ch] text-center text-lg">
+        {score}
       </span>
       <Button
         variant="ghost"
         size="icon"
-        className={cn("h-8 w-8", { "text-red-400 bg-red-400/10": voted === 'down' })}
+        className={cn("h-8 w-8 rounded-full", { "text-destructive bg-destructive/10": userVote === 'down' })}
         onClick={() => onVote('down')}
         disabled={isPending}
       >

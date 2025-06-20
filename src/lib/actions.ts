@@ -1,9 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 import { collection, doc, runTransaction, query, where, getDocs, serverTimestamp } from "firebase/firestore";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { revalidatePath } from "next/cache";
 import { Post, VoteType, User } from "./types";
 import { suggestTags } from "@/ai/flows/suggest-tags";
@@ -12,7 +11,6 @@ const PostSchema = z.object({
     title: z.string().min(1, "Title is required").max(100),
     content: z.string().min(1, "Content is required"),
     tag: z.string().optional(),
-    imageBase64: z.string().optional(),
 });
 
 // The user's UID is passed from the client, as server actions don't have auth context.
@@ -27,7 +25,7 @@ export async function createPost(rawInput: unknown, userId: string) {
         return { error: validation.error.issues.map(i => i.message).join(', ') };
     }
     
-    const { title, content, tag, imageBase64 } = validation.data;
+    const { title, content, tag } = validation.data;
 
     const userDocRef = doc(db, 'users', userId);
     
@@ -44,12 +42,6 @@ export async function createPost(rawInput: unknown, userId: string) {
         
         if (tag) {
             postPayload.tag = tag;
-        }
-
-        if (imageBase64) {
-            const storageRef = ref(storage, `posts/${userId}/${Date.now()}`);
-            const snapshot = await uploadString(storageRef, imageBase64, 'data_url');
-            postPayload.imageUrl = await getDownloadURL(snapshot.ref);
         }
         
         await runTransaction(db, async (transaction) => {
