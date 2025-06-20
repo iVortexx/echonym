@@ -1,8 +1,8 @@
 "use server";
 
 import { z } from "zod";
-import { auth, db, storage } from "./firebase";
-import { collection, addDoc, serverTimestamp, doc, runTransaction, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { db, storage } from "./firebase";
+import { collection, doc, runTransaction, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { revalidatePath } from "next/cache";
 import { Post, VoteType, User } from "./types";
@@ -15,7 +15,12 @@ const PostSchema = z.object({
     imageBase64: z.string().optional(),
 });
 
-export async function createPost(formData: FormData) {
+// The user's UID is passed from the client, as server actions don't have auth context.
+export async function createPost(formData: FormData, userId: string) {
+    if (!userId) {
+        throw new Error("You must be logged in to post.");
+    }
+
     const rawData = Object.fromEntries(formData.entries());
     const validation = PostSchema.safeParse(rawData);
 
@@ -25,23 +30,18 @@ export async function createPost(formData: FormData) {
     
     const { title, content, tag, imageBase64 } = validation.data;
 
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-        throw new Error("You must be logged in to post.");
-    }
-    
-    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userDocRef = doc(db, 'users', userId);
     
     try {
         let imageUrl: string | undefined = undefined;
         if (imageBase64) {
-            const storageRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}`);
+            const storageRef = ref(storage, `posts/${userId}/${Date.now()}`);
             const snapshot = await uploadString(storageRef, imageBase64, 'data_url');
             imageUrl = await getDownloadURL(snapshot.ref);
         }
 
         const postData = {
-            userId: currentUser.uid,
+            userId: userId,
             title,
             content,
             tag,
@@ -80,7 +80,11 @@ const CommentSchema = z.object({
     postId: z.string(),
 });
 
-export async function createComment(formData: FormData) {
+export async function createComment(formData: FormData, userId: string) {
+     if (!userId) {
+        throw new Error("You must be logged in to comment.");
+    }
+    
     const rawData = Object.fromEntries(formData.entries());
     const validation = CommentSchema.safeParse(rawData);
 
@@ -90,12 +94,7 @@ export async function createComment(formData: FormData) {
     
     const { content, postId } = validation.data;
 
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-        throw new Error("You must be logged in to comment.");
-    }
-    
-    const userDocRef = doc(db, 'users', currentUser.uid);
+    const userDocRef = doc(db, 'users', userId);
     const postDocRef = doc(db, 'posts', postId);
 
     try {
@@ -119,7 +118,7 @@ export async function createComment(formData: FormData) {
             const commentCollectionRef = collection(db, `posts/${postId}/comments`);
             const commentData = {
                 postId,
-                userId: currentUser.uid,
+                userId: userId,
                 anonName: userData.anonName,
                 xp: userData.xp,
                 content,
@@ -140,13 +139,13 @@ export async function createComment(formData: FormData) {
 
 
 export async function handleVote(
+    userId: string,
     itemId: string, 
     itemType: 'post' | 'comment', 
     voteType: VoteType,
     postId?: string,
 ) {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return { error: "Not authenticated" };
+    if (!userId) return { error: "Not authenticated" };
 
     if (itemType === 'comment' && !postId) {
         return { error: "Post ID is missing for comment vote." };
@@ -156,10 +155,9 @@ export async function handleVote(
         ? doc(db, "posts", itemId) 
         : doc(db, `posts/${postId}/comments/${itemId}`);
 
-    const { uid } = currentUser;
     const voteQuery = query(
         collection(db, "votes"),
-        where("userId", "==", uid),
+        where("userId", "==", userId),
         where(itemType === 'post' ? "postId" : "commentId", "==", itemId)
     );
 
@@ -205,7 +203,7 @@ export async function handleVote(
             } else { // New vote
                 const newVoteRef = doc(collection(db, "votes"));
                 transaction.set(newVoteRef, {
-                    userId: uid,
+                    userId: userId,
                     [itemType === 'post' ? "postId" : "commentId"]: itemId,
                     type: voteType,
                 });
@@ -224,7 +222,7 @@ export async function handleVote(
                 downvotes: currentDownvotes + downvoteChange,
             });
 
-            if (xpChange !== 0 && postAuthorId !== uid) {
+            if (xpChange !== 0 && postAuthorId !== userId) {
                  const authorDoc = await transaction.get(postAuthorRef);
                  if (authorDoc.exists()) {
                      const newXp = (authorDoc.data().xp || 0) + xpChange;

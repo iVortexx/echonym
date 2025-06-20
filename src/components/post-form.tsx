@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { Image as ImageIcon, Tags, Loader2 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import _ from 'lodash';
+import { useAuth } from '@/hooks/use-auth';
 
 const PostFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title is too long'),
@@ -28,6 +29,7 @@ type PostFormValues = z.infer<typeof PostFormSchema>;
 export function PostForm() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +78,15 @@ export function PostForm() {
   };
 
   const onSubmit = (data: PostFormValues) => {
+    if (!user) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You must be signed in to create a post.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     startTransition(async () => {
       const formData = new FormData();
       Object.entries(data).forEach(([key, value]) => {
@@ -84,7 +95,7 @@ export function PostForm() {
         }
       });
 
-      const result = await createPost(formData);
+      const result = await createPost(formData, user.uid);
       if (result?.error) {
         toast({
           title: 'Error',
@@ -176,7 +187,7 @@ export function PostForm() {
             </FormItem>
           </CardContent>
           <CardFooter className="p-0">
-            <Button type="submit" disabled={isPending} className="w-full">
+            <Button type="submit" disabled={isPending || !user} className="w-full">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Post Whisper
             </Button>

@@ -48,7 +48,7 @@ export function CommentSection({ postId, initialComments }: CommentSectionProps)
       formData.append('content', newComment);
       formData.append('postId', postId);
       
-      const result = await createComment(formData);
+      const result = await createComment(formData, user.uid);
       if (result?.error) {
         toast({
           title: 'Error',

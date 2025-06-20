@@ -36,7 +36,7 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: Vo
     setVoted(current => (current === voteType ? null : voteType));
 
     startTransition(async () => {
-      const result = await handleVote(itemId, itemType, voteType, postId);
+      const result = await handleVote(user.uid, itemId, itemType, voteType, postId);
       if (result?.error) {
         toast({ title: "Vote failed", description: result.error, variant: "destructive" });
         // Revert optimistic update on failure
