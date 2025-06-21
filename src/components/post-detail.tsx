@@ -42,7 +42,7 @@ export function PostDetail({ post, initialComments }: PostDetailProps) {
 
     return (
         <div className="max-w-3xl mx-auto p-4">
-            <PostCard post={post} userVote={userVote} />
+            <PostCard post={post} userVote={userVote} isClickable={false} />
             <Card id="comments" className="mt-6 p-4 sm:p-6 rounded-lg border-border bg-card">
                 <h2 className="text-xl font-bold mb-4 font-mono text-slate-200">Comments ({post.commentCount || 0})</h2>
                 <CommentSection postId={post.id} postAuthorId={post.userId} initialComments={initialComments} />

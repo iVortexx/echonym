@@ -46,11 +46,12 @@ import { buildAvatarUrl } from "@/lib/utils"
 interface PostCardProps {
   post: Post
   isPreview?: boolean
+  isClickable?: boolean
   userVote?: VoteType | null
   onPostHide?: (postId: string) => void
 }
 
-export function PostCard({ post, isPreview = false, userVote, onPostHide }: PostCardProps) {
+export function PostCard({ post, isPreview = false, isClickable = true, userVote, onPostHide }: PostCardProps) {
   const { user: currentUser, firebaseUser, updateUser } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -224,7 +225,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
   }
 
   const CardLinkWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (isPreview) {
+    if (isPreview || !isClickable) {
       return <div>{children}</div>
     }
     return <Link href={`/post/${post.id}`} className="block cursor-pointer group">{children}</Link>
@@ -351,10 +352,10 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   {post.title || "Untitled Whisper"}
                 </h3>
                  <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content || ''}</ReactMarkdown>
                 </div>
                 {post.summary && !isPreview && (
-                  <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => e.stopPropagation()}>
+                  <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                     <AccordionItem value="item-1" className="border-b-0">
                       <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
                         <div className="flex items-center">
