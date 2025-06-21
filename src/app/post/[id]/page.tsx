@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import type { Timestamp } from "firebase/firestore"
 
 type PostPageProps = {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
 async function getPost(id: string): Promise<Post | null> {
@@ -28,7 +28,7 @@ async function getComments(postId: string): Promise<Comment[]> {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
-  const { id } = await params
+  const { id } = params
   const post = await getPost(id)
 
   if (!post) {
@@ -39,12 +39,16 @@ export default async function PostPage({ params }: PostPageProps) {
 
   const serializablePost = {
     ...post,
-    createdAt: (post.createdAt as Timestamp).toDate().toISOString(),
+    createdAt: post.createdAt && typeof (post.createdAt as any).toDate === 'function'
+      ? (post.createdAt as Timestamp).toDate().toISOString()
+      : (post.createdAt as string),
   }
 
   const serializableComments = initialComments.map((comment) => ({
     ...comment,
-    createdAt: (comment.createdAt as Timestamp).toDate().toISOString(),
+    createdAt: comment.createdAt && typeof (comment.createdAt as any).toDate === 'function'
+      ? (comment.createdAt as Timestamp).toDate().toISOString()
+      : (comment.createdAt as string),
   }))
 
   return (
