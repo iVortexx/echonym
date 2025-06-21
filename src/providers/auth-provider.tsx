@@ -3,7 +3,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
 import { generateAnonName } from '@/lib/name-generator';
@@ -38,43 +38,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    let unsubscribeUser: () => void = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
+      // Clean up previous user listener if auth state changes
+      unsubscribeUser(); 
+
       setError(null);
       if (fbUser) {
         setFirebaseUser(fbUser);
         const userDocRef = doc(db, 'users', fbUser.uid);
-        const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists()) {
-          setUser({ ...userDoc.data(), uid: fbUser.uid } as User);
-        } else {
-          const newAnonName = generateAnonName();
-          const avatarOptions = { seed: newAnonName };
-          const avatarUrl = buildAvatarUrl(avatarOptions);
-          
-          const newUser: User = {
-            uid: fbUser.uid,
-            anonName: newAnonName,
-            xp: 0,
-            createdAt: serverTimestamp() as any,
-            postCount: 0,
-            commentCount: 0,
-            totalUpvotes: 0,
-            totalDownvotes: 0,
-            followersCount: 0,
-            followingCount: 0,
-            avatarUrl,
-            avatarOptions,
-            savedPosts: [],
-            hiddenPosts: [],
-          };
-          await setDoc(userDocRef, newUser);
-          setUser(newUser);
-        }
-        setLoading(false);
+        // Set up a real-time listener for the user document
+        unsubscribeUser = onSnapshot(userDocRef, async (userDoc) => {
+          if (userDoc.exists()) {
+            setUser({ ...userDoc.data(), uid: fbUser.uid } as User);
+            setLoading(false);
+          } else {
+            // User is authenticated but doesn't have a doc yet -> new user
+            try {
+              const newAnonName = generateAnonName();
+              const avatarOptions = { seed: newAnonName };
+              const avatarUrl = buildAvatarUrl(avatarOptions);
+              
+              const newUser: User = {
+                uid: fbUser.uid,
+                anonName: newAnonName,
+                xp: 0,
+                createdAt: serverTimestamp() as any, // This will be converted on write
+                postCount: 0,
+                commentCount: 0,
+                followersCount: 0,
+                followingCount: 0,
+                avatarUrl,
+                avatarOptions,
+                savedPosts: [],
+                hiddenPosts: [],
+              };
+              // This write will trigger the onSnapshot listener again, which will then set the user state.
+              await setDoc(userDocRef, newUser);
+            } catch (e: any) {
+               console.error("Error creating user document:", e);
+               setError("Failed to initialize user profile.");
+               setLoading(false);
+            }
+          }
+        }, (error) => {
+            console.error("Firestore user listener error:", error);
+            setError("Failed to sync user profile.");
+            setLoading(false);
+        });
       } else {
+        // No user, attempt anonymous sign-in
         try {
           await signInAnonymously(auth);
+          // The onAuthStateChanged listener will handle the new user state
         } catch (e: any) {
           console.error("Firebase Anonymous Sign-in Error:", e);
           if (e.code === 'auth/configuration-not-found') {
@@ -89,7 +107,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeUser();
+    };
   }, []);
 
   if (error) {

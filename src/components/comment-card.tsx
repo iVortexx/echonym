@@ -144,7 +144,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
               OP
             </Badge>
           )}
-          <UserBadge xp={comment.xp} className="ml-2" />
+          <UserBadge xp={(isOwnComment && currentUser) ? currentUser.xp : comment.xp} className="ml-2" />
           <Dot className="h-3 w-3" />
           <span>{formatTimeAgo(comment.createdAt)} ago</span>
         </div>

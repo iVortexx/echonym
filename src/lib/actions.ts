@@ -94,7 +94,7 @@ export async function createPost(rawInput: unknown, userId: string) {
         downvotes: 0,
         commentCount: 0,
         anonName: userData.anonName,
-        xp: userData.xp,
+        xp: newXp,
         avatarUrl: userData.avatarUrl,
         searchKeywords: generateKeywords(title, content),
       }
@@ -247,7 +247,7 @@ export async function createComment(rawInput: unknown, userId: string) {
         postId,
         userId: userId,
         anonName: userData.anonName,
-        xp: userData.xp,
+        xp: newXp,
         content,
         createdAt: serverTimestamp(),
         upvotes: 0,

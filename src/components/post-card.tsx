@@ -107,7 +107,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
     setOptimisticDownvotes(prev => prev + downvoteChange);
 
     try {
-      const result = await handleVote(firebaseUser.uid, post.id, "post");
+      const result = await handleVote(firebaseUser.uid, post.id, "post", newVoteType);
 
       if (result?.error) {
           // On error, revert the optimistic update
@@ -267,7 +267,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   <Link href={`/profile/${encodeURIComponent(post.anonName)}`}>
                     <p className="font-mono text-sm text-accent truncate hover:underline">{post.anonName || 'Anonymous'}</p>
                   </Link>
-                  <UserBadge xp={post.xp || 0} />
+                  <UserBadge xp={(isOwnPost && currentUser) ? currentUser.xp : post.xp || 0} />
                 </div>
                 <p className="text-slate-400 text-xs font-mono">
                   {formatTimeAgo(post.createdAt)}
