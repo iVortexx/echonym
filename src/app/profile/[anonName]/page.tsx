@@ -171,7 +171,21 @@ export default function ProfilePage() {
   }
 
   const nextBadge = getNextBadge(displayUser.xp);
-  const joinDate = new Date(displayUser.createdAt as string);
+
+  let joinDate: Date;
+  if (displayUser.createdAt) {
+      if (typeof displayUser.createdAt === "string") {
+          joinDate = new Date(displayUser.createdAt);
+      } else if (typeof (displayUser.createdAt as any).toDate === 'function') {
+          joinDate = (displayUser.createdAt as any).toDate();
+      } else {
+          joinDate = new Date(); // Fallback for unexpected format
+      }
+  } else {
+      joinDate = new Date(); // Fallback if createdAt is missing
+  }
+
+  const isJoinDateInvalid = isNaN(joinDate.getTime());
 
   const AvatarComponent = (
     <Avatar className="h-24 w-24 ring-4 ring-primary/30 cursor-pointer group object-cover">
@@ -216,7 +230,7 @@ export default function ProfilePage() {
 
             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
               <UserBadge xp={displayUser.xp} />
-              <span className="text-slate-400 text-sm">Joined {formatDistanceToNow(joinDate, { addSuffix: true })}</span>
+              <span className="text-slate-400 text-sm">Joined {isJoinDateInvalid ? 'recently' : formatDistanceToNow(joinDate, { addSuffix: true })}</span>
             </div>
           </div>
         </CardHeader>
@@ -239,7 +253,7 @@ export default function ProfilePage() {
                     <HelpCircle className="h-5 w-5" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 bg-background border-border text-slate-300">
+                <PopoverContent className="w-80 bg-background border-border">
                     <div className="space-y-4 p-2">
                     <div>
                         <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
@@ -255,15 +269,6 @@ export default function ProfilePage() {
                             ))}
                         </ul>
                     </div>
-                    <div className="border-t border-border pt-3">
-                         <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
-                        <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                            <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
-                            <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
-                            <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
-                            <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
-                        </ul>
-                    </div>
                     </div>
                 </PopoverContent>
                 </Popover>
@@ -277,7 +282,7 @@ export default function ProfilePage() {
         <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className={(displayUser.followingCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
             <StatCard icon={Users} label="Following" value={displayUser.followingCount || 0} />
         </div>
-        <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
+        <StatCard icon={Calendar} label="Joined" value={isJoinDateInvalid ? 'N/A' : format(joinDate, "MMM d, yyyy")} />
       </div>
 
       <Dialog open={!!dialogType} onOpenChange={(open) => !open && setDialogType(null)}>
