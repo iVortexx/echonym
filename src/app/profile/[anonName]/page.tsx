@@ -3,7 +3,7 @@
 "use client"
 
 import { findUserByRecoveryId, getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"
-import { notFound, useRouter, useParams } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -131,6 +131,7 @@ export default function ProfilePage() {
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [dialogType, setDialogType] = useState<'followers' | 'following' | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userNotFound, setUserNotFound] = useState(false);
 
   const isOwnProfile = useMemo(() => currentUser?.anonName === anonName, [currentUser, anonName]);
   const displayUser = isOwnProfile ? currentUser : fetchedUser;
@@ -139,6 +140,7 @@ export default function ProfilePage() {
     if (!anonName || authLoading) return;
     
     let unsubscribeUser: () => void = () => {};
+    setUserNotFound(false);
 
     async function setupProfile() {
       setLoading(true);
@@ -147,7 +149,7 @@ export default function ProfilePage() {
 
       if (!userToFetch) {
         setLoading(false);
-        notFound();
+        setUserNotFound(true);
         return;
       }
 
@@ -235,6 +237,14 @@ export default function ProfilePage() {
     }
   }
 
+  if (userNotFound) {
+      return (
+        <div className="text-center text-slate-400 py-16">
+            <p className="text-2xl font-mono mb-2">User Not Found</p>
+            <p className="font-mono text-sm">The user profile for "{anonName}" could not be located.</p>
+        </div>
+    );
+  }
 
   if (loading || !displayUser) {
     return (
@@ -338,7 +348,7 @@ export default function ProfilePage() {
                 <div className="space-y-4 p-2">
                 <div>
                     <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                    <ul className="space-y-2 text-sm">
+                    <ul className="space-y-2 text-sm text-slate-300">
                         {BADGES.map((badge) => (
                             <li key={badge.name} className="flex items-center justify-between">
                             <span className={badge.color}>{badge.name}</span>
@@ -393,5 +403,4 @@ export default function ProfilePage() {
     </div>
   )
 }
-
     
