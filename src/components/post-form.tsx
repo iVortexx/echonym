@@ -17,8 +17,7 @@ import { debounce } from "lodash"
 import { PostCard } from "./post-card"
 import type { Post } from "@/lib/types"
 import { Badge } from "./ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs"
 
 type ScoreState = {
   score: number
@@ -117,7 +116,6 @@ export function PostForm({ postToEdit }: PostFormProps) {
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

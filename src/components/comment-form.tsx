@@ -81,14 +81,16 @@ export function CommentForm({
             autoFocus={autofocus}
             className="bg-slate-800/70 border-slate-700 text-slate-200 placeholder:text-slate-500 resize-none min-h-[40px] pr-12 focus:min-h-[80px] transition-all duration-300"
           />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!content.trim() || isSubmitting}
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white disabled:bg-slate-700 disabled:opacity-60"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!content.trim() || isSubmitting}
+              className="h-8 w-8 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white disabled:bg-slate-700 disabled:opacity-60"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         {onCancel && (
           <Button variant="ghost" size="sm" onClick={onCancel} className="h-auto px-2 py-1 text-xs text-slate-400">
