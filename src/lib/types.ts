@@ -1,3 +1,4 @@
+
 import type { Timestamp } from "firebase/firestore"
 
 export interface User {
@@ -7,8 +8,8 @@ export interface User {
   createdAt: Timestamp | string
   postCount?: number
   commentCount?: number
-  totalUpvotes?: number
-  totalDownvotes?: number
+  totalUpvotes: number
+  totalDownvotes: number
   avatarUrl?: string
   avatarOptions?: Record<string, string>
 }

@@ -1,3 +1,4 @@
+
 "use server"
 
 import { z } from "zod"
@@ -224,7 +225,12 @@ export async function handleVote(
         if (vote.type === voteType) {
           // User is toggling their vote off
           transaction.delete(voteRef)
-          voteType === "up" ? ((upvoteChange = -1), (xpChange = -2)) : (downvoteChange = -1)
+          if (voteType === 'up') {
+            upvoteChange = -1;
+            xpChange = -2;
+          } else {
+            downvoteChange = -1;
+          }
         } else {
           // User is changing their vote
           transaction.update(voteRef, { type: voteType })
@@ -245,12 +251,17 @@ export async function handleVote(
           type: voteType,
           [itemType === "post" ? "postId" : "commentId"]: itemId,
         })
-        voteType === "up" ? ((upvoteChange = 1), (xpChange = 2)) : (downvoteChange = 1)
+        if (voteType === 'up') {
+            upvoteChange = 1;
+            xpChange = 2;
+        } else {
+            downvoteChange = 1;
+        }
       }
 
       transaction.update(itemRef, {
-        upvotes: (itemData.upvotes || 0) + upvoteChange,
-        downvotes: (itemData.downvotes || 0) + downvoteChange,
+        upvotes: increment(upvoteChange),
+        downvotes: increment(downvoteChange),
       })
       
       // Only update author's XP if it's not their own post and the author exists
@@ -259,8 +270,8 @@ export async function handleVote(
         if (authorSnap.exists()) {
             transaction.update(postAuthorRef, { 
                 xp: increment(xpChange),
-                totalUpvotes: increment(upvoteChange > 0 ? upvoteChange : 0),
-                totalDownvotes: increment(downvoteChange > 0 ? downvoteChange : 0)
+                totalUpvotes: increment(upvoteChange),
+                totalDownvotes: increment(downvoteChange)
             })
         }
       }
@@ -269,6 +280,7 @@ export async function handleVote(
     // Revalidate paths to update UI across the app
     revalidatePath(`/`)
     revalidatePath(itemType === "comment" && postId ? `/post/${postId}` : `/post/${itemId}`)
+    revalidatePath('/profile', 'layout')
     
     return { success: true }
   } catch (e: any) {
