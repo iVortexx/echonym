@@ -203,19 +203,27 @@ export async function createComment(rawInput: unknown, userId: string) {
 
   const userDocRef = doc(db, "users", userId)
   const postDocRef = doc(db, "posts", postId)
+  const parentCommentRef = parentId ? doc(db, `posts/${postId}/comments/${parentId}`) : null
 
   try {
     await runTransaction(db, async (transaction) => {
+      // --- ALL READS FIRST ---
       const userDoc = await transaction.get(userDocRef)
       const postDoc = await transaction.get(postDocRef)
+      const parentCommentDoc = parentCommentRef ? await transaction.get(parentCommentRef) : null
 
       if (!userDoc.exists() || !postDoc.exists()) {
         throw new Error("User or Post document does not exist!")
       }
+      if (parentId && !parentCommentDoc?.exists()) {
+        throw new Error("Parent comment does not exist!")
+      }
 
       const userData = userDoc.data() as User
       const postData = postDoc.data() as Post
-
+      
+      // --- ALL WRITES SECOND ---
+      
       const newXp = userData.xp + 5
       transaction.update(userDocRef, { xp: newXp, commentCount: increment(1) })
 
@@ -223,6 +231,8 @@ export async function createComment(rawInput: unknown, userId: string) {
       transaction.update(postDocRef, { commentCount: newCommentCount })
 
       const commentCollectionRef = collection(db, `posts/${postId}/comments`)
+      const newCommentRef = doc(commentCollectionRef)
+      
       const commentData: any = {
         postId,
         userId: userId,
@@ -234,39 +244,29 @@ export async function createComment(rawInput: unknown, userId: string) {
         downvotes: 0,
         avatarUrl: userData.avatarUrl,
       }
-
       if (parentId) {
         commentData.parentId = parentId
       }
+      transaction.set(newCommentRef, commentData);
 
-      transaction.set(doc(commentCollectionRef), commentData);
-
-      // --- Notification Logic ---
-      if (parentId) {
-        // This is a REPLY to a comment
-        const parentCommentRef = doc(db, `posts/${postId}/comments/${parentId}`);
-        const parentCommentDoc = await transaction.get(parentCommentRef);
-        if (parentCommentDoc.exists()) {
-          const parentCommentData = parentCommentDoc.data();
-          // Do not notify if replying to your own comment
-          if (parentCommentData.userId !== userId) {
-            const notificationRef = doc(collection(db, `users/${parentCommentData.userId}/notifications`));
-            transaction.set(notificationRef, {
-              type: 'new_reply',
-              fromUserId: userId,
-              fromUserName: userData.anonName,
-              fromUserAvatar: userData.avatarUrl,
-              targetPostId: postId,
-              targetCommentId: parentId,
-              read: false,
-              createdAt: serverTimestamp(),
-            });
-          }
+      // --- Notification Logic (using data from reads at the top) ---
+      if (parentId && parentCommentDoc?.exists()) {
+        const parentCommentData = parentCommentDoc.data();
+        if (parentCommentData.userId !== userId) { // Do not notify if replying to your own comment
+          const notificationRef = doc(collection(db, `users/${parentCommentData.userId}/notifications`));
+          transaction.set(notificationRef, {
+            type: 'new_reply',
+            fromUserId: userId,
+            fromUserName: userData.anonName,
+            fromUserAvatar: userData.avatarUrl,
+            targetPostId: postId,
+            targetCommentId: parentId,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
         }
-      } else {
-        // This is a new TOP-LEVEL comment
-        // Do not notify if commenting on your own post
-        if (postData.userId !== userId) {
+      } else if (!parentId) {
+        if (postData.userId !== userId) { // Do not notify if commenting on your own post
            const notificationRef = doc(collection(db, `users/${postData.userId}/notifications`));
            transaction.set(notificationRef, {
               type: 'new_comment',
