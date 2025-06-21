@@ -12,6 +12,8 @@ export interface User {
   totalDownvotes: number
   avatarUrl?: string
   avatarOptions?: Record<string, string>
+  followersCount?: number
+  followingCount?: number
 }
 
 export interface Post {

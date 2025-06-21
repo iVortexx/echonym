@@ -1,12 +1,12 @@
 
 "use client"
 
-import { getUserByAnonName, getPostsByUserId, getUserVotes } from "@/lib/actions"
+import { getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing, toggleFollowUser } from "@/lib/actions"
 import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle } from "lucide-react"
+import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2 } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge, BADGES } from "@/lib/utils"
@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button"
 import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -43,6 +44,7 @@ function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementT
 // We need to fetch data on the client side to get live updates after editing.
 export default function ProfilePage() {
   const params = useParams()
+  const { toast } = useToast()
   // Ensure anonName is a string, as useParams can return string | string[]
   const rawAnonName = Array.isArray(params.anonName) ? params.anonName[0] : params.anonName
   
@@ -53,9 +55,11 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState<PostType[]>([])
   const [loading, setLoading] = useState(true)
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [isFollowLoading, setIsFollowLoading] = useState(true)
 
   const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
-  const isOwnProfile = currentUser?.anonName === anonName
+  const isOwnProfile = currentUser?.uid === user?.uid
 
   useEffect(() => {
     // Only fetch data if we have a valid name
@@ -77,8 +81,18 @@ export default function ProfilePage() {
         const votes = await getUserVotes(currentUser.uid, postIds, 'post');
         setUserVotes(votes);
       }
-
+      
       setUser(fetchedUser)
+
+      if (currentUser && fetchedUser && currentUser.uid !== fetchedUser.uid) {
+        setIsFollowLoading(true);
+        const followingStatus = await isFollowing(currentUser.uid, fetchedUser.uid);
+        setIsFollowing(followingStatus);
+        setIsFollowLoading(false);
+      } else {
+        setIsFollowLoading(false);
+      }
+
       setPosts(fetchedPosts)
       setLoading(false)
     }
@@ -92,6 +106,38 @@ export default function ProfilePage() {
       router.refresh()
     }
   }
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !user || isOwnProfile || isFollowLoading) return;
+
+    setIsFollowLoading(true);
+    const previousIsFollowing = isFollowing;
+    const previousFollowersCount = user.followersCount || 0;
+    
+    // Optimistic update
+    setIsFollowing(!isFollowing);
+    setUser(u => u ? { ...u, followersCount: (u.followersCount || 0) + (!isFollowing ? 1 : -1) } : null);
+
+    const result = await toggleFollowUser(currentUser.uid, user.uid);
+
+    setIsFollowLoading(false);
+    
+    if (result.success) {
+      toast({
+        title: result.wasFollowing ? `Unfollowed ${user.anonName}` : `Followed ${user.anonName}`
+      });
+    } else {
+      // Revert optimistic update on error
+      setIsFollowing(previousIsFollowing);
+      setUser(u => u ? { ...u, followersCount: previousFollowersCount } : null);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: result.error,
+      });
+    }
+  }
+
 
   if (loading || !user) {
     return (
@@ -130,7 +176,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm p-6">
-        <CardHeader className="flex flex-col sm:flex-row items-center gap-6 p-0 mb-6">
+        <CardHeader className="flex flex-col sm:flex-row items-center gap-6 p-0 mb-6 w-full">
           {isOwnProfile ? (
             <Dialog>
               <DialogTrigger asChild>{AvatarComponent}</DialogTrigger>
@@ -144,8 +190,16 @@ export default function ProfilePage() {
           ) : (
             AvatarComponent
           )}
-          <div className="text-center sm:text-left">
-            <h1 className="text-4xl font-bold font-mono text-blue-300">{user.anonName}</h1>
+          <div className="flex-1 text-center sm:text-left">
+            <div className="flex items-center gap-4 justify-center sm:justify-start">
+              <h1 className="text-4xl font-bold font-mono text-blue-300">{user.anonName}</h1>
+              {!isOwnProfile && (
+                <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
+                  {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
+                </Button>
+              )}
+            </div>
+
             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
               <UserBadge xp={user.xp} />
               <span className="text-slate-400 text-sm">Joined {formatDistanceToNow(joinDate, { addSuffix: true })}</span>
@@ -162,7 +216,7 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()}>
            <Popover>
             <PopoverTrigger asChild>
@@ -199,6 +253,8 @@ export default function ProfilePage() {
         </StatCard>
         <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
+        <StatCard icon={UserPlus} label="Followers" value={user.followersCount || 0} />
+        <StatCard icon={Users} label="Following" value={user.followingCount || 0} />
         <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
       </div>
 

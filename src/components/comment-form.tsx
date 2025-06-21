@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -50,6 +51,10 @@ export function CommentForm({
       })
       setIsSubmitting(false)
     } else {
+      toast({
+        title: "Comment posted!",
+        description: "Your insights have been added to the discussion.",
+      })
       setContent("")
       // No need to set submitting to false here as the component will reset/unmount
       onCommentPosted()

@@ -12,6 +12,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   limit,
   orderBy,
   Timestamp,
@@ -259,9 +260,6 @@ export async function handleVote(
         downvotes: increment(downvotes_inc),
       });
 
-      // NOTE: We no longer update author stats here to avoid permission errors.
-      // This logic would be better suited for a Cloud Function (backend trigger)
-      // to securely update another user's document.
     });
 
     revalidatePath(`/`);
@@ -428,5 +426,62 @@ export async function updateUserAvatar(userId: string, options: Record<string, s
   } catch (e: any) {
     console.error("Error updating avatar:", e)
     return { error: e.message || "Failed to update avatar." }
+  }
+}
+
+export async function isFollowing(currentUserId: string, targetUserId: string): Promise<boolean> {
+  if (!currentUserId || !targetUserId || currentUserId === targetUserId) {
+    return false;
+  }
+  const followingRef = doc(db, `users/${currentUserId}/following/${targetUserId}`);
+  const docSnap = await getDoc(followingRef);
+  return docSnap.exists();
+}
+
+export async function toggleFollowUser(currentUserId: string, targetUserId: string) {
+  if (currentUserId === targetUserId) {
+    return { error: "You cannot follow yourself." };
+  }
+
+  const currentUserRef = doc(db, "users", currentUserId);
+  const targetUserRef = doc(db, "users", targetUserId);
+
+  const followingRef = doc(db, `users/${currentUserId}/following/${targetUserId}`);
+  const followerRef = doc(db, `users/${targetUserId}/followers/${currentUserId}`);
+
+  try {
+    const targetDoc = await getDoc(targetUserRef);
+    if (!targetDoc.exists()) {
+      return { error: "Target user not found." };
+    }
+    const targetUserData = targetDoc.data() as User;
+
+    let wasFollowing = false;
+    await runTransaction(db, async (transaction) => {
+      const followingDoc = await transaction.get(followingRef);
+      wasFollowing = followingDoc.exists();
+
+      if (wasFollowing) {
+        // Unfollow
+        transaction.delete(followingRef);
+        transaction.delete(followerRef);
+        transaction.update(currentUserRef, { followingCount: increment(-1) });
+        transaction.update(targetUserRef, { followersCount: increment(-1) });
+      } else {
+        // Follow
+        transaction.set(followingRef, { userId: targetUserId, createdAt: serverTimestamp() });
+        transaction.set(followerRef, { userId: currentUserId, createdAt: serverTimestamp() });
+        transaction.update(currentUserRef, { followingCount: increment(1) });
+        transaction.update(targetUserRef, { followersCount: increment(1) });
+      }
+    });
+
+    revalidatePath(`/profile/${encodeURIComponent(targetUserData.anonName)}`);
+    revalidatePath(`/profile`);
+
+    return { success: true, wasFollowing };
+  } catch (e: any) {
+    console.error("Follow/unfollow transaction failed:", e);
+    return { error: e.message || "Failed to follow user." };
   }
 }

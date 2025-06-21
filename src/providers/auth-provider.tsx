@@ -61,6 +61,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             commentCount: 0,
             totalUpvotes: 0,
             totalDownvotes: 0,
+            followersCount: 0,
+            followingCount: 0,
             avatarUrl,
             avatarOptions,
           };
