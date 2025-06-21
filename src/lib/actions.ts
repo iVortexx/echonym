@@ -325,13 +325,23 @@ export async function handleVote(
 
   try {
     await runTransaction(db, async (transaction) => {
-      const [itemSnap, voteSnap] = await Promise.all([
-        transaction.get(itemRef),
-        transaction.get(voteRef),
-      ]);
-
+      // --- ALL READS FIRST ---
+      const itemSnap = await transaction.get(itemRef);
       if (!itemSnap.exists()) throw new Error("Item not found");
       
+      const itemData = itemSnap.data();
+      const authorId = itemData.userId;
+
+      const [voteSnap, authorSnap] = await Promise.all([
+        transaction.get(voteRef),
+        authorId !== userId ? transaction.get(doc(db, "users", authorId)) : Promise.resolve(null),
+      ]);
+
+      if (authorId !== userId && !authorSnap?.exists()) {
+          throw new Error("Author not found");
+      }
+      
+      // --- ALL WRITES SECOND ---
       const currentVote = voteSnap.data()?.type as VoteType | undefined;
       let upvotes_inc = 0;
       let downvotes_inc = 0;
@@ -370,6 +380,11 @@ export async function handleVote(
         downvotes: increment(downvotes_inc),
       });
 
+      // Update author's XP if the voter is not the author
+      if (authorSnap) {
+        const xp_change = upvotes_inc - downvotes_inc;
+        transaction.update(authorSnap.ref, { xp: increment(xp_change) });
+      }
     });
 
     revalidatePath(`/`);

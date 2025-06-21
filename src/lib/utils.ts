@@ -7,10 +7,18 @@ export function cn(...inputs: ClassValue[]) {
 
 export const BADGES = [
   { name: 'Newbie', minXP: 0, maxXP: 50, color: 'text-slate-400' },
-  { name: 'Contributor', minXP: 51, maxXP: 200, color: 'text-emerald-400' },
-  { name: 'Trusted', minXP: 201, maxXP: 500, color: 'text-sky-400' },
-  { name: 'Legend', minXP: 501, maxXP: Infinity, color: 'text-violet-400' },
+  { name: 'Contributor', minXP: 51, maxXP: 200, color: 'text-sky-400' },
+  { name: 'Trusted', minXP: 201, maxXP: 500, color: 'text-green-500' },
+  { name: 'Legend', minXP: 501, maxXP: 1000, color: 'text-yellow-500' },
+  { name: 'Influencer', minXP: 1001, maxXP: 2000, color: 'text-orange-500' },
+  { name: 'Veteran', minXP: 2001, maxXP: 4000, color: 'text-indigo-500' },
+  { name: 'Guardian', minXP: 4001, maxXP: 8000, color: 'text-purple-500' },
+  { name: 'Explorer', minXP: 8001, maxXP: 15000, color: 'text-teal-500' },
+  { name: 'Elite', minXP: 15001, maxXP: 30000, color: 'text-pink-500' },
+  { name: 'Immortal', minXP: 30001, maxXP: 50000, color: 'text-red-600' },
+  { name: 'Mythical', minXP: 50001, maxXP: Infinity, color: 'text-fuchsia-600' },
 ];
+
 
 export const ALLOWED_TAGS = ['security', 'reverse-eng', 'web-security', 'malware', 'cve', 'networking', 'crypto', 'forensics'];
 
