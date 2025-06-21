@@ -1,7 +1,7 @@
 
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon } from "lucide-react"
+import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -103,6 +103,26 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
       setIsVoting(false);
     }
   }
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent link navigation if inside another link
+    if (isPreview) return;
+
+    const postUrl = `${window.location.origin}/post/${post.id}`;
+    navigator.clipboard.writeText(postUrl).then(() => {
+      toast({
+        title: "✅ Link Copied!",
+        description: "The post URL is now on your clipboard.",
+      });
+    }).catch(err => {
+      console.error("Failed to copy link: ", err);
+      toast({
+        variant: "destructive",
+        title: "Copy Failed",
+        description: "Could not copy the link.",
+      });
+    });
+  };
 
 
   const formatTimeAgo = (createdAt: any) => {
@@ -236,13 +256,16 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
               />
 
               <Button
+                asChild
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 font-mono text-xs"
                 disabled={isPreview}
               >
-                <MessageCircle className="h-4 w-4 mr-1" />
-                <span>{post.commentCount || 0}</span>
+                <Link href={!isPreview ? `/post/${post.id}#comments` : '#'}>
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  <span>{post.commentCount || 0}</span>
+                </Link>
               </Button>
 
               <Button
@@ -250,8 +273,9 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
                 size="sm"
                 className="h-8 px-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
                 disabled={isPreview}
+                onClick={handleShare}
               >
-                <Share className="h-4 w-4" />
+                <LinkIcon className="h-4 w-4" />
               </Button>
             </div>
 
