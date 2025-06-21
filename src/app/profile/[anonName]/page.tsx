@@ -7,7 +7,7 @@ import { useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2, KeyRound, Copy } from "lucide-react"
+import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2, KeyRound } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge, BADGES } from "@/lib/utils"
@@ -68,7 +68,7 @@ function BackupAndRestore({ user }: { user: User }) {
     setIsRestoring(false);
 
     if (result) {
-      localStorage.setItem('whispernet_recovery_id', result.recoveryId);
+      localStorage.setItem('echonym_recovery_id', result.recoveryId);
       toast({ title: "✅ Account Found!", description: "Your account will be restored shortly." });
       setTimeout(() => window.location.reload(), 1500);
     } else {
@@ -87,13 +87,19 @@ function BackupAndRestore({ user }: { user: User }) {
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label className="font-mono text-sm text-slate-300">Your Unique Recovery ID</Label>
-          <div className="flex items-center gap-2 p-2 rounded-md bg-input border-border">
-            <KeyRound className="h-4 w-4 text-accent" />
-            <p className="font-mono text-xs text-slate-400 truncate flex-1">{user.recoveryId}</p>
-            <Button size="sm" variant="ghost" onClick={handleCopy}>
-              <Copy className="h-4 w-4 mr-2" /> Copy
-            </Button>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                 <Button variant="outline" onClick={handleCopy} className="w-full justify-start">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Copy Recovery ID
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Used to restore your anonymous account.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <p className="text-xs text-amber-500/80">Store this safely. It's the ONLY way to recover your account.</p>
         </div>
         <div className="space-y-2">
@@ -429,4 +435,6 @@ export default function ProfilePage() {
     </div>
   )
 }
+    
+
     

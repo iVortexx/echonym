@@ -6,13 +6,12 @@ import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'fir
 import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
-import { generateAnonName } from '@/lib/name-generator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 import { buildAvatarUrl } from '@/lib/utils';
-import { findUserByRecoveryId } from '@/lib/actions';
+import { findUserByRecoveryId, getUserByAnonName } from '@/lib/actions';
 
-const RECOVERY_ID_KEY = 'whispernet_recovery_id';
+const RECOVERY_ID_KEY = 'echonym_recovery_id';
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +29,36 @@ export const AuthContext = createContext<AuthContextType>({
   updateUser: () => {},
 });
 
+async function generateUniqueAnonName(): Promise<string> {
+    for (let i = 0; i < 10; i++) { // Max 10 retries
+        try {
+            const response = await fetch('https://randomuser.me/api/?inc=login');
+            if (!response.ok) {
+                console.error('Failed to fetch username from randomuser.me, status:', response.status);
+                continue; // try again
+            }
+            const data = await response.json();
+            if (!data.results || data.results.length === 0) {
+                 console.error('Invalid data from randomuser.me');
+                 continue; // try again
+            }
+            const rawUsername = data.results[0].login.username;
+            const username = rawUsername.charAt(0).toUpperCase() + rawUsername.slice(1);
+            
+            const existingUser = await getUserByAnonName(username);
+            if (!existingUser) {
+                return username; // Unique name found
+            }
+        } catch (error) {
+            console.error("Error generating unique username:", error);
+            // Wait a bit before retrying in case of network issues
+            await new Promise(res => setTimeout(res, 500));
+        }
+    }
+    throw new Error('Could not generate a unique username after several attempts.');
+}
+
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -46,7 +75,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const handleUserSession = async (fbUser: FirebaseUser | null) => {
         if (!fbUser) {
             try {
-                // If there's no fbUser, sign in anonymously. The listener will run again.
                 await signInAnonymously(auth);
             } catch (e: any) {
                 console.error("Firebase Anonymous Sign-in Error:", e);
@@ -60,7 +88,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
 
         if (savedRecoveryId) {
-            // Priority 1: User has a recovery ID in localStorage.
             const recoveredUser = await findUserByRecoveryId(savedRecoveryId);
             if (recoveredUser) {
                 unsubscribeUser = onSnapshot(doc(db, 'users', recoveredUser.uid), (userDoc) => {
@@ -71,25 +98,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 setLoading(false);
                 return;
             } else {
-                // The saved ID is invalid, clear it and proceed as a new session.
                 localStorage.removeItem(RECOVERY_ID_KEY);
             }
         }
         
-        // Priority 2: No valid recovery ID. Use Firebase UID to find or create the user.
         const userDocRef = doc(db, 'users', fbUser.uid);
         unsubscribeUser = onSnapshot(userDocRef, async (userDoc) => {
             if (userDoc.exists()) {
                 const existingUser = { ...userDoc.data(), uid: userDoc.id } as User;
                 setUser(existingUser);
-                // Sync localStorage with the correct recovery ID from DB.
                 if (existingUser.recoveryId) {
                   localStorage.setItem(RECOVERY_ID_KEY, existingUser.recoveryId);
                 }
             } else {
-                // This is a brand-new anonymous user. Create their profile.
                 try {
-                    const newAnonName = generateAnonName();
+                    const newAnonName = await generateUniqueAnonName();
                     const newRecoveryId = crypto.randomUUID();
                     const avatarOptions = { seed: newAnonName };
                     const avatarUrl = buildAvatarUrl(avatarOptions);
@@ -113,7 +136,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     const batch = writeBatch(db);
                     batch.set(userDocRef, newUser);
 
-                    // Create welcome notification
                     const notificationRef = doc(collection(db, 'users', fbUser.uid, 'notifications'));
                     batch.set(notificationRef, {
                         type: 'welcome',
@@ -123,8 +145,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     });
 
                     await batch.commit();
-
-                    // The onSnapshot will fire again with the new user data.
                     localStorage.setItem(RECOVERY_ID_KEY, newRecoveryId);
                 } catch (e: any) {
                     console.error("Error creating user document:", e);
@@ -177,3 +197,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+    

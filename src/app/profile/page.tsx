@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useAuth } from "@/hooks/use-auth"
@@ -13,7 +14,7 @@ export default function ProfileRedirectPage() {
     if (!loading && user?.anonName) {
       router.replace(`/profile/${user.anonName}`)
     }
-  }, [user, loading, router])
+  }, [user?.anonName, loading, router])
 
   return (
     <div className="flex items-center justify-center h-full min-h-[300px]">
@@ -24,3 +25,5 @@ export default function ProfileRedirectPage() {
     </div>
   )
 }
+
+    
