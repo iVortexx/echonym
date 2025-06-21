@@ -12,6 +12,8 @@ export const BADGES = [
   { name: 'Legend', minXP: 501, maxXP: Infinity, color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
 ];
 
+export const ALLOWED_TAGS = ['security', 'reverse-eng', 'web-security', 'malware', 'cve', 'networking', 'crypto', 'forensics'];
+
 export function getBadgeForXP(xp: number) {
   return BADGES.find(badge => xp >= badge.minXP && xp <= badge.maxXP) ?? BADGES[0];
 }

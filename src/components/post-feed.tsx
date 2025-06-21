@@ -1,30 +1,103 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { collection, query, orderBy, onSnapshot } from "firebase/firestore"
+import { useState, useEffect, useCallback } from "react"
+import { collection, query, orderBy, getDocs, limit, startAfter, where, Query, DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { AnimatePresence } from "framer-motion"
 import type { Post } from "@/lib/types"
 import { PostCard } from "./post-card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "./ui/button"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ALLOWED_TAGS } from "@/lib/utils"
+import { Flame, Rocket, Sparkles } from "lucide-react"
+
+const POSTS_PER_PAGE = 5;
+type SortOrder = "latest" | "trending" | "top";
 
 export function PostFeed() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+
+  const [sort, setSort] = useState<SortOrder>("latest")
+  const [tag, setTag] = useState<string>("all")
+
+  const fetchPosts = useCallback(async (reset = false) => {
+    if (reset) {
+      setLoading(true)
+    } else {
+      if (loadingMore || !hasMore) return;
+      setLoadingMore(true)
+    }
+
+    try {
+      let q: Query<DocumentData> = collection(db, "posts");
+
+      // Filtering
+      if (tag !== "all") {
+        q = query(q, where("tag", "==", tag));
+      }
+
+      // Sorting
+      switch (sort) {
+        case "trending":
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+          q = query(q, where("createdAt", ">=", sevenDaysAgo), orderBy("createdAt", "desc"), orderBy("upvotes", "desc"));
+          break;
+        case "top":
+          q = query(q, orderBy("upvotes", "desc"));
+          break;
+        case "latest":
+        default:
+          q = query(q, orderBy("createdAt", "desc"));
+          break;
+      }
+      
+      // Pagination
+      const currentLastDoc = reset ? null : lastDoc;
+      if (currentLastDoc) {
+        q = query(q, startAfter(currentLastDoc));
+      }
+      q = query(q, limit(POSTS_PER_PAGE));
+
+      const documentSnapshots = await getDocs(q);
+      
+      const newPosts = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Post);
+      
+      setPosts(prevPosts => reset ? newPosts : [...prevPosts, ...newPosts]);
+      
+      const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+      setLastDoc(lastVisible || null);
+
+      if (documentSnapshots.docs.length < POSTS_PER_PAGE) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      // You might want to show a toast message to the user here
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [sort, tag, lastDoc, hasMore, loadingMore]);
 
   useEffect(() => {
-    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"))
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const postsData: Post[] = []
-      querySnapshot.forEach((doc) => {
-        postsData.push({ id: doc.id, ...doc.data() } as Post)
-      })
-      setPosts(postsData)
-      setLoading(false)
-    })
+    setPosts([]);
+    setLastDoc(null);
+    setHasMore(true);
+    fetchPosts(true);
+  }, [sort, tag]);
 
-    return () => unsubscribe()
-  }, [])
+  const handleLoadMore = () => {
+    fetchPosts(false);
+  };
 
   if (loading) {
     return (
@@ -56,26 +129,62 @@ export function PostFeed() {
       </div>
     )
   }
-
-  if (posts.length === 0) {
-    return (
-      <div className="text-center text-slate-400 py-16">
-        <div className="mb-4">
-          <div className="text-6xl mb-4">👻</div>
-        </div>
-        <p className="text-lg font-mono">No transmissions detected.</p>
-        <p className="font-mono text-sm">Be the first to breach the silence.</p>
-      </div>
-    )
-  }
-
+  
   return (
-    <div className="space-y-4">
-      <AnimatePresence>
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} />
-        ))}
-      </AnimatePresence>
+    <div>
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <Tabs value={sort} onValueChange={(value) => setSort(value as SortOrder)} className="w-full sm:w-auto">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="latest"><Sparkles className="mr-2 h-4 w-4" />Latest</TabsTrigger>
+                    <TabsTrigger value="trending"><Flame className="mr-2 h-4 w-4" />Trending</TabsTrigger>
+                    <TabsTrigger value="top"><Rocket className="mr-2 h-4 w-4" />Top</TabsTrigger>
+                </TabsList>
+            </Tabs>
+            <Select value={tag} onValueChange={setTag}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Filter by tag" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Tags</SelectItem>
+                    {ALLOWED_TAGS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+            </Select>
+        </div>
+
+      {posts.length === 0 ? (
+         <div className="text-center text-slate-400 py-16">
+          <div className="mb-4">
+            <div className="text-6xl mb-4">👻</div>
+          </div>
+          <p className="text-lg font-mono">No transmissions detected for this query.</p>
+          <p className="font-mono text-sm">Try a different filter or be the first to post!</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <AnimatePresence>
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      <div className="mt-8 text-center">
+        {loadingMore ? (
+          <div className="flex justify-center items-center">
+            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+          </div>
+        ) : hasMore ? (
+          <Button onClick={handleLoadMore} variant="outline" className="font-mono">
+            Load More Whispers
+          </Button>
+        ) : (
+          posts.length > 0 && <p className="text-slate-500 font-mono text-sm">You've reached the end of the transmission.</p>
+        )}
+      </div>
     </div>
   )
 }
+
+// Add Loader2 to the imports if it's not there
+import { Loader2 } from "lucide-react"

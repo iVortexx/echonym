@@ -1,10 +1,16 @@
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash } from "lucide-react"
+import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash, Text } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { VoteButtons } from "./vote-buttons"
 import { UserBadge } from "./user-badge"
 import type { Post } from "@/lib/types"
@@ -109,6 +115,21 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
                  <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
                 </div>
+                {post.summary && !isPreview && (
+                  <Accordion type="single" collapsible className="w-full mt-2">
+                    <AccordionItem value="item-1" className="border-b-0">
+                      <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-cyan-400 no-underline hover:no-underline [&>svg]:hidden">
+                        <div className="flex items-center">
+                          <Text className="h-3 w-3 mr-1.5" />
+                          <span>View TL;DR</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-2 pb-0 text-xs text-slate-400">
+                        {post.summary}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
               </div>
             </div>
           </CardLinkWrapper>

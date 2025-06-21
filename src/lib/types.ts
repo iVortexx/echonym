@@ -14,6 +14,7 @@ export interface Post {
   title: string
   content: string
   tag?: string
+  summary?: string
   createdAt: Timestamp | string
   upvotes: number
   downvotes: number

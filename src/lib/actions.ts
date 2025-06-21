@@ -13,6 +13,7 @@ import type { Post, VoteType, User } from "./types"
 import { suggestTags } from "@/ai/flows/suggest-tags"
 import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
 import type { ScorePostInput, ScorePostOutput } from "@/ai/flows/score-post-flow"
+import { summarizePost } from "@/ai/flows/summarize-post-flow"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -33,6 +34,18 @@ export async function createPost(rawInput: unknown, userId: string) {
   }
 
   const { title, content, tag } = validation.data
+
+  let summary: string | undefined;
+  if (content.length > 300) { // Only summarize longer posts
+    try {
+      const summaryResult = await summarizePost({ content });
+      summary = summaryResult.summary;
+    } catch (e) {
+      console.error("Failed to generate summary:", e);
+      // Don't block post creation if summary fails
+      summary = undefined;
+    }
+  }
 
   const userDocRef = doc(db, "users", userId)
 
@@ -64,6 +77,10 @@ export async function createPost(rawInput: unknown, userId: string) {
 
       if (tag) {
         postPayload.tag = tag
+      }
+
+      if (summary) {
+        postPayload.summary = summary
       }
 
       transaction.set(newPostRef, postPayload)
