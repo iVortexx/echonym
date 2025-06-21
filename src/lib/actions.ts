@@ -239,7 +239,47 @@ export async function createComment(rawInput: unknown, userId: string) {
         commentData.parentId = parentId
       }
 
-      transaction.set(doc(commentCollectionRef), commentData)
+      transaction.set(doc(commentCollectionRef), commentData);
+
+      // --- Notification Logic ---
+      if (parentId) {
+        // This is a REPLY to a comment
+        const parentCommentRef = doc(db, `posts/${postId}/comments/${parentId}`);
+        const parentCommentDoc = await transaction.get(parentCommentRef);
+        if (parentCommentDoc.exists()) {
+          const parentCommentData = parentCommentDoc.data();
+          // Do not notify if replying to your own comment
+          if (parentCommentData.userId !== userId) {
+            const notificationRef = doc(collection(db, `users/${parentCommentData.userId}/notifications`));
+            transaction.set(notificationRef, {
+              type: 'new_reply',
+              fromUserId: userId,
+              fromUserName: userData.anonName,
+              fromUserAvatar: userData.avatarUrl,
+              targetPostId: postId,
+              targetCommentId: parentId,
+              read: false,
+              createdAt: serverTimestamp(),
+            });
+          }
+        }
+      } else {
+        // This is a new TOP-LEVEL comment
+        // Do not notify if commenting on your own post
+        if (postData.userId !== userId) {
+           const notificationRef = doc(collection(db, `users/${postData.userId}/notifications`));
+           transaction.set(notificationRef, {
+              type: 'new_comment',
+              fromUserId: userId,
+              fromUserName: userData.anonName,
+              fromUserAvatar: userData.avatarUrl,
+              targetPostId: postId,
+              commentSnippet: content.substring(0, 50),
+              read: false,
+              createdAt: serverTimestamp(),
+            });
+        }
+      }
     })
 
     revalidatePath(`/post/${postId}`)
@@ -281,9 +321,7 @@ export async function handleVote(
       ]);
 
       if (!itemSnap.exists()) throw new Error("Item not found");
-
-      const itemData = itemSnap.data();
-      const authorId = itemData.userId;
+      const authorId = itemSnap.data()?.userId;
       if (!authorId) throw new Error("Item author not found.");
       
       const currentVote = voteSnap.data()?.type as VoteType | undefined;
@@ -293,11 +331,8 @@ export async function handleVote(
       // Case 1: Toggling the same vote off
       if (currentVote === voteType) {
         transaction.delete(voteRef);
-        if (voteType === 'up') {
-          upvotes_inc = -1;
-        } else { // 'down'
-          downvotes_inc = -1;
-        }
+        if (voteType === 'up') upvotes_inc = -1;
+        else downvotes_inc = -1;
       }
       // Case 2: Changing vote (e.g., from up to down)
       else if (currentVote) {
@@ -317,11 +352,8 @@ export async function handleVote(
         else votePayload.commentId = itemId;
         transaction.set(voteRef, votePayload);
 
-        if (voteType === 'up') {
-          upvotes_inc = 1;
-        } else { // 'down'
-          downvotes_inc = 1;
-        }
+        if (voteType === 'up') upvotes_inc = 1;
+        else downvotes_inc = 1;
       }
       
       // Update the item's (post or comment) vote counts
@@ -539,10 +571,23 @@ export async function toggleFollowUser(currentUserId: string, targetUserId: stri
         transaction.update(targetUserRef, { followersCount: increment(-1) });
       } else {
         // Follow
+        const currentUserData = (await transaction.get(currentUserRef)).data() as User;
+
         transaction.set(followingRef, { userId: targetUserId, createdAt: serverTimestamp() });
         transaction.set(followerRef, { userId: currentUserId, createdAt: serverTimestamp() });
         transaction.update(currentUserRef, { followingCount: increment(1) });
         transaction.update(targetUserRef, { followersCount: increment(1) });
+        
+        // --- Notification Logic ---
+        const notificationRef = doc(collection(db, `users/${targetUserId}/notifications`));
+        transaction.set(notificationRef, {
+            type: 'new_follower',
+            fromUserId: currentUserId,
+            fromUserName: currentUserData.anonName,
+            fromUserAvatar: currentUserData.avatarUrl,
+            read: false,
+            createdAt: serverTimestamp(),
+        });
       }
     });
 
@@ -681,4 +726,31 @@ export async function getFollowing(userId: string): Promise<User[]> {
         console.error("Error fetching following:", e);
         return [];
     }
+}
+
+
+export async function markAllNotificationsAsRead(userId: string) {
+  if (!userId) return { error: "Authentication required." };
+  
+  const notificationsRef = collection(db, `users/${userId}/notifications`);
+  const q = query(notificationsRef, where("read", "==", false));
+
+  try {
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) {
+      return { success: true, message: "No unread notifications." };
+    }
+    
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { read: true });
+    });
+    
+    await batch.commit();
+    revalidatePath('/profile', 'layout'); // Revalidate to update bell
+    return { success: true };
+  } catch(e: any) {
+    console.error("Error marking notifications as read:", e);
+    return { error: "Failed to update notifications." };
+  }
 }

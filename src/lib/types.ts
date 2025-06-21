@@ -60,5 +60,19 @@ export interface Vote {
   type: VoteType
 }
 
+export interface Notification {
+  id: string;
+  type: 'new_comment' | 'new_reply' | 'new_follower';
+  fromUserId: string;
+  fromUserName: string;
+  fromUserAvatar?: string;
+  targetPostId?: string;
+  targetCommentId?: string;
+  commentSnippet?: string;
+  read: boolean;
+  createdAt: Timestamp | string;
+}
+
+
 // Mock Timestamp type for demo
 export type { Timestamp }

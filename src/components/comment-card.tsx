@@ -47,6 +47,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
 
   return (
     <motion.div
+      id={`comment-${comment.id}`}
       layout
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
