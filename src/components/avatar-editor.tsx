@@ -148,18 +148,18 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div className="md:col-span-1 flex flex-col items-center justify-center space-y-4 p-4 bg-slate-900 rounded-lg">
-        <Avatar className="w-48 h-48 ring-4 ring-blue-500/30">
+      <div className="md:col-span-1 flex flex-col items-center justify-center space-y-4 p-4 bg-card rounded-lg">
+        <Avatar className="w-48 h-48 ring-4 ring-primary/30">
           <AvatarImage src={avatarUrl} alt="Avatar Preview" />
-           <AvatarFallback className="bg-slate-800">
-            <UserIcon className="h-24 w-24 text-slate-500" />
+           <AvatarFallback className="bg-secondary">
+            <UserIcon className="h-24 w-24 text-muted-foreground" />
           </AvatarFallback>
         </Avatar>
         <div className="flex w-full gap-2">
            <Button onClick={handleReroll} variant="outline" className="w-full">
             <RefreshCw className="h-4 w-4 mr-2" /> Reroll
           </Button>
-          <Button onClick={handleSave} disabled={isSaving} className="w-full">
+          <Button onClick={handleSave} disabled={isSaving} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
           </Button>
         </div>
@@ -184,7 +184,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
           </TabsContent>
 
           <TabsContent value="colors" className="mt-4">
-            <div className="space-y-4 p-4 bg-slate-900 rounded-lg">
+            <div className="space-y-4 p-4 bg-card rounded-lg">
               {[
                 { name: "Skin Tone", key: "skinColor", options: skinColors },
                 { name: "Hair Color", key: "hairColor", options: hairColors },
@@ -199,7 +199,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
                           className="h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center"
                           style={{
                             backgroundColor: color,
-                            borderColor: options[cat.key] === color.replace("#", "") ? "#38bdf8" : "transparent"
+                            borderColor: options[cat.key] === color.replace("#", "") ? "hsl(var(--accent))" : "transparent"
                           }}
                         >
                         {options[cat.key] === color.replace("#", "") && <Check className="h-5 w-5 text-white stroke-2" />}

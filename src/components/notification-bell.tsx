@@ -22,9 +22,9 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
   const getIcon = () => {
     switch (notification.type) {
       case 'new_follower':
-        return <User className="h-4 w-4 text-blue-400" />;
+        return <User className="h-4 w-4 text-accent" />;
       case 'new_comment':
-        return <MessageCircle className="h-4 w-4 text-cyan-400" />;
+        return <MessageCircle className="h-4 w-4 text-accent" />;
       case 'new_reply':
         return <GitBranch className="h-4 w-4 text-green-400" />;
       default:
@@ -86,8 +86,8 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
     <div
       onClick={handleClick}
       className={cn(
-        'flex items-start gap-3 p-3 -mx-1 rounded-lg transition-colors cursor-pointer hover:bg-blue-500/10',
-        !notification.read && 'bg-blue-500/5'
+        'flex items-start gap-3 p-3 -mx-1 rounded-lg transition-colors cursor-pointer hover:bg-primary/10',
+        !notification.read && 'bg-primary/5'
       )}
     >
       <div className="mt-1">{getIcon()}</div>
@@ -117,7 +117,7 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative rounded-full hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
+          className="relative rounded-full hover:bg-primary/10 border border-transparent hover:border-border"
         >
           <Bell className="h-5 w-5 text-slate-300" />
           {unreadCount > 0 && (
@@ -127,11 +127,11 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 md:w-96 bg-slate-900/95 border-blue-500/20 backdrop-blur-sm text-slate-200 p-2">
+      <PopoverContent align="end" className="w-80 md:w-96 bg-background/95 border-border backdrop-blur-sm text-slate-200 p-2">
         <div className="flex items-center justify-between p-2">
           <h3 className="font-bold font-mono text-lg text-slate-100">Notifications</h3>
           {unreadCount > 0 && (
-            <Button variant="link" size="sm" onClick={handleMarkAllRead} className="p-0 h-auto text-sm text-blue-400 hover:text-blue-300">
+            <Button variant="link" size="sm" onClick={handleMarkAllRead} className="p-0 h-auto text-sm text-accent hover:opacity-80">
               Mark all as read
             </Button>
           )}
@@ -139,7 +139,7 @@ export function NotificationBell() {
         <div className="mt-2 max-h-96 overflow-y-auto space-y-1">
           {loading ? (
              <div className="p-2 space-y-3">
-               {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full bg-slate-700/50" />)}
+               {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full bg-muted" />)}
             </div>
           ) : notifications.length > 0 ? (
             notifications.map(n => <NotificationItem key={n.id} notification={n} onOpen={() => setIsOpen(false)} />)

@@ -8,8 +8,6 @@ export interface User {
   createdAt: Timestamp | string
   postCount?: number
   commentCount?: number
-  totalUpvotes: number
-  totalDownvotes: number
   avatarUrl?: string
   avatarOptions?: Record<string, string>
   followersCount?: number

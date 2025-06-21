@@ -155,7 +155,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
       {/* Editor Panel */}
-      <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm">
+      <Card className="bg-card border-border">
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -168,7 +168,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="What's your discovery?"
                 required
-                className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 text-lg"
+                className="bg-input border-border text-slate-200 placeholder:text-slate-500 text-lg"
               />
             </div>
 
@@ -184,7 +184,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                 required
                 rows={12}
                 maxLength={5000}
-                className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none font-mono text-sm leading-relaxed"
+                className="bg-input border-border text-slate-200 placeholder:text-slate-500 resize-none font-mono text-sm leading-relaxed"
               />
               <div className="flex justify-between items-center text-xs font-mono text-slate-400">
                 <span>{content.length} / 5000</span>
@@ -199,7 +199,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
             <Button
               type="submit"
               disabled={isSubmitting || !title || !content}
-              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono text-lg py-6 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-primary to-accent text-white font-mono text-lg py-6 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -216,21 +216,21 @@ export function PostForm({ postToEdit }: PostFormProps) {
       {/* Preview and AI Score Panel */}
       <div className="space-y-8 mt-8 lg:mt-0">
         <div>
-          <h3 className="text-lg font-bold font-headline text-slate-300 mb-2">Live Preview</h3>
+          <h3 className="text-lg font-bold font-mono text-slate-300 mb-2">Live Preview</h3>
           <PostCard post={previewPost} isPreview />
         </div>
         <div>
-           <h3 className="text-lg font-bold font-headline text-slate-300 mb-2 flex items-center">
+           <h3 className="text-lg font-bold font-mono text-slate-300 mb-2 flex items-center">
              AI Analysis
-             {isScoring && <Loader2 className="ml-2 h-4 w-4 animate-spin text-cyan-400" />}
+             {isScoring && <Loader2 className="ml-2 h-4 w-4 animate-spin text-accent" />}
            </h3>
-           <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm p-6">
+           <Card className="bg-card border-border p-6">
              {aiScore ? (
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 relative h-20 w-20">
                     <svg className="h-full w-full" viewBox="0 0 36 36">
                       <path
-                        className="text-slate-700"
+                        className="text-muted"
                         d="M18 2.0845
                           a 15.9155 15.9155 0 0 1 0 31.831
                           a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -239,7 +239,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                         strokeWidth="3"
                       />
                       <path
-                        className="text-cyan-400"
+                        className="text-accent"
                         stroke="currentColor"
                         strokeWidth="3"
                         strokeDasharray={`${aiScore.score}, 100`}
@@ -257,7 +257,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                   <div className="space-y-3">
                     <div>
                       <h4 className="flex items-center text-sm font-semibold text-slate-300">
-                        <Sparkles className="h-4 w-4 mr-2 text-cyan-400"/>
+                        <Sparkles className="h-4 w-4 mr-2 text-accent"/>
                         Clarity
                       </h4>
                       <p className="text-xs text-slate-400">{aiScore.clarity}</p>

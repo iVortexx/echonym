@@ -41,7 +41,7 @@ export function FeedSidebar() {
                     name="search"
                     placeholder="Search posts..."
                     defaultValue={searchParams.get("q") || ""}
-                    className="bg-slate-800/50 border-slate-600 pl-9"
+                    className="bg-card border-border pl-9"
                 />
             </form>
 
@@ -54,7 +54,7 @@ export function FeedSidebar() {
                                 variant="ghost"
                                 className={cn(
                                     "w-full justify-start text-base font-normal text-slate-300",
-                                    pathname === item.href && "bg-blue-500/10 text-blue-300"
+                                    pathname === item.href && "bg-primary/10 text-primary"
                                 )}
                             >
                                 <Link href={item.href}>

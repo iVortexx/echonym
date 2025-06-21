@@ -29,9 +29,9 @@ import { FollowListDialog } from "@/components/follow-list-dialog"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
-    <Card className="bg-slate-800/30 border-slate-700/50 p-4 relative h-full">
+    <Card className="bg-card border-border p-4 relative h-full">
       <div className="flex items-center gap-3">
-        <Icon className="h-6 w-6 text-cyan-400" />
+        <Icon className="h-6 w-6 text-accent" />
         <div>
           <p className="text-slate-400 text-sm">{label}</p>
           <p className="text-xl font-bold font-mono text-slate-100">{value}</p>
@@ -145,10 +145,10 @@ export default function ProfilePage() {
   if (loading || !user) {
     return (
       <div className="space-y-8">
-        <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm p-6">
+        <Card className="bg-card border-border rounded-lg p-6">
           <CardHeader className="flex flex-col sm:flex-row items-center gap-6 p-0 mb-6">
-            <Avatar className="h-24 w-24 ring-4 ring-blue-500/30">
-              <AvatarFallback className="bg-blue-900/50 text-blue-300">
+            <Avatar className="h-24 w-24 ring-4 ring-primary/30">
+              <AvatarFallback className="bg-secondary">
                 <UserIcon className="h-12 w-12" />
               </AvatarFallback>
             </Avatar>
@@ -163,9 +163,9 @@ export default function ProfilePage() {
   const joinDate = new Date(user.createdAt as string)
 
   const AvatarComponent = (
-    <Avatar className="h-24 w-24 ring-4 ring-blue-500/30 cursor-pointer group object-cover">
+    <Avatar className="h-24 w-24 ring-4 ring-primary/30 cursor-pointer group object-cover">
       <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
-      <AvatarFallback className="bg-blue-900/50 text-blue-300">
+      <AvatarFallback className="bg-secondary text-primary">
         <UserIcon className="h-12 w-12" />
       </AvatarFallback>
       {isOwnProfile && (
@@ -178,14 +178,14 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm p-6">
+      <Card className="bg-card border-border rounded-lg p-6">
         <CardHeader className="flex flex-col sm:flex-row items-center gap-6 p-0 mb-6 w-full">
           {isOwnProfile ? (
             <Dialog>
               <DialogTrigger asChild>{AvatarComponent}</DialogTrigger>
-              <DialogContent className="max-w-3xl bg-slate-950 border-blue-500/20">
+              <DialogContent className="max-w-3xl bg-background border-border">
                 <DialogHeader>
-                  <DialogTitle className="font-mono text-xl text-blue-300">Avatar Editor</DialogTitle>
+                  <DialogTitle className="font-mono text-xl text-primary">Avatar Editor</DialogTitle>
                 </DialogHeader>
                 <AvatarEditor user={user} onSave={handleAvatarSave} />
               </DialogContent>
@@ -195,7 +195,7 @@ export default function ProfilePage() {
           )}
           <div className="flex-1 text-center sm:text-left">
             <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <h1 className="text-4xl font-bold font-mono text-blue-300">{user.anonName}</h1>
+              <h1 className="text-4xl font-bold font-mono text-primary">{user.anonName}</h1>
               {!isOwnProfile && (
                 <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
                   {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
@@ -227,17 +227,17 @@ export default function ProfilePage() {
                     <HelpCircle className="h-5 w-5" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 bg-slate-900 border-slate-700 text-slate-300">
+            <PopoverContent className="w-80 bg-background border-border text-slate-300">
                 <div className="space-y-4 p-2">
                     <div>
-                        <h4 className="font-semibold text-cyan-400 mb-2 font-mono">How to Earn XP</h4>
+                        <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
                         <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
                             <li>Create a new post: <span className="font-mono text-green-400">+10 XP</span></li>
                             <li>Add a comment: <span className="font-mono text-green-400">+5 XP</span></li>
                         </ul>
                     </div>
                     <div>
-                        <h4 className="font-semibold text-cyan-400 mb-2 font-mono">Ranks</h4>
+                        <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
                         <ul className="space-y-2 text-sm text-slate-400">
                             {BADGES.map((badge) => (
                                 <li key={badge.name} className="flex items-center justify-between">
@@ -266,7 +266,7 @@ export default function ProfilePage() {
       </div>
 
       <Dialog open={!!dialogType} onOpenChange={(open) => !open && setDialogType(null)}>
-        <DialogContent className="max-w-md bg-slate-950 border-blue-500/20">
+        <DialogContent className="max-w-md bg-background border-border">
             {dialogType && user && (
                 <FollowListDialog
                     userId={user.uid}

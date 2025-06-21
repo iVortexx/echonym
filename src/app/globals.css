@@ -4,30 +4,52 @@
 
 @layer base {
   :root {
-    --background: 0 0% 3.9%;
+    --background: 240 5% 16%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --card: 240 5% 19%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
+    --popover: 240 5% 16%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
+    --primary: 282 100% 42%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 4% 25%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
+    --muted: 240 4% 25%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 183 100% 74%;
+    --accent-foreground: 240 5% 16%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 282 20% 35%;
+    --input: 240 4% 25%;
+    --ring: 183 100% 74%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+  }
+ 
+  .dark {
+    --background: 240 5% 16%;
+    --foreground: 0 0% 98%;
+    --card: 240 5% 19%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 16%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 282 100% 42%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 4% 25%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 25%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 183 100% 74%;
+    --accent-foreground: 240 5% 16%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 282 20% 35%;
+    --input: 240 4% 25%;
+    --ring: 183 100% 74%;
   }
 }
 
@@ -48,13 +70,13 @@
     @apply text-slate-100;
   }
   .prose blockquote {
-    @apply border-l-cyan-400 text-slate-400;
+    @apply border-l-primary text-slate-400;
   }
   .prose code {
-    @apply text-cyan-300 bg-slate-800 rounded-md px-1.5 py-1 text-sm;
+    @apply text-accent bg-slate-800 rounded-md px-1.5 py-1 text-sm;
   }
   .prose a {
-    @apply text-blue-400 hover:text-blue-300;
+    @apply text-accent hover:opacity-80;
   }
 }
 
@@ -64,14 +86,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgb(15 23 42);
+  background: hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(59 130 246 / 0.3);
+  background: hsl(var(--primary) / 0.3);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(59 130 246 / 0.5);
+  background: hsl(var(--primary) / 0.5);
 }

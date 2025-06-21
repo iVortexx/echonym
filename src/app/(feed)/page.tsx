@@ -1,12 +1,10 @@
 
 import { PostFeed } from "@/components/post-feed"
-import { Terminal, Wifi, Shield, TrendingUp, Flame, Rocket, Sparkles } from "lucide-react"
+import { Terminal, Flame, Rocket, Sparkles } from "lucide-react"
 import { collection, query, orderBy, getDocs, limit, where, Query, DocumentData } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Post } from "@/lib/types"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ALLOWED_TAGS } from "@/lib/utils"
 import Link from "next/link"
 
 type SortOrder = "latest" | "trending" | "top";
@@ -55,9 +53,9 @@ export default async function Home({ searchParams }: { searchParams: { [key: str
       <div className="space-y-8">
         <div className="mb-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Terminal className="h-8 w-8 text-blue-400" />
-            <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              /dev/whispers
+            <Terminal className="h-8 w-8 text-accent" />
+            <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              WhisperNet
             </h1>
           </div>
           <p className="text-slate-400 font-mono text-sm">{">"} anonymous security research & exploits</p>

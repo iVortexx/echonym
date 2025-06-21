@@ -321,8 +321,6 @@ export async function handleVote(
       ]);
 
       if (!itemSnap.exists()) throw new Error("Item not found");
-      const authorId = itemSnap.data()?.userId;
-      if (!authorId) throw new Error("Item author not found.");
       
       const currentVote = voteSnap.data()?.type as VoteType | undefined;
       let upvotes_inc = 0;

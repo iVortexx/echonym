@@ -124,12 +124,12 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.3 }}
-      className="flex gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50"
+      className="flex gap-3 p-3 rounded-lg bg-slate-800/30 border border-border"
     >
       <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
         <Avatar className="h-8 w-8 mt-1 flex-shrink-0 cursor-pointer">
           <AvatarImage src={displayAvatarUrl} alt={comment.anonName} className="object-cover" />
-          <AvatarFallback className="bg-blue-900/50 text-blue-300">
+          <AvatarFallback className="bg-secondary text-primary">
             <UserIcon className="h-4 w-4" />
           </AvatarFallback>
         </Avatar>
@@ -137,10 +137,10 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
       <div className="flex-1">
         <div className="flex items-center text-xs text-slate-400 mb-1">
           <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
-            <span className="font-mono text-cyan-400 hover:underline">{comment.anonName}</span>
+            <span className="font-mono text-accent hover:underline">{comment.anonName}</span>
           </Link>
           {isOriginalPoster && (
-            <Badge variant="outline" className="ml-2 px-1.5 py-0.5 text-xs font-bold border-blue-400 text-blue-400 bg-blue-500/10">
+            <Badge variant="outline" className="ml-2 px-1.5 py-0.5 text-xs font-bold border-primary text-primary bg-primary/10">
               OP
             </Badge>
           )}
@@ -160,7 +160,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
             variant="ghost"
             size="sm"
             onClick={() => onStartReply(comment.id)}
-            className="h-auto px-2 py-1 text-xs text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+            className="h-auto px-2 py-1 text-xs text-slate-400 hover:text-accent hover:bg-accent/10"
           >
             <MessageSquareReply className="h-3 w-3 mr-1" />
             Reply

@@ -231,24 +231,23 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
       transition={{ duration: 0.3 }}
       layout
     >
-      <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm hover:border-blue-400/40 transition-all duration-300">
+      <Card className="bg-card border-border rounded-lg hover:border-primary/40 transition-all duration-300">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3 flex-1">
               <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
-                <Avatar className="h-10 w-10 ring-2 ring-blue-500/30">
+                <Avatar className="h-10 w-10 ring-2 ring-primary/30">
                   <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
-                  <AvatarFallback className="bg-blue-900/50 text-blue-300">
+                  <AvatarFallback className="bg-secondary text-primary">
                     <UserIcon className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
               </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
-                  <Terminal className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                  <Terminal className="h-3 w-3 text-accent flex-shrink-0" />
                   <Link href={`/profile/${encodeURIComponent(post.anonName)}`}>
-                    <p className="font-mono text-sm text-blue-300 truncate hover:underline">{post.anonName || 'Anonymous'}</p>
+                    <p className="font-mono text-sm text-accent truncate hover:underline">{post.anonName || 'Anonymous'}</p>
                   </Link>
                   <UserBadge xp={post.xp || 0} />
                 </div>
@@ -259,7 +258,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                       {" • "}
                       <Badge
                         variant="outline"
-                        className="text-xs px-1 py-0 h-4 border-cyan-500/30 text-cyan-400 bg-cyan-500/10"
+                        className="text-xs px-1 py-0 h-4 border-accent/30 text-accent bg-accent/10"
                       >
                         <Hash className="h-2 w-2 mr-1" />
                         {post.tag}
@@ -275,14 +274,14 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 flex-shrink-0"
+                    className="h-8 w-8 text-slate-400 hover:text-accent hover:bg-accent/10 flex-shrink-0"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-slate-900/95 border-blue-500/20 backdrop-blur-sm text-slate-200">
+                <DropdownMenuContent align="end" className="bg-background/95 border-border backdrop-blur-sm text-slate-200">
                   <DropdownMenuItem onClick={handleShare}>
-                    <Share className="mr-2 h-4 w-4" /> Share
+                    <LinkIcon className="mr-2 h-4 w-4" /> Share
                   </DropdownMenuItem>
                    <DropdownMenuItem onClick={() => handleSave()}>
                     <Bookmark className="mr-2 h-4 w-4" /> Save
@@ -292,7 +291,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   </DropdownMenuItem>
                   {isOwnPost && !isPreview && (
                     <>
-                      <DropdownMenuSeparator className="bg-slate-700/50" />
+                      <DropdownMenuSeparator className="bg-border" />
                       <DropdownMenuItem onClick={() => router.push(`/post/${post.id}/edit`)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit
                       </DropdownMenuItem>
@@ -308,9 +307,9 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <AlertDialogContent className="bg-slate-950 border-blue-500/20">
+              <AlertDialogContent className="bg-background border-border">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-mono text-xl text-blue-300">Are you sure?</AlertDialogTitle>
+                  <AlertDialogTitle className="font-mono text-xl text-primary">Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription className="text-slate-400">
                     This will permanently delete your post and all its comments. This action cannot be undone.
                   </AlertDialogDescription>
@@ -328,9 +327,9 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
         <CardContent className="pt-0">
           <CardLinkWrapper>
             <div className="relative">
-              <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-primary to-accent rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="pl-4">
-                <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-blue-300 transition-colors">
+                <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-primary transition-colors">
                   {post.title || "Untitled Whisper"}
                 </h3>
                  <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
@@ -339,7 +338,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                 {post.summary && !isPreview && (
                   <Accordion type="single" collapsible className="w-full mt-2">
                     <AccordionItem value="item-1" className="border-b-0">
-                      <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-cyan-400 no-underline hover:no-underline [&>svg]:hidden">
+                      <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
                         <div className="flex items-center">
                           <Text className="h-3 w-3 mr-1.5" />
                           <span>View TL;DR</span>
@@ -354,7 +353,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
               </div>
             </div>
           </CardLinkWrapper>
-          <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-700/50">
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
             <div className="flex items-center space-x-1">
               <VoteButtons 
                 onVote={handleVoteClick}
@@ -368,7 +367,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                 asChild
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 font-mono text-xs"
+                className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10 font-mono text-xs"
                 disabled={isPreview}
               >
                 <Link href={!isPreview ? `/post/${post.id}#comments` : '#'}>
@@ -382,10 +381,6 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
               <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
                 <span className="text-green-400">{optimisticUpvotes || 0}↑</span>
                 <span className="text-red-400">{optimisticDownvotes || 0}↓</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Zap className="h-3 w-3 text-yellow-400 animate-pulse" />
-                <span className="text-xs font-mono text-slate-500">live</span>
               </div>
             </div>
           </div>

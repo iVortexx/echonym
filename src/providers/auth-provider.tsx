@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="flex flex-col items-center space-y-4 text-center p-8 max-w-md mx-auto bg-card border border-destructive/50 rounded-2xl shadow-lg">
           <AlertTriangle className="h-12 w-12 text-destructive" />
-          <h1 className="text-2xl font-bold font-headline text-destructive">Authentication Error</h1>
+          <h1 className="text-2xl font-bold text-destructive">Authentication Error</h1>
           <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -108,9 +108,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center space-y-4">
-          <h1 className="text-3xl font-bold font-headline text-primary">WhisperNet</h1>
+          <h1 className="text-3xl font-bold font-mono bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">WhisperNet</h1>
           <p className="text-muted-foreground">Initializing anonymous session...</p>
-          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-4 w-48 bg-muted" />
         </div>
       </div>
     );

@@ -47,7 +47,7 @@ export default async function HiddenPostsPage({ searchParams }: { searchParams: 
 
     return (
         <div className="space-y-8">
-             <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+             <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Hidden Whispers
             </h1>
             <PostFeed posts={posts} isLoading={false} />
