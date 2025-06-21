@@ -1,7 +1,7 @@
 "use client"
 
 import { getUserByAnonName, getPostsByUserId } from "@/lib/actions"
-import { notFound, useRouter } from "next/navigation"
+import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -23,12 +23,6 @@ import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
 import Image from "next/image"
 
-type ProfilePageProps = {
-  params: {
-    anonName: string
-  }
-}
-
 function StatCard({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | number }) {
   return (
     <Card className="bg-slate-800/30 border-slate-700/50 p-4">
@@ -44,8 +38,11 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ElementType, label
 }
 
 // We need to fetch data on the client side to get live updates after editing.
-export default function ProfilePage({ params }: ProfilePageProps) {
-  const { anonName } = params
+export default function ProfilePage() {
+  const params = useParams()
+  // Ensure anonName is a string, as useParams can return string | string[]
+  const rawAnonName = Array.isArray(params.anonName) ? params.anonName[0] : params.anonName
+  
   const { user: currentUser } = useAuth()
   const router = useRouter()
 
@@ -53,12 +50,18 @@ export default function ProfilePage({ params }: ProfilePageProps) {
   const [posts, setPosts] = useState<PostType[]>([])
   const [loading, setLoading] = useState(true)
 
-  const isOwnProfile = currentUser?.anonName === decodeURIComponent(anonName)
+  const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
+  const isOwnProfile = currentUser?.anonName === anonName
 
   useEffect(() => {
+    // Only fetch data if we have a valid name
+    if (!anonName) {
+      return;
+    }
+    
     async function fetchData() {
       setLoading(true)
-      const fetchedUser = await getUserByAnonName(decodeURIComponent(anonName))
+      const fetchedUser = await getUserByAnonName(anonName)
       if (!fetchedUser) {
         notFound()
         return
