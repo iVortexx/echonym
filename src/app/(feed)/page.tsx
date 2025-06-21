@@ -1,58 +1,70 @@
 
+"use client"
+
 import { PostFeed } from "@/components/post-feed"
 import { Terminal, Flame, Rocket, Sparkles } from "lucide-react"
-import { collection, query, orderBy, getDocs, limit, where, Query, DocumentData } from "firebase/firestore"
+import { collection, query, orderBy, limit, where, onSnapshot, Query, DocumentData } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Post } from "@/lib/types"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
+import { useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 type SortOrder = "latest" | "trending" | "top";
 
-async function getPosts(sort: SortOrder = "latest", tag: string = "all", searchQuery: string = ""): Promise<Post[]> {
-  let q: Query<DocumentData> = collection(db, "posts");
-
-  if (tag !== "all") {
-    q = query(q, where("tag", "==", tag));
-  }
+export default function Home() {
+  const searchParams = useSearchParams();
+  const sort = (searchParams.get('sort') as SortOrder) || "latest";
+  const tag = (searchParams.get('tag') as string) || "all";
+  const q = (searchParams.get('q') as string) || "";
   
-  if (searchQuery) {
-    const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
-    if (searchWords.length > 0) {
-      // Note: Firestore 'array-contains-any' is limited to 30 values in the array.
-      // This should be fine for most search queries.
-      q = query(q, where("searchKeywords", "array-contains-any", searchWords.slice(0, 30)));
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    let qBuilder: Query<DocumentData> = collection(db, "posts");
+
+    if (tag !== "all") {
+      qBuilder = query(qBuilder, where("tag", "==", tag));
     }
-  }
+    
+    if (q) {
+      const searchWords = q.toLowerCase().split(/\s+/).filter(Boolean);
+      if (searchWords.length > 0) {
+        qBuilder = query(qBuilder, where("searchKeywords", "array-contains-any", searchWords.slice(0, 30)));
+      }
+    }
 
-  // Sorting
-  switch (sort) {
-    case "trending":
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      q = query(q, where("createdAt", ">=", sevenDaysAgo), orderBy("createdAt", "desc"), orderBy("upvotes", "desc"));
-      break;
-    case "top":
-      q = query(q, orderBy("upvotes", "desc"));
-      break;
-    case "latest":
-    default:
-      q = query(q, orderBy("createdAt", "desc"));
-      break;
-  }
+    switch (sort) {
+      case "trending":
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        qBuilder = query(qBuilder, where("createdAt", ">=", sevenDaysAgo), orderBy("createdAt", "desc"), orderBy("upvotes", "desc"));
+        break;
+      case "top":
+        qBuilder = query(qBuilder, orderBy("upvotes", "desc"));
+        break;
+      case "latest":
+      default:
+        qBuilder = query(qBuilder, orderBy("createdAt", "desc"));
+        break;
+    }
   
-  q = query(q, limit(50)); // Limit to 50 for now
+    qBuilder = query(qBuilder, limit(50));
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
-}
+    const unsubscribe = onSnapshot(qBuilder, (querySnapshot) => {
+      const newPosts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Post));
+      setPosts(newPosts);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching posts:", error);
+        setLoading(false);
+    });
 
+    return () => unsubscribe();
 
-export default async function Home({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
-  const sort = (searchParams.sort as SortOrder) || "latest";
-  const tag = (searchParams.tag as string) || "all";
-  const q = (searchParams.q as string) || "";
-
-  const posts = await getPosts(sort, tag, q);
+  }, [sort, tag, q]);
   
   return (
       <div className="space-y-8">
@@ -69,14 +81,14 @@ export default async function Home({ searchParams }: { searchParams: { [key: str
         <div className="flex flex-col sm:flex-row gap-4">
             <Tabs defaultValue={sort} className="w-full sm:w-auto">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="latest" asChild><Link href={`/?sort=latest&tag=${tag}`}><Sparkles className="mr-2 h-4 w-4" />Latest</Link></TabsTrigger>
-                  <TabsTrigger value="trending" asChild><Link href={`/?sort=trending&tag=${tag}`}><Flame className="mr-2 h-4 w-4" />Trending</Link></TabsTrigger>
-                  <TabsTrigger value="top" asChild><Link href={`/?sort=top&tag=${tag}`}><Rocket className="mr-2 h-4 w-4" />Top</Link></TabsTrigger>
+                  <TabsTrigger value="latest" asChild><Link href={`/?sort=latest&tag=${tag}&q=${q}`}><Sparkles className="mr-2 h-4 w-4" />Latest</Link></TabsTrigger>
+                  <TabsTrigger value="trending" asChild><Link href={`/?sort=trending&tag=${tag}&q=${q}`}><Flame className="mr-2 h-4 w-4" />Trending</Link></TabsTrigger>
+                  <TabsTrigger value="top" asChild><Link href={`/?sort=top&tag=${tag}&q=${q}`}><Rocket className="mr-2 h-4 w-4" />Top</Link></TabsTrigger>
                 </TabsList>
             </Tabs>
         </div>
 
-        {posts.length === 0 && q ? (
+        {posts.length === 0 && q && !loading ? (
            <div className="text-center text-slate-400 py-16">
              <div className="mb-4">
                <div className="text-6xl mb-4">🤷</div>
@@ -85,7 +97,7 @@ export default async function Home({ searchParams }: { searchParams: { [key: str
              <p className="font-mono text-sm">Try a different search term.</p>
            </div>
         ) : (
-          <PostFeed posts={posts} isLoading={false} />
+          <PostFeed posts={posts} isLoading={loading} />
         )}
       </div>
   )

@@ -7,19 +7,35 @@ import { getUserVotes } from '@/lib/actions';
 import { PostCard } from '@/components/post-card';
 import { CommentSection } from '@/components/comment-section';
 import { Card } from '@/components/ui/card';
+import { doc, onSnapshot, type Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface PostDetailProps {
     post: Post;
     initialComments: Comment[];
 }
 
-export function PostDetail({ post, initialComments }: PostDetailProps) {
+export function PostDetail({ post: initialPost, initialComments }: PostDetailProps) {
     const { user } = useAuth();
+    const [post, setPost] = useState<Post>(initialPost);
     const [userVote, setUserVote] = useState<VoteType | null | undefined>(undefined);
 
     useEffect(() => {
+        const postRef = doc(db, 'posts', initialPost.id);
+        const unsubscribe = onSnapshot(postRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const postData = { id: docSnap.id, ...docSnap.data() } as Post;
+                postData.createdAt = postData.createdAt && typeof (postData.createdAt as any).toDate === 'function'
+                    ? (postData.createdAt as Timestamp).toDate().toISOString()
+                    : (postData.createdAt as string);
+                setPost(postData);
+            }
+        });
+        return () => unsubscribe();
+    }, [initialPost.id]);
+
+    useEffect(() => {
         async function fetchVote() {
-            // Only fetch if we have a user, otherwise vote is null
             if (user) {
                 const votes = await getUserVotes(user.uid, [post.id], 'post');
                 setUserVote(votes[post.id] || null);
@@ -31,14 +47,13 @@ export function PostDetail({ post, initialComments }: PostDetailProps) {
     }, [user, post.id]);
 
     useEffect(() => {
-        // Smooth scroll to comments if hash is present
         if (window.location.hash === '#comments') {
             const commentsEl = document.getElementById('comments');
             if (commentsEl) {
                 commentsEl.scrollIntoView({ behavior: 'smooth' });
             }
         }
-    }, []); // Run only once on mount
+    }, []);
 
     return (
         <div className="max-w-3xl mx-auto p-4">

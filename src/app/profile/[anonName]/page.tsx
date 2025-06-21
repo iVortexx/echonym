@@ -27,12 +27,8 @@ import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { FollowListDialog } from "@/components/follow-list-dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { db } from '@/lib/firebase'
+import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -72,9 +68,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!anonName || authLoading) return;
     
-    async function fetchData() {
-      setLoading(true);
+    let unsubscribeUser: () => void = () => {};
 
+    async function setupProfile() {
+      setLoading(true);
+      
       const userToFetch = isOwnProfile ? currentUser : await getUserByAnonName(anonName);
 
       if (!userToFetch) {
@@ -82,12 +80,19 @@ export default function ProfilePage() {
         notFound();
         return;
       }
-      
-      if (!isOwnProfile) {
-        setFetchedUser(userToFetch);
-      }
-      
+
+      const userRef = doc(db, 'users', userToFetch.uid);
+      unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const updatedUser = { uid: docSnap.id, ...docSnap.data() } as User;
+          if (!isOwnProfile) {
+            setFetchedUser(updatedUser);
+          }
+        }
+      });
+
       const fetchedPosts = await getPostsByUserId(userToFetch.uid);
+      setPosts(fetchedPosts);
       
       if (currentUser) {
         if (fetchedPosts.length > 0) {
@@ -103,11 +108,13 @@ export default function ProfilePage() {
         }
       }
 
-      setPosts(fetchedPosts);
       setLoading(false);
     }
 
-    fetchData();
+    setupProfile();
+
+    return () => unsubscribeUser();
+
   }, [anonName, currentUser, isOwnProfile, authLoading]);
 
   const handleAvatarSave = (newAvatarUrl: string) => {
@@ -124,7 +131,6 @@ export default function ProfilePage() {
     const previousIsFollowing = isFollowing;
     const previousFollowersCount = displayUser.followersCount || 0;
     
-    // Optimistic update
     setIsFollowing(!isFollowing);
     const updatedUser = { ...displayUser, followersCount: (displayUser.followersCount || 0) + (!isFollowing ? 1 : -1) };
     if (!isOwnProfile) {
@@ -177,7 +183,7 @@ export default function ProfilePage() {
       if (typeof displayUser.createdAt === "string") {
           joinDate = new Date(displayUser.createdAt);
       } else if (typeof (displayUser.createdAt as any).toDate === 'function') {
-          joinDate = (displayUser.createdAt as any).toDate();
+          joinDate = (displayUser.createdAt as Timestamp).toDate();
       } else {
           joinDate = new Date(); // Fallback for unexpected format
       }
@@ -245,35 +251,31 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="h-full">
-            <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()}>
-                <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-8 w-8 text-slate-500 hover:text-slate-300">
-                    <HelpCircle className="h-5 w-5" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 bg-background border-border">
-                    <div className="space-y-4 p-2">
-                    <div>
-                        <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                        <ul className="space-y-2 text-sm">
-                            {BADGES.map((badge) => (
-                                <li key={badge.name} className="flex items-center justify-between">
-                                <span className={badge.color}>{badge.name}</span>
-                                <span className="font-mono text-slate-500">
-                                    {badge.minXP.toLocaleString()}
-                                    {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
-                                </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    </div>
-                </PopoverContent>
-                </Popover>
-            </StatCard>
-        </div>
+          <Popover>
+            <PopoverTrigger asChild>
+                <div className='h-full cursor-pointer'>
+                    <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()} />
+                </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 bg-background border-border">
+                <div className="space-y-4 p-2">
+                <div>
+                    <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
+                    <ul className="space-y-2 text-sm">
+                        {BADGES.map((badge) => (
+                            <li key={badge.name} className="flex items-center justify-between">
+                            <span className={badge.color}>{badge.name}</span>
+                            <span className="font-mono text-slate-500">
+                                {badge.minXP.toLocaleString()}
+                                {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
+                            </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                </div>
+            </PopoverContent>
+        </Popover>
         <StatCard icon={FileText} label="Posts" value={displayUser.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
         <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>

@@ -7,9 +7,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import type { Comment, VoteType } from "@/lib/types"
 import { CommentCard } from "./comment-card"
 import { CommentForm } from "./comment-form"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserVotes } from "@/lib/actions"
+import { collection, query, orderBy, onSnapshot, type Timestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 interface CommentSectionProps {
   postId: string
@@ -19,44 +20,59 @@ interface CommentSectionProps {
 
 export function CommentSection({ postId, postAuthorId, initialComments }: CommentSectionProps) {
   const { user } = useAuth();
+  const [comments, setComments] = useState<Comment[]>(initialComments);
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const router = useRouter()
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
 
   useEffect(() => {
+    const commentsRef = collection(db, `posts/${postId}/comments`);
+    const q = query(commentsRef, orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedComments = querySnapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate().toISOString() : new Date().toISOString(),
+            } as Comment;
+        });
+        setComments(fetchedComments);
+    });
+
+    return () => unsubscribe();
+  }, [postId]);
+
+  useEffect(() => {
     async function fetchVotes() {
-      if (user && initialComments.length > 0) {
-        const commentIds = initialComments.map(c => c.id);
+      if (user && comments.length > 0) {
+        const commentIds = comments.map(c => c.id);
         const votes = await getUserVotes(user.uid, commentIds, 'comment');
         setUserVotes(votes);
       }
     }
     fetchVotes();
-  }, [user, initialComments]);
-
+  }, [user, comments]);
 
   const handleCommentPosted = () => {
     setReplyingTo(null)
-    // Refreshes the current route and refetches server data
-    router.refresh()
   }
 
   const nestedComments = useMemo(() => {
     const commentMap = new Map<string, Comment & { replies: Comment[] }>()
     const topLevelComments: (Comment & { replies: Comment[] })[] = []
 
-    initialComments.forEach(comment => {
+    comments.forEach(comment => {
       commentMap.set(comment.id, { ...comment, replies: [] })
     })
 
-    initialComments.forEach(comment => {
+    comments.forEach(comment => {
       const commentWithReplies = commentMap.get(comment.id)!
       if (comment.parentId) {
         const parent = commentMap.get(comment.parentId)
         if (parent) {
           parent.replies.push(commentWithReplies)
         } else {
-          // This is an orphaned reply, treat it as top-level
           topLevelComments.push(commentWithReplies)
         }
       } else {
@@ -65,7 +81,7 @@ export function CommentSection({ postId, postAuthorId, initialComments }: Commen
     })
 
     return topLevelComments
-  }, [initialComments])
+  }, [comments])
 
   return (
     <div className="space-y-6">
