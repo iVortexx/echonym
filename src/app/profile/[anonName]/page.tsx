@@ -44,6 +44,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   
   const joinDate = (user.createdAt as Timestamp)?.toDate ? (user.createdAt as Timestamp).toDate() : new Date();
 
+  const serializablePosts = posts.map((post) => ({
+    ...post,
+    createdAt: post.createdAt && typeof (post.createdAt as any).toDate === 'function'
+      ? (post.createdAt as Timestamp).toDate().toISOString()
+      : (post.createdAt as string),
+  }));
+
   return (
     <div className="space-y-8">
       {/* Profile Header */}
@@ -85,9 +92,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       {/* User's Posts */}
       <div>
         <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {user.anonName}</h2>
-        {posts.length > 0 ? (
+        {serializablePosts.length > 0 ? (
           <div className="space-y-4">
-            {posts.map((post) => (
+            {serializablePosts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
           </div>
