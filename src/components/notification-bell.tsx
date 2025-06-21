@@ -9,13 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { markAllNotificationsAsRead } from '@/lib/actions';
 import type { Notification } from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
 
 function NotificationItem({ notification, onOpen }: { notification: Notification; onOpen: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const getIcon = () => {
     switch (notification.type) {
@@ -59,7 +60,18 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    router.push(getLink());
+    const link = getLink();
+    const targetPathname = link.split('#')[0];
+
+    // If we're already on the page the notification is for, refresh it to get new data
+    if (pathname === targetPathname) {
+      router.refresh();
+    } else {
+      // Otherwise, navigate to the new page
+      router.push(link);
+    }
+    
+    // Close the notification popover
     onOpen();
   };
 

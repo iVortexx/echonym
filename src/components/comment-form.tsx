@@ -8,8 +8,8 @@ import { createComment } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Avatar, AvatarFallback } from "./ui/avatar"
-import { Send } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
+import { Send, UserIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface CommentFormProps {
@@ -66,8 +66,9 @@ export function CommentForm({
   return (
     <form onSubmit={handleSubmit} className="flex items-start gap-3 w-full">
       <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
-        <AvatarFallback className="bg-slate-700 text-slate-300 text-xs font-mono">
-          {user.anonName.slice(0, 2).toUpperCase()}
+        <AvatarImage src={user.avatarUrl} alt={user.anonName} />
+        <AvatarFallback className="bg-blue-900/50 text-blue-300">
+           <UserIcon className="h-4 w-4" />
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 space-y-2">

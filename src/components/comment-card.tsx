@@ -13,6 +13,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { buildAvatarUrl } from "@/lib/utils"
+import { useState, useEffect } from "react"
+import { handleVote } from "@/lib/actions"
+import { useToast } from "@/hooks/use-toast"
 
 
 type CommentCardProps = {
@@ -23,7 +26,73 @@ type CommentCardProps = {
 }
 
 export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: CommentCardProps) {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, firebaseUser } = useAuth()
+  const { toast } = useToast()
+  
+  const [isVoting, setIsVoting] = useState(false)
+  const [optimisticVote, setOptimisticVote] = useState(userVote)
+  const [optimisticUpvotes, setOptimisticUpvotes] = useState(comment.upvotes)
+  const [optimisticDownvotes, setOptimisticDownvotes] = useState(comment.downvotes)
+  
+  useEffect(() => {
+    setOptimisticVote(userVote)
+    setOptimisticUpvotes(comment.upvotes)
+    setOptimisticDownvotes(comment.downvotes)
+  }, [userVote, comment.upvotes, comment.downvotes])
+
+  const handleVoteClick = async (newVoteType: "up" | "down") => {
+    if (!firebaseUser || isVoting) return
+
+    setIsVoting(true)
+    const previousVote = optimisticVote
+    const previousUpvotes = optimisticUpvotes
+    const previousDownvotes = optimisticDownvotes
+
+    let newOptimisticStatus: "up" | "down" | null = newVoteType
+    let upvoteChange = 0
+    let downvoteChange = 0
+
+    if (previousVote === newVoteType) {
+      newOptimisticStatus = null
+      if (newVoteType === "up") upvoteChange = -1
+      else downvoteChange = -1
+    } else {
+      if (previousVote === "up") upvoteChange = -1
+      else if (previousVote === "down") downvoteChange = -1
+
+      if (newVoteType === "up") upvoteChange += 1
+      else downvoteChange += 1
+    }
+
+    setOptimisticVote(newOptimisticStatus)
+    setOptimisticUpvotes(prev => prev + upvoteChange)
+    setOptimisticDownvotes(prev => prev + downvoteChange)
+
+    try {
+      const result = await handleVote(firebaseUser.uid, comment.id, "comment", newVoteType, comment.postId)
+      if (result?.error) {
+        setOptimisticVote(previousVote)
+        setOptimisticUpvotes(previousUpvotes)
+        setOptimisticDownvotes(previousDownvotes)
+        toast({
+          variant: "destructive",
+          title: "Vote Failed",
+          description: result.error,
+        })
+      }
+    } catch (error) {
+        setOptimisticVote(previousVote)
+        setOptimisticUpvotes(previousUpvotes)
+        setOptimisticDownvotes(previousDownvotes)
+        toast({
+          variant: "destructive",
+          title: "An Unexpected Error Occurred",
+          description: "Please try again later.",
+        })
+    } finally {
+        setIsVoting(false)
+    }
+  }
 
   const formatTimeAgo = (createdAt: any) => {
     if (typeof createdAt === "string") {
@@ -44,6 +113,8 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
   if (!displayAvatarUrl) {
     displayAvatarUrl = buildAvatarUrl({ seed: comment.anonName || "default" })
   }
+  
+  const score = optimisticUpvotes - optimisticDownvotes;
 
   return (
     <motion.div
@@ -80,12 +151,10 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
         <p className="text-sm text-slate-200 whitespace-pre-wrap">{comment.content}</p>
         <div className="flex items-center gap-2 self-start mt-2">
           <VoteButtons
-            itemId={comment.id}
-            itemType="comment"
-            upvotes={comment.upvotes}
-            downvotes={comment.downvotes}
-            postId={comment.postId}
-            initialVoteStatus={userVote}
+            onVote={handleVoteClick}
+            voteStatus={optimisticVote}
+            score={score}
+            isVoting={isVoting}
           />
           <Button
             variant="ghost"
