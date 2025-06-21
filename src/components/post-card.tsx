@@ -107,7 +107,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
     setOptimisticDownvotes(prev => prev + downvoteChange);
 
     try {
-      const result = await handleVote(firebaseUser.uid, post.id, "post", newVoteType);
+      const result = await handleVote(firebaseUser.uid, post.id, "post");
 
       if (result?.error) {
           // On error, revert the optimistic update
@@ -354,7 +354,7 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
                 </div>
                 {post.summary && !isPreview && (
-                  <Accordion type="single" collapsible className="w-full mt-2">
+                  <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => e.stopPropagation()}>
                     <AccordionItem value="item-1" className="border-b-0">
                       <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
                         <div className="flex items-center">
