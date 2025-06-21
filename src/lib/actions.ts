@@ -164,13 +164,23 @@ export async function deletePost(postId: string, userId: string) {
 
     try {
         await runTransaction(db, async (transaction) => {
-            const postDoc = await transaction.get(postRef);
+            const [postDoc, userDoc] = await Promise.all([
+                transaction.get(postRef),
+                transaction.get(userRef)
+            ]);
+            
             if (!postDoc.exists() || postDoc.data().userId !== userId) {
                 throw new Error("Post not found or permission denied.");
             }
+            if (!userDoc.exists()) {
+                throw new Error("User not found.");
+            }
+
+            const currentPostCount = userDoc.data().postCount || 0;
+            const newPostCount = Math.max(0, currentPostCount - 1);
 
             transaction.delete(postRef);
-            transaction.update(userRef, { postCount: increment(-1) });
+            transaction.update(userRef, { postCount: newPostCount });
             // Note: Deleting subcollections (comments, votes) should be handled by a Cloud Function for production apps.
         });
         

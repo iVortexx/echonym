@@ -17,12 +17,13 @@ interface PostFeedProps {
 export function PostFeed({ posts: initialPosts, isLoading }: PostFeedProps) {
   const { user } = useAuth();
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
-  const [visiblePosts, setVisiblePosts] = useState<Post[]>(initialPosts);
+  const [visiblePosts, setVisiblePosts] = useState<Post[]>([]);
 
-  // When initial posts change (e.g., from search), update the visible posts
   useEffect(() => {
-    setVisiblePosts(initialPosts);
-  }, [initialPosts]);
+    const hiddenPostIds = user?.hiddenPosts || [];
+    const postsToShow = initialPosts.filter(post => !hiddenPostIds.includes(post.id));
+    setVisiblePosts(postsToShow);
+  }, [initialPosts, user]);
 
   useEffect(() => {
     async function fetchVotes() {
