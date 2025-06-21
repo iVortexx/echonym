@@ -232,8 +232,8 @@ export default function ProfilePage() {
                     <div>
                         <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
                         <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                            <li>Create a new post: <span className="font-mono text-emerald-400">+10 XP</span></li>
-                            <li>Add a comment: <span className="font-mono text-emerald-400">+5 XP</span></li>
+                            <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
+                            <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
                         </ul>
                     </div>
                     <div>
