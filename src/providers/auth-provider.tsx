@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
@@ -15,6 +16,7 @@ interface AuthContextType {
   firebaseUser: FirebaseUser | null;
   loading: boolean;
   error: string | null;
+  updateUser: (updatedData: Partial<User>) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -22,6 +24,7 @@ export const AuthContext = createContext<AuthContextType>({
   firebaseUser: null,
   loading: true,
   error: null,
+  updateUser: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -29,6 +32,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const updateUser = (updatedData: Partial<User>) => {
+    setUser(prevUser => prevUser ? { ...prevUser, ...updatedData } : null);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
@@ -106,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, error }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, error, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

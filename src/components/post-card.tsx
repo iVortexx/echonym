@@ -1,3 +1,4 @@
+
 "use client"
 import { motion } from "framer-motion"
 import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon } from "lucide-react"
@@ -17,6 +18,7 @@ import type { Post } from "@/lib/types"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
+import { useAuth } from "@/hooks/use-auth"
 
 interface PostCardProps {
   post: Post
@@ -24,6 +26,8 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, isPreview = false }: PostCardProps) {
+  const { user: currentUser } = useAuth()
+
   const formatTimeAgo = (createdAt: any) => {
     if (!createdAt) return "..."
 
@@ -53,6 +57,10 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
     return <Link href={`/post/${post.id}`} className="block cursor-pointer group">{children}</Link>
   }
 
+  const isOwnPost = currentUser?.uid === post.userId;
+  const displayAvatarUrl = isOwnPost && currentUser?.avatarUrl ? currentUser.avatarUrl : post.avatarUrl;
+
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -66,8 +74,8 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
             <div className="flex items-start space-x-3 flex-1">
               <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
                 <Avatar className="h-10 w-10 ring-2 ring-blue-500/30">
-                  {post.avatarUrl ? (
-                    <AvatarImage src={post.avatarUrl} alt={post.anonName} />
+                  {displayAvatarUrl ? (
+                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} />
                   ) : (
                     <AvatarFallback className="bg-blue-900/50 text-blue-300">
                       <UserIcon className="h-5 w-5" />

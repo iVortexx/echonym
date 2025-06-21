@@ -1,3 +1,4 @@
+
 "use client"
 
 import { motion } from "framer-motion"
@@ -9,6 +10,7 @@ import { Dot, MessageSquareReply, UserIcon } from "lucide-react"
 import { Button } from "./ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
 
 
 type CommentCardProps = {
@@ -17,6 +19,8 @@ type CommentCardProps = {
 }
 
 export function CommentCard({ comment, onStartReply }: CommentCardProps) {
+  const { user: currentUser } = useAuth()
+
   const formatTimeAgo = (createdAt: any) => {
     if (typeof createdAt === "string") {
       return formatDistanceToNow(new Date(createdAt))
@@ -25,6 +29,9 @@ export function CommentCard({ comment, onStartReply }: CommentCardProps) {
     }
     return "..."
   }
+
+  const isOwnComment = currentUser?.uid === comment.userId;
+  const displayAvatarUrl = isOwnComment && currentUser?.avatarUrl ? currentUser.avatarUrl : comment.avatarUrl;
 
   return (
     <motion.div
@@ -37,8 +44,8 @@ export function CommentCard({ comment, onStartReply }: CommentCardProps) {
     >
       <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
         <Avatar className="h-8 w-8 mt-1 flex-shrink-0 cursor-pointer">
-          {comment.avatarUrl ? (
-             <AvatarImage src={comment.avatarUrl} alt={comment.anonName} />
+          {displayAvatarUrl ? (
+             <AvatarImage src={displayAvatarUrl} alt={comment.anonName} />
           ) : (
             <AvatarFallback className="bg-blue-900/50 text-blue-300">
               <UserIcon className="h-4 w-4" />

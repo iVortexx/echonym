@@ -34,6 +34,7 @@ import {
   hairColors,
   skinColors,
 } from "@/lib/dicebear-options"
+import { useAuth } from "@/hooks/use-auth"
 
 interface AvatarEditorProps {
   user: User
@@ -61,6 +62,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const [options, setOptions] = useState<Record<string, any>>(user.avatarOptions || { seed: user.anonName })
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
+  const { updateUser } = useAuth()
 
   const handleOptionChange = (key: string, value: string) => {
     setOptions((prev) => {
@@ -124,6 +126,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
 
     if (result.success) {
       toast({ title: "Avatar updated!" })
+      updateUser({ avatarUrl: newUrl, avatarOptions: options });
       onSave(newUrl)
     } else {
       toast({ variant: "destructive", title: "Failed to save avatar", description: result.error })

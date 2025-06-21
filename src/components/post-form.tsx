@@ -1,3 +1,4 @@
+
 "use client"
 
 import type React from "react"
@@ -129,6 +130,7 @@ export function PostForm() {
     tag: parseTag(content),
     anonName: user?.anonName || "Anonymous",
     xp: user?.xp || 0,
+    avatarUrl: user?.avatarUrl,
     createdAt: new Date().toISOString(),
     upvotes: 0,
     downvotes: 0,
