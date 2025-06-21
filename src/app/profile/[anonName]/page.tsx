@@ -7,7 +7,7 @@ import { useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2, KeyRound } from "lucide-react"
+import { UserIcon, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2, KeyRound } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge, BADGES } from "@/lib/utils"
@@ -33,9 +33,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
-function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
+function StatCard({ icon: Icon, label, value, children, isClickable }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode, isClickable?: boolean }) {
   return (
-    <Card className="bg-card border-border p-4 relative h-full">
+    <Card className={`bg-card border-border p-4 relative h-full ${isClickable ? 'hover:bg-primary/5 transition-colors' : ''}`}>
       <div className="flex items-center gap-3">
         <Icon className="h-6 w-6 text-accent" />
         <div>
@@ -77,14 +77,14 @@ function BackupAndRestore({ user }: { user: User }) {
   };
 
   return (
-    <Card className="bg-card border-border rounded-lg">
-      <CardHeader>
-        <CardTitle className="font-mono text-lg text-primary">Backup & Restore</CardTitle>
-        <CardDescription className="text-slate-400">
+    <>
+      <DialogHeader>
+        <DialogTitle className="font-mono text-lg text-primary">Backup & Restore</DialogTitle>
+        <DialogDescription className="text-slate-400">
           Use your Recovery ID to restore your anonymous identity on other devices.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-6 pt-4">
         <div className="space-y-2">
           <Label className="font-mono text-sm text-slate-300">Your Unique Recovery ID</Label>
           <TooltipProvider>
@@ -116,8 +116,8 @@ function BackupAndRestore({ user }: { user: User }) {
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   );
 }
 
@@ -338,6 +338,18 @@ export default function ProfilePage() {
               <UserBadge xp={displayUser.xp} />
               <span className="text-slate-400 text-sm">Joined {isJoinDateInvalid ? 'recently' : formatDistanceToNow(joinDate, { addSuffix: true })}</span>
             </div>
+            {isOwnProfile && (
+                <Dialog>
+                    <DialogTrigger asChild>
+                         <Button variant="outline" size="sm" className="mt-4">
+                            <KeyRound className="mr-2 h-4 w-4" /> Backup & Restore
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-background border-border">
+                        <BackupAndRestore user={displayUser} />
+                    </DialogContent>
+                </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -362,7 +374,7 @@ export default function ProfilePage() {
                                         <HelpCircle className="h-4 w-4" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80 bg-background border-border">
+                                <PopoverContent className="w-80 bg-background border-border text-foreground">
                                     <div className="space-y-4 p-2">
                                     <div>
                                         <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
@@ -397,11 +409,11 @@ export default function ProfilePage() {
 
         <StatCard icon={FileText} label="Echoes" value={displayUser.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
-        <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer hover:bg-primary/5 transition-colors rounded-lg' : 'cursor-default'}>
-            <StatCard icon={UserPlus} label="Followers" value={displayUser.followersCount || 0} />
+        <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className="cursor-pointer">
+            <StatCard icon={UserPlus} label="Followers" value={displayUser.followersCount || 0} isClickable={(displayUser.followersCount || 0) > 0} />
         </div>
-        <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className={(displayUser.followingCount || 0) > 0 ? 'cursor-pointer hover:bg-primary/5 transition-colors rounded-lg' : 'cursor-default'}>
-            <StatCard icon={Users} label="Following" value={displayUser.followingCount || 0} />
+        <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className="cursor-pointer">
+            <StatCard icon={Users} label="Following" value={displayUser.followingCount || 0} isClickable={(displayUser.followingCount || 0) > 0} />
         </div>
         <StatCard icon={Calendar} label="Joined" value={isJoinDateInvalid ? 'N/A' : format(joinDate, "MMM d, yyyy")} />
       </div>
@@ -418,8 +430,6 @@ export default function ProfilePage() {
         </DialogContent>
       </Dialog>
       
-      {isOwnProfile && <BackupAndRestore user={displayUser} />}
-
       <div>
         <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Echoes by {displayUser.anonName}</h2>
         {posts.length > 0 ? (

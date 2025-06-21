@@ -22,7 +22,7 @@ export function Header() {
   const { user } = useAuth()
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg shadow-lg shadow-black/10">
       <div className="container flex h-14 items-center">
         <div className="flex items-center">
            <div className="md:hidden mr-2">
@@ -43,7 +43,7 @@ export function Header() {
           >
             <Link href="/create">
               <PlusCircle className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Create Echo</span>
+              <span>Create Echo</span>
             </Link>
           </Button>
 

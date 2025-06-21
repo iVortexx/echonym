@@ -20,9 +20,6 @@ export const BADGES = [
   { name: 'Mythical', minXP: 50001, maxXP: Infinity, color: 'text-fuchsia-600' },
 ];
 
-
-export const ALLOWED_TAGS = ['security', 'reverse-eng', 'web-security', 'malware', 'cve', 'networking', 'crypto', 'forensics'];
-
 export function getBadgeForXP(xp: number) {
   let foundBadge = BADGES[0];
   for (let i = BADGES.length - 1; i >= 0; i--) {

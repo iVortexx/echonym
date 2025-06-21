@@ -88,13 +88,13 @@ export default function Home() {
             </Tabs>
         </div>
 
-        {posts.length === 0 && q && !loading ? (
+        {posts.length === 0 && (q || tag !== 'all') && !loading ? (
            <div className="text-center text-slate-400 py-16">
              <div className="mb-4">
                <div className="text-6xl mb-4">🤷</div>
              </div>
-             <p className="text-lg font-mono">No results found for "{q}"</p>
-             <p className="font-mono text-sm">Try a different search term.</p>
+             <p className="text-lg font-mono">No results found {q ? `for "${q}"` : ''} {tag !== 'all' ? `in #${tag}`: ''}</p>
+             <p className="font-mono text-sm">Try a different search or filter.</p>
            </div>
         ) : (
           <PostFeed posts={posts} isLoading={loading} />

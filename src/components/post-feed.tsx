@@ -8,6 +8,7 @@ import { PostCard } from "./post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserVotes } from "@/lib/actions"
+import { Ghost } from "lucide-react"
 
 interface PostFeedProps {
   posts: Post[];
@@ -49,26 +50,26 @@ export function PostFeed({ posts: initialPosts, isLoading, filterHiddenPosts = t
     return (
       <div className="space-y-4">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-slate-900/50 p-6 rounded-lg border border-blue-500/20 backdrop-blur-sm">
+          <div key={i} className="bg-card p-6 rounded-lg border border-border">
             <div className="flex items-center mb-4">
-              <Skeleton className="h-8 w-8 rounded-full bg-slate-700/50" />
+              <Skeleton className="h-10 w-10 rounded-full bg-muted" />
               <div className="ml-3 space-y-1 flex-1">
                 <div className="flex items-center space-x-2">
-                  <Skeleton className="h-4 w-32 bg-slate-700/50" />
-                  <Skeleton className="h-4 w-12 bg-slate-700/50" />
+                  <Skeleton className="h-4 w-32 bg-muted" />
+                  <Skeleton className="h-4 w-12 bg-muted" />
                 </div>
-                <Skeleton className="h-3 w-24 bg-slate-700/50" />
+                <Skeleton className="h-3 w-24 bg-muted" />
               </div>
             </div>
-            <Skeleton className="h-6 w-3/4 mb-2 bg-slate-700/50" />
-            <Skeleton className="h-4 w-full bg-slate-700/50" />
-            <Skeleton className="h-4 w-2/3 mt-1 bg-slate-700/50" />
-            <div className="flex items-center justify-between mt-4 pt-2 border-t border-slate-700/50">
+            <Skeleton className="h-6 w-3/4 mb-3 bg-muted" />
+            <Skeleton className="h-4 w-full bg-muted" />
+            <Skeleton className="h-4 w-2/3 mt-2 bg-muted" />
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
               <div className="flex space-x-2">
-                <Skeleton className="h-8 w-16 bg-slate-700/50 rounded" />
-                <Skeleton className="h-8 w-12 bg-slate-700/50 rounded" />
+                <Skeleton className="h-8 w-16 bg-muted rounded-md" />
+                <Skeleton className="h-8 w-16 bg-muted rounded-md" />
               </div>
-              <Skeleton className="h-4 w-16 bg-slate-700/50" />
+              <Skeleton className="h-4 w-16 bg-muted" />
             </div>
           </div>
         ))}
@@ -79,12 +80,10 @@ export function PostFeed({ posts: initialPosts, isLoading, filterHiddenPosts = t
   return (
     <div>
       {visiblePosts.length === 0 ? (
-         <div className="text-center text-slate-400 py-16">
-          <div className="mb-4">
-            <div className="text-6xl mb-4">👻</div>
-          </div>
-          <p className="text-lg font-mono">No echoes detected.</p>
-          <p className="font-mono text-sm">Try a different filter or be the first to echo!</p>
+         <div className="text-center text-slate-500 py-16">
+            <Ghost className="mx-auto h-16 w-16 mb-4" />
+            <p className="text-lg font-mono text-slate-400">No echoes detected.</p>
+            <p className="font-mono text-sm">Looks like it's quiet in this corner of the network.</p>
         </div>
       ) : (
         <div className="space-y-4">

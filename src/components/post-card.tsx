@@ -1,7 +1,7 @@
 
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon, Share, EyeOff, Bookmark, Edit, Trash2 } from "lucide-react"
+import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Hash, Text, UserIcon, EyeOff, Bookmark, Edit, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -49,9 +49,10 @@ interface PostCardProps {
   isClickable?: boolean
   userVote?: VoteType | null
   onPostHide?: (postId: string) => void
+  isDetailView?: boolean
 }
 
-export function PostCard({ post, isPreview = false, isClickable = true, userVote, onPostHide }: PostCardProps) {
+export function PostCard({ post, isPreview = false, isClickable = true, userVote, onPostHide, isDetailView = false }: PostCardProps) {
   const { user: currentUser, firebaseUser, updateUser } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
@@ -230,7 +231,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
   }
 
   const CardLinkWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (isPreview || !isClickable) {
+    if (isPreview || !isClickable || isDetailView) {
       return <div>{children}</div>
     }
     return <Link href={`/post/${post.id}`} className="block cursor-pointer group">{children}</Link>
@@ -256,172 +257,165 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
       layout
     >
       <Card className="bg-card border-border rounded-lg hover:border-primary/40 transition-all duration-300">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3 flex-1">
-              <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
-                <Avatar className="h-10 w-10 ring-2 ring-primary/30">
-                  <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
-                  <AvatarFallback className="bg-secondary text-primary">
-                    <UserIcon className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-1">
-                  <Terminal className="h-3 w-3 text-accent flex-shrink-0" />
-                  <Link href={`/profile/${encodeURIComponent(post.anonName)}`}>
-                    <p className="font-mono text-sm text-accent truncate hover:underline">{post.anonName || 'Anonymous'}</p>
-                  </Link>
-                  <UserBadge xp={(isOwnPost && currentUser) ? currentUser.xp : post.xp || 0} />
-                </div>
-                <div className="flex items-center flex-wrap gap-x-2 text-slate-400 text-xs font-mono">
-                  <span>{formatTimeAgo(post.createdAt)}</span>
-                  {post.tags && post.tags.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span>•</span>
-                      {post.tags.map((tag) => (
-                        <Link key={tag} href={`/?tag=${tag}`} onClick={(e) => e.stopPropagation()}>
-                          <Badge
-                            variant="outline"
-                            className="text-xs px-1.5 py-0.5 border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
-                          >
-                            <Hash className="h-2.5 w-2.5 mr-1" />
-                            {tag}
-                          </Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-             <AlertDialog>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-slate-400 hover:text-accent hover:bg-accent/10 flex-shrink-0"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-background/95 border-border backdrop-blur-sm text-slate-200">
-                  <DropdownMenuItem onClick={handleShare}>
-                    <LinkIcon className="mr-2 h-4 w-4" /> Share
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleHide()}>
-                    <EyeOff className="mr-2 h-4 w-4" /> {isHidden ? "Unhide" : "Hide"}
-                  </DropdownMenuItem>
-                  {isOwnPost && !isPreview && (
-                    <>
-                      <DropdownMenuSeparator className="bg-border" />
-                      <DropdownMenuItem onClick={() => router.push(`/post/${post.id}/edit`)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <AlertDialogTrigger asChild>
-                         <DropdownMenuItem 
-                            className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <AlertDialogContent className="bg-background border-border">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="font-mono text-xl text-primary">Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-slate-400">
-                    This will permanently delete your echo and all its comments. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
-                    {isDeleting ? 'Deleting...' : 'Delete'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <CardLinkWrapper>
-            <div className="relative">
-              <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-primary to-accent rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
-              <div className="pl-4">
-                <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-primary transition-colors">
-                  {post.title || "Untitled Echo"}
-                </h3>
-                 <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content || ''}</ReactMarkdown>
-                </div>
-                {post.summary && !isPreview && (
-                  <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-                    <AccordionItem value="item-1" className="border-b-0">
-                      <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
-                        <div className="flex items-center">
-                          <Text className="h-3 w-3 mr-1.5" />
-                          <span>View TL;DR</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2 pb-0 text-xs text-slate-400">
-                        {post.summary}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                )}
-              </div>
-            </div>
-          </CardLinkWrapper>
-          <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-            <div className="flex items-center space-x-1">
-              <VoteButtons 
-                onVote={handleVoteClick}
-                voteStatus={optimisticVote}
-                score={score}
-                isVoting={isVoting}
-                disabled={isPreview}
-              />
-
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10 font-mono text-xs"
-                disabled={isPreview}
-              >
-                <Link href={!isPreview ? `/post/${post.id}#comments` : '#'}>
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  <span>{post.commentCount || 0}</span>
+        <CardLinkWrapper>
+          <div className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-3 flex-1">
+                <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative" onClick={(e) => e.stopPropagation()}>
+                  <Avatar className="h-10 w-10 ring-2 ring-primary/30">
+                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
+                    <AvatarFallback className="bg-secondary text-primary">
+                      <UserIcon className="h-5 w-5" />
+                    </AvatarFallback>
+                  </Avatar>
                 </Link>
-              </Button>
-               <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10"
-                disabled={isPreview || isTogglingSave}
-                onClick={handleSave}
-              >
-                <Bookmark className={`h-4 w-4 mr-1 ${isSaved ? 'text-accent fill-accent' : ''}`} />
-                 <span className="hidden sm:inline">
-                  {isTogglingSave ? '...' : (isSaved ? "Saved" : "Save")}
-                 </span>
-              </Button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                    <Terminal className="h-3 w-3 text-accent flex-shrink-0" />
+                    <Link href={`/profile/${encodeURIComponent(post.anonName)}`} onClick={(e) => e.stopPropagation()}>
+                      <p className="font-mono text-sm text-accent truncate hover:underline">{post.anonName || 'Anonymous'}</p>
+                    </Link>
+                    <UserBadge xp={(isOwnPost && currentUser) ? currentUser.xp : post.xp || 0} />
+                  </div>
+                  <span className="text-slate-400 text-xs font-mono">{formatTimeAgo(post.createdAt)}</span>
+                </div>
+              </div>
+              <AlertDialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-slate-400 hover:text-accent hover:bg-accent/10 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-background/95 border-border backdrop-blur-sm text-slate-200" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={handleShare}>
+                      <LinkIcon className="mr-2 h-4 w-4" /> Share
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleHide()}>
+                      <EyeOff className="mr-2 h-4 w-4" /> {isHidden ? "Unhide" : "Hide"}
+                    </DropdownMenuItem>
+                    {isOwnPost && !isPreview && (
+                      <>
+                        <DropdownMenuSeparator className="bg-border" />
+                        <DropdownMenuItem onClick={() => router.push(`/post/${post.id}/edit`)}>
+                          <Edit className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem 
+                              className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent className="bg-background border-border" onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-mono text-xl text-primary">Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-400">
+                      This will permanently delete your echo and all its comments. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
-                <span className="text-green-400">{optimisticUpvotes || 0}↑</span>
-                <span className="text-red-400">{optimisticDownvotes || 0}↓</span>
+            <div className="mt-3">
+              <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-primary transition-colors">
+                {post.title || "Untitled Echo"}
+              </h3>
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                  {post.tags.map((tag) => (
+                    <Link key={tag} href={`/?tag=${tag}`} onClick={(e) => e.stopPropagation()}>
+                      <Badge
+                        variant="outline"
+                        className="text-xs px-1.5 py-0.5 border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
+                      >
+                        <Hash className="h-2.5 w-2.5 mr-1" />
+                        {tag}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              <div className={`prose prose-sm prose-invert max-w-none text-slate-300 font-light ${isDetailView ? '' : 'line-clamp-3'}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content || ''}</ReactMarkdown>
               </div>
+              {post.summary && !isPreview && (
+                <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <AccordionItem value="item-1" className="border-b-0">
+                    <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
+                      <div className="flex items-center">
+                        <Text className="h-3 w-3 mr-1.5" />
+                        <span>View TL;DR</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-2 pb-0 text-xs text-slate-400">
+                      {post.summary}
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
             </div>
           </div>
-        </CardContent>
+        </CardLinkWrapper>
+
+        <div className="flex items-center justify-between pt-2 pb-2 px-4 mt-2 border-t border-border">
+          <div className="flex items-center space-x-1">
+            <VoteButtons 
+              onVote={handleVoteClick}
+              voteStatus={optimisticVote}
+              score={score}
+              isVoting={isVoting}
+              disabled={isPreview}
+            />
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10 font-mono text-xs"
+              disabled={isPreview}
+            >
+              <Link href={!isPreview ? `/post/${post.id}#comments` : '#'}>
+                <MessageCircle className="h-4 w-4 mr-1" />
+                <span>{post.commentCount || 0}</span>
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10"
+              disabled={isPreview || isTogglingSave}
+              onClick={handleSave}
+            >
+              <Bookmark className={`h-4 w-4 mr-1 ${isSaved ? 'text-accent fill-accent' : ''}`} />
+              <span className="hidden sm:inline">
+                {isTogglingSave ? '...' : (isSaved ? "Saved" : "Save")}
+              </span>
+            </Button>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
+              <span className="text-green-400">{optimisticUpvotes || 0}↑</span>
+              <span className="text-red-400">{optimisticDownvotes || 0}↓</span>
+            </div>
+          </div>
+        </div>
       </Card>
     </motion.div>
   )
