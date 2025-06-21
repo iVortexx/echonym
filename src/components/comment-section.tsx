@@ -1,13 +1,12 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { CommentCard } from "./comment-card"
 import type { Comment } from "@/lib/types"
+import { CommentCard } from "./comment-card"
+import { CommentForm } from "./comment-form"
+import { useRouter } from "next/navigation"
 
 interface CommentSectionProps {
   postId: string
@@ -15,65 +14,136 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ postId, initialComments }: CommentSectionProps) {
-  const [comments, setComments] = useState<Comment[]>(initialComments)
-  const [newComment, setNewComment] = useState("")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const router = useRouter()
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newComment.trim()) return
-
-    setIsSubmitting(true)
-
-    // In real app, this would submit to Firebase
-    // For now, just simulate the submission
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    setNewComment("")
-    setIsSubmitting(false)
+  const handleCommentPosted = () => {
+    setReplyingTo(null)
+    // Refreshes the current route and refetches server data
+    router.refresh()
   }
+
+  const nestedComments = useMemo(() => {
+    const commentMap = new Map<string, Comment & { replies: Comment[] }>()
+    const topLevelComments: (Comment & { replies: Comment[] })[] = []
+
+    initialComments.forEach(comment => {
+      commentMap.set(comment.id, { ...comment, replies: [] })
+    })
+
+    initialComments.forEach(comment => {
+      const commentWithReplies = commentMap.get(comment.id)!
+      if (comment.parentId) {
+        const parent = commentMap.get(comment.parentId)
+        if (parent) {
+          parent.replies.push(commentWithReplies)
+        } else {
+          // This is an orphaned reply, treat it as top-level
+          topLevelComments.push(commentWithReplies)
+        }
+      } else {
+        topLevelComments.push(commentWithReplies)
+      }
+    })
+
+    return topLevelComments
+  }, [initialComments])
 
   return (
     <div className="space-y-6">
-      {/* Comment form */}
-      <form onSubmit={handleSubmitComment} className="space-y-4">
-        <Textarea
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Share your thoughts..."
-          rows={4}
-          className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none"
-        />
-        <Button
-          type="submit"
-          disabled={!newComment.trim() || isSubmitting}
-          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono"
-        >
-          {isSubmitting ? "Posting..." : "Post Comment"}
-        </Button>
-      </form>
-
-      {/* Comments list */}
+      <CommentForm postId={postId} onCommentPosted={handleCommentPosted} />
+      <div className="border-t border-slate-700/50" />
       <div className="space-y-4">
         <AnimatePresence>
-          {comments.map((comment) => (
-            <motion.div
-              key={comment.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CommentCard comment={comment} />
-            </motion.div>
-          ))}
+          {nestedComments.length > 0 ? (
+            nestedComments.map(comment => (
+              <CommentThread
+                key={comment.id}
+                comment={comment}
+                postId={postId}
+                replyingTo={replyingTo}
+                onStartReply={setReplyingTo}
+                onCancelReply={() => setReplyingTo(null)}
+                onCommentPosted={handleCommentPosted}
+              />
+            ))
+          ) : (
+            <p className="text-slate-400 text-center py-8 font-mono">
+              No comments yet. Be the first to share your thoughts!
+            </p>
+          )}
         </AnimatePresence>
-        {comments.length === 0 && (
-          <p className="text-slate-400 text-center py-8 font-mono">
-            No comments yet. Be the first to share your thoughts!
-          </p>
-        )}
       </div>
     </div>
+  )
+}
+
+// New sub-component for rendering a comment and its replies recursively
+interface CommentThreadProps {
+  comment: Comment & { replies: Comment[] }
+  postId: string
+  replyingTo: string | null
+  onStartReply: (commentId: string) => void
+  onCancelReply: () => void
+  onCommentPosted: () => void
+}
+
+function CommentThread({
+  comment,
+  postId,
+  replyingTo,
+  onStartReply,
+  onCancelReply,
+  onCommentPosted
+}: CommentThreadProps) {
+  const isReplying = replyingTo === comment.id
+
+  return (
+    <motion.div
+      key={comment.id}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col gap-4"
+    >
+      <CommentCard comment={comment} onStartReply={onStartReply} />
+
+      <AnimatePresence>
+        {isReplying && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="pl-8"
+          >
+            <CommentForm
+              postId={postId}
+              parentId={comment.id}
+              onCommentPosted={onCommentPosted}
+              onCancel={onCancelReply}
+              autofocus
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {comment.replies && comment.replies.length > 0 && (
+        <div className="pl-6 border-l-2 border-slate-700/50 space-y-4">
+          {comment.replies.map(reply => (
+             <CommentThread
+              key={reply.id}
+              comment={reply as Comment & { replies: Comment[] }} // Recursively render replies
+              postId={postId}
+              replyingTo={replyingTo}
+              onStartReply={onStartReply}
+              onCancelReply={onCancelReply}
+              onCommentPosted={onCommentPosted}
+            />
+          ))}
+        </div>
+      )}
+    </motion.div>
   )
 }

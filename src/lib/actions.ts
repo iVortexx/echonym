@@ -87,6 +87,7 @@ export async function createPost(rawInput: unknown, userId: string) {
 const CommentSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
   postId: z.string(),
+  parentId: z.string().optional(),
 });
 
 export async function createComment(rawInput: unknown, userId: string) {
@@ -100,7 +101,7 @@ export async function createComment(rawInput: unknown, userId: string) {
     return { error: "Invalid comment data." };
   }
 
-  const { content, postId } = validation.data;
+  const { content, postId, parentId } = validation.data;
 
   const userDocRef = doc(db, "users", userId);
   const postDocRef = doc(db, "posts", postId);
@@ -124,7 +125,7 @@ export async function createComment(rawInput: unknown, userId: string) {
       transaction.update(postDocRef, { commentCount: newCommentCount });
 
       const commentCollectionRef = collection(db, `posts/${postId}/comments`);
-      const commentData = {
+      const commentData: any = {
         postId,
         userId: userId,
         anonName: userData.anonName,
@@ -134,6 +135,11 @@ export async function createComment(rawInput: unknown, userId: string) {
         upvotes: 0,
         downvotes: 0,
       };
+
+      if (parentId) {
+        commentData.parentId = parentId;
+      }
+
       transaction.set(doc(commentCollectionRef), commentData);
     });
 
@@ -229,7 +235,8 @@ export async function handleVote(
     revalidatePath(`/`);
 
     return { success: true };
-  } catch (e: any) {
+  } catch (e: any)
+   {
     console.error("Vote transaction failed:", e);
     if (e.code === "permission-denied") {
       return {

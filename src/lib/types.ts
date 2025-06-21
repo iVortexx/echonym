@@ -31,6 +31,8 @@ export interface Comment {
   upvotes: number
   downvotes: number
   xp: number
+  parentId?: string
+  replies?: Comment[]
 }
 
 export type VoteType = "up" | "down"
