@@ -145,6 +145,17 @@ export function PostForm({ postToEdit }: PostFormProps) {
         title: isEditing ? "Whisper Updated!" : "Whisper Published!",
         description: "Your post is now live.",
       })
+      
+      if (result?.warning) {
+        setTimeout(() => {
+          toast({
+              title: "Heads up",
+              description: result.warning,
+              duration: 5000,
+          })
+        }, 500);
+      }
+      
       if (!isEditing) {
         localStorage.removeItem("postDraft") // Clear draft on successful submission
       }

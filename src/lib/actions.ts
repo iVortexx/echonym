@@ -56,6 +56,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   }
 
   let { title, content, tags } = validation.data
+  let aiWarning: string | undefined;
 
   let summary: string | undefined;
   if (content.length > 300) { // Only summarize longer posts
@@ -75,7 +76,7 @@ export async function createPost(rawInput: unknown, userId: string) {
       tags = suggested.tags;
     } catch (e) {
       console.error("Failed to generate tags:", e);
-      // Don't block post creation if tagging fails
+      aiWarning = "Post created, but AI tag suggestion failed. Please add tags manually.";
       tags = [];
     }
   }
@@ -126,7 +127,7 @@ export async function createPost(rawInput: unknown, userId: string) {
     })
 
     revalidatePath("/")
-    return { success: true, postId: newPostId }
+    return { success: true, postId: newPostId, warning: aiWarning }
   } catch (e: any) {
     console.error("Error creating post:", e)
     if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
@@ -147,6 +148,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
     if (!validation.success) return { error: "Invalid data." };
 
     let { title, content, tags } = validation.data;
+    let aiWarning: string | undefined;
     const postRef = doc(db, "posts", postId);
 
     try {
@@ -161,6 +163,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
                 tags = suggested.tags;
             } catch (e) {
                 console.error("Failed to generate tags for update:", e);
+                aiWarning = "Post updated, but AI tag suggestion failed. Please add tags manually.";
                 tags = [];
             }
         }
@@ -178,7 +181,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
 
         revalidatePath(`/`);
         revalidatePath(`/post/${postId}`);
-        return { success: true, postId };
+        return { success: true, postId, warning: aiWarning };
     } catch (e: any) {
         console.error("Error updating post:", e);
         return { error: "Failed to update post." };
@@ -882,3 +885,4 @@ export async function markNotificationAsRead(userId: string, notificationId: str
     return { error: "Failed to update notification." };
   }
 }
+
