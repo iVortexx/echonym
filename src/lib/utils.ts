@@ -7,8 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const BADGES = [
-  { name: 'Newbie', minXP: 0, maxXP: 50, color: 'text-slate-400' },
-  { name: 'Contributor', minXP: 51, maxXP: 200, color: 'text-sky-400' },
+  { name: 'Newbie', minXP: 0, maxXP: 50, color: 'text-gray-400' },
+  { name: 'Contributor', minXP: 51, maxXP: 200, color: 'text-blue-400' },
   { name: 'Trusted', minXP: 201, maxXP: 500, color: 'text-green-500' },
   { name: 'Legend', minXP: 501, maxXP: 1000, color: 'text-yellow-500' },
   { name: 'Influencer', minXP: 1001, maxXP: 2000, color: 'text-orange-500' },
