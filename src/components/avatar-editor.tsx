@@ -11,27 +11,17 @@ import { UserIcon, Check, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "
 import { updateUserAvatar } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import {
   hairStyles,
   eyeStyles,
   eyebrowStyles,
   mouthStyles,
-  glasses,
-  earrings,
-  features,
   hairColors,
   skinColors,
 } from "@/lib/dicebear-options"
@@ -117,29 +107,6 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
     });
   };
   
-  const handleFeatureToggle = (feature: string, checked: boolean) => {
-    setOptions(prev => {
-        const newOptions = { ...prev };
-        delete newOptions.seed;
-        const currentFeatures: string[] = newOptions.features || [];
-        let newFeatures: string[];
-
-        if (checked) {
-            newFeatures = [...currentFeatures, feature];
-        } else {
-            newFeatures = currentFeatures.filter(f => f !== feature);
-        }
-
-        if (newFeatures.length > 0) {
-            newOptions.features = newFeatures;
-        } else {
-            delete newOptions.features;
-        }
-
-        return newOptions;
-    });
-  };
-
   const handleColorChange = (key: string, value: string) => {
      setOptions((prev) => ({
       ...prev,
@@ -148,11 +115,8 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   }
 
   const handleReroll = () => {
-    const getRandomOption = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
+    const getRandomOption = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)]
     
-    const numFeatures = Math.floor(Math.random() * (features.length + 1))
-    const randomFeatures = [...features].sort(() => 0.5 - Math.random()).slice(0, numFeatures)
-
     const newOptions: Record<string, any> = {
         hair: getRandomOption(hairStyles),
         eyes: getRandomOption(eyeStyles),
@@ -161,10 +125,6 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
         hairColor: getRandomOption(hairColors).replace("#", ""),
         skinColor: getRandomOption(skinColors).replace("#", ""),
     }
-
-    if (Math.random() < 0.5) newOptions.glasses = getRandomOption(glasses)
-    if (Math.random() < 0.5) newOptions.earrings = getRandomOption(earrings)
-    if (randomFeatures.length > 0) newOptions.features = randomFeatures
 
     setOptions(newOptions)
   }
@@ -219,24 +179,6 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
                     <StyleSelector label="Eyes" value={options.eyes} options={eyeStyles} onChange={(v) => handleOptionChange('eyes', v)} />
                     <StyleSelector label="Eyebrows" value={options.eyebrows} options={eyebrowStyles} onChange={(v) => handleOptionChange('eyebrows', v)} />
                     <StyleSelector label="Mouth" value={options.mouth} options={mouthStyles} onChange={(v) => handleOptionChange('mouth', v)} />
-                    <StyleSelector label="Glasses" value={options.glasses} options={glasses} onChange={(v) => handleOptionChange('glasses', v)} isOptional />
-                    <StyleSelector label="Earrings" value={options.earrings} options={earrings} onChange={(v) => handleOptionChange('earrings', v)} isOptional />
-                </div>
-                
-                <div>
-                  <h4 className="font-mono text-sm text-slate-400 mb-2">Features</h4>
-                  <div className="space-y-2">
-                  {features.map((feature) => (
-                    <div key={feature} className="flex items-center justify-between rounded-md bg-slate-800/50 p-2 h-11">
-                      <Label htmlFor={feature} className="text-slate-300 capitalize">{feature}</Label>
-                      <Switch
-                        id={feature}
-                        checked={options.features?.includes(feature) ?? false}
-                        onCheckedChange={(checked) => handleFeatureToggle(feature, checked)}
-                      />
-                    </div>
-                  ))}
-                  </div>
                 </div>
             </div>
           </TabsContent>
