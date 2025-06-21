@@ -83,8 +83,8 @@ export function PostFeed({ posts: initialPosts, isLoading, filterHiddenPosts = t
           <div className="mb-4">
             <div className="text-6xl mb-4">👻</div>
           </div>
-          <p className="text-lg font-mono">No transmissions detected.</p>
-          <p className="font-mono text-sm">Try a different filter or be the first to post!</p>
+          <p className="text-lg font-mono">No echoes detected.</p>
+          <p className="font-mono text-sm">Try a different filter or be the first to echo!</p>
         </div>
       ) : (
         <div className="space-y-4">

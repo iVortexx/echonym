@@ -16,8 +16,8 @@ import { cn } from '@/lib/utils'
 
 const menuItems = [
     { href: "/", label: "Home Feed", icon: Home },
-    { href: "/saved", label: "Saved Posts", icon: Bookmark },
-    { href: "/hidden", label: "Hidden Posts", icon: EyeOff },
+    { href: "/saved", label: "Saved Echoes", icon: Bookmark },
+    { href: "/hidden", label: "Hidden Echoes", icon: EyeOff },
 ]
 
 export function MobileSidebar() {

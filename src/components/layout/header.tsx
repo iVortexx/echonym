@@ -31,7 +31,7 @@ export function Header() {
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Terminal className="h-6 w-6 text-accent" />
             <span className="hidden sm:inline-block font-bold font-mono text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              WhisperNet
+              Echonym
             </span>
           </Link>
         </div>
@@ -43,7 +43,7 @@ export function Header() {
           >
             <Link href="/create">
               <PlusCircle className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">Create Post</span>
+              <span className="hidden sm:inline">Create Echo</span>
             </Link>
           </Button>
 

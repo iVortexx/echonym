@@ -15,8 +15,8 @@ export function FeedSidebar() {
 
     const menuItems = [
         { href: "/", label: "Home Feed", icon: Home },
-        { href: "/saved", label: "Saved Posts", icon: Bookmark },
-        { href: "/hidden", label: "Hidden Posts", icon: EyeOff },
+        { href: "/saved", label: "Saved Echoes", icon: Bookmark },
+        { href: "/hidden", label: "Hidden Echoes", icon: EyeOff },
     ]
 
     const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -39,7 +39,7 @@ export function FeedSidebar() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                     name="search"
-                    placeholder="Search posts..."
+                    placeholder="Search echoes..."
                     defaultValue={searchParams.get("q") || ""}
                     className="bg-card border-border pl-9"
                 />

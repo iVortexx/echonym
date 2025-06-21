@@ -145,7 +145,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     navigator.clipboard.writeText(postUrl).then(() => {
       toast({
         title: "✅ Link Copied!",
-        description: "The post URL is now on your clipboard.",
+        description: "The echo URL is now on your clipboard.",
       });
     }).catch(err => {
       console.error("Failed to copy link: ", err);
@@ -164,7 +164,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     setIsTogglingSave(true);
     const result = await toggleUserPostList(currentUser.uid, post.id, 'savedPosts');
     if (result.success) {
-      toast({ title: result.wasInList ? "Post unsaved" : "Post saved!" });
+      toast({ title: result.wasInList ? "Echo unsaved" : "Echo saved!" });
       setIsSaved(!isSaved); // Optimistic update
       const newSavedPosts = result.wasInList
         ? currentUser.savedPosts?.filter(id => id !== post.id)
@@ -180,7 +180,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     if (!currentUser) return;
     const result = await toggleUserPostList(currentUser.uid, post.id, 'hiddenPosts');
      if (result.success) {
-      toast({ title: result.wasInList ? "Post unhidden" : "Post hidden" });
+      toast({ title: result.wasInList ? "Echo unhidden" : "Echo hidden" });
       setIsHidden(!isHidden); // Optimistic update
       if (onPostHide && !result.wasInList) {
         onPostHide(post.id);
@@ -199,7 +199,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     setIsDeleting(true);
     const result = await deletePost(post.id, firebaseUser.uid);
     if (result.success) {
-      toast({ title: "Post deleted successfully" });
+      toast({ title: "Echo deleted successfully" });
       router.push('/'); // Or refresh current page if that's better
     } else {
       toast({ variant: "destructive", title: "Error", description: result.error });
@@ -336,7 +336,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
                 <AlertDialogHeader>
                   <AlertDialogTitle className="font-mono text-xl text-primary">Are you sure?</AlertDialogTitle>
                   <AlertDialogDescription className="text-slate-400">
-                    This will permanently delete your post and all its comments. This action cannot be undone.
+                    This will permanently delete your echo and all its comments. This action cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -355,7 +355,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
               <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-primary to-accent rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="pl-4">
                 <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-primary transition-colors">
-                  {post.title || "Untitled Whisper"}
+                  {post.title || "Untitled Echo"}
                 </h3>
                  <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content || ''}</ReactMarkdown>

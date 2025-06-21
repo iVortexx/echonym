@@ -61,13 +61,14 @@ export interface Vote {
 
 export interface Notification {
   id: string;
-  type: 'new_comment' | 'new_reply' | 'new_follower';
-  fromUserId: string;
-  fromUserName: string;
+  type: 'new_comment' | 'new_reply' | 'new_follower' | 'welcome';
+  fromUserId?: string;
+  fromUserName?: string;
   fromUserAvatar?: string;
   targetPostId?: string;
   targetCommentId?: string;
   commentSnippet?: string;
+  message?: string;
   read: boolean;
   createdAt: Timestamp | string;
 }

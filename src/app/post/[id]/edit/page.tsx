@@ -35,9 +35,9 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
     <div className="w-full mx-auto px-4">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold font-mono tracking-tighter bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text">
-          Edit Whisper
+          Edit Echo
         </h1>
-        <p className="text-slate-400 font-mono text-sm mt-1">{'>'} refine your discovery</p>
+        <p className="text-slate-400 font-mono text-sm mt-1">{'>'} refine your echo</p>
       </div>
       <PostForm postToEdit={post} />
     </div>

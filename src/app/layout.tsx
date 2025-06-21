@@ -18,7 +18,7 @@ const sourceCodePro = Source_Code_Pro({
 })
 
 export const metadata: Metadata = {
-  title: "WhisperNet - Anonymous Security Research",
+  title: "Echonym - Anonymous Security Research",
   description: "Anonymous platform for security researchers and hackers",
 }
 

@@ -69,7 +69,7 @@ export default function SavedPostsPage() {
     if (!user) {
         return (
             <div className="text-center text-slate-400 py-16">
-                <p className="text-lg font-mono">Please log in to see your saved posts.</p>
+                <p className="text-lg font-mono">Please log in to see your saved echoes.</p>
             </div>
         );
     }
@@ -78,9 +78,9 @@ export default function SavedPostsPage() {
         <div className="space-y-8">
             <div className="text-center md:text-left">
                 <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    Saved Whispers
+                    Saved Echoes
                 </h1>
-                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} your personal archive of notable discoveries</p>
+                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} your personal archive of notable echoes</p>
             </div>
             <PostFeed posts={posts} isLoading={false} />
         </div>

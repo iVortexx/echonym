@@ -68,7 +68,7 @@ export default function HiddenPostsPage() {
     if (!user) {
         return (
             <div className="text-center text-slate-400 py-16">
-                <p className="text-lg font-mono">Please log in to see your hidden posts.</p>
+                <p className="text-lg font-mono">Please log in to see your hidden echoes.</p>
             </div>
         );
     }
@@ -77,9 +77,9 @@ export default function HiddenPostsPage() {
         <div className="space-y-8">
              <div className="text-center md:text-left">
                 <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                    Hidden Whispers
+                    Hidden Echoes
                 </h1>
-                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} posts you've chosen to remove from your feed</p>
+                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} echoes you've chosen to remove from your feed</p>
             </div>
             <PostFeed posts={posts} isLoading={false} filterHiddenPosts={false} />
         </div>

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNotifications } from '@/hooks/use-notifications';
-import { Bell, User, MessageCircle, GitBranch } from 'lucide-react';
+import { Bell, User, MessageCircle, GitBranch, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/actions';
@@ -27,17 +27,23 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
         return <MessageCircle className="h-4 w-4 text-accent" />;
       case 'new_reply':
         return <GitBranch className="h-4 w-4 text-green-400" />;
+      case 'welcome':
+        return <Sparkles className="h-4 w-4 text-yellow-400" />;
       default:
         return <Bell className="h-4 w-4 text-slate-400" />;
     }
   };
 
   const getText = () => {
+     if (notification.type === 'welcome') {
+        return <p className="text-sm text-slate-300">{notification.message}</p>
+    }
+    
     return (
       <p className="text-sm text-slate-300">
         <span className="font-bold text-slate-100">{notification.fromUserName}</span>{' '}
         {notification.type === 'new_follower' && 'started following you.'}
-        {notification.type === 'new_comment' && 'commented on your post:'}
+        {notification.type === 'new_comment' && 'commented on your echo:'}
         {notification.type === 'new_reply' && 'replied to your comment.'}
         {notification.type === 'new_comment' && notification.commentSnippet && (
           <span className="block text-slate-400 italic mt-1">"{notification.commentSnippet}..."</span>
@@ -49,11 +55,13 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
   const getLink = () => {
     switch (notification.type) {
         case 'new_follower':
-            return `/profile/${encodeURIComponent(notification.fromUserName)}`;
+            return notification.fromUserName ? `/profile/${encodeURIComponent(notification.fromUserName)}` : '#';
         case 'new_comment':
             return `/post/${notification.targetPostId}`;
         case 'new_reply':
             return `/post/${notification.targetPostId}#comment-${notification.targetCommentId}`;
+        case 'welcome':
+            return '/profile';
         default:
             return '#';
     }
@@ -68,6 +76,8 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
     }
     
     const link = getLink();
+    if (link === '#') return;
+
     const targetPathname = link.split('#')[0];
 
     // If we're already on the page the notification is for, refresh it to get new data

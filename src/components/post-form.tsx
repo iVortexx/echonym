@@ -122,7 +122,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
       toast({
         variant: "destructive",
         title: "Not Authenticated",
-        description: "You must be logged in to create a post.",
+        description: "You must be logged in to create an echo.",
       })
       return
     }
@@ -136,14 +136,14 @@ export function PostForm({ postToEdit }: PostFormProps) {
     if (result?.error) {
       toast({
         variant: "destructive",
-        title: isEditing ? "Error Updating Post" : "Error Creating Post",
+        title: isEditing ? "Error Updating Echo" : "Error Creating Echo",
         description: result.error,
       })
       setIsSubmitting(false)
     } else {
       toast({
-        title: isEditing ? "Whisper Updated!" : "Whisper Published!",
-        description: "Your post is now live.",
+        title: isEditing ? "Echo Updated!" : "Echo Published!",
+        description: "Your echo is now live.",
       })
       
       if (result?.warning) {
@@ -165,8 +165,8 @@ export function PostForm({ postToEdit }: PostFormProps) {
 
   const previewPost: Post = {
     id: postToEdit?.id || "preview",
-    title: title || "Untitled Whisper",
-    content: content || "Start typing to see your post live...",
+    title: title || "Untitled Echo",
+    content: content || "Start typing to see your echo live...",
     tags: tags,
     anonName: user?.anonName || "Anonymous",
     xp: user?.xp || 0,
@@ -263,7 +263,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {isEditing ? "Saving..." : "Publishing..."}
                 </>
               ) : (
-                isEditing ? "Save Changes" : "Publish Whisper"
+                isEditing ? "Save Changes" : "Publish Echo"
               )}
             </Button>
           </form>
@@ -331,7 +331,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
              ) : (
                 <div className="text-center text-slate-500 font-mono text-sm py-8">
                   <HelpCircle className="mx-auto h-8 w-8 mb-2"/>
-                  Start writing your post to get AI feedback on quality and safety.
+                  Start writing your echo to get AI feedback on quality and safety.
                </div>
              )}
            </Card>

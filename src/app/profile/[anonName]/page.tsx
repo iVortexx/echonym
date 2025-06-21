@@ -31,6 +31,7 @@ import { db } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -142,7 +143,7 @@ export default function ProfilePage() {
     let unsubscribeUser: () => void = () => {};
     setUserNotFound(false);
 
-    async function setupProfile() {
+    const setupProfile = async () => {
       setLoading(true);
       
       const userToFetch = isOwnProfile ? currentUser : await getUserByAnonName(anonName);
@@ -151,6 +152,10 @@ export default function ProfilePage() {
         setLoading(false);
         setUserNotFound(true);
         return;
+      }
+
+      if (!isOwnProfile) {
+        setFetchedUser(userToFetch)
       }
 
       const userRef = doc(db, 'users', userToFetch.uid);
@@ -167,6 +172,8 @@ export default function ProfilePage() {
           if (!isOwnProfile) {
             setFetchedUser(updatedUser);
           }
+        } else {
+            setUserNotFound(true);
         }
       });
 
@@ -194,7 +201,7 @@ export default function ProfilePage() {
 
     return () => unsubscribeUser();
 
-  }, [anonName, currentUser, isOwnProfile, authLoading]);
+  }, [anonName, currentUser?.uid, isOwnProfile, authLoading]);
 
   const handleAvatarSave = (newAvatarUrl: string) => {
     if (displayUser) {
@@ -338,32 +345,51 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Popover>
-            <PopoverTrigger asChild>
-                <div className='h-full cursor-pointer'>
-                    <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()} />
-                </div>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 bg-background border-border">
-                <div className="space-y-4 p-2">
-                <div>
-                    <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                    <ul className="space-y-2 text-sm text-slate-300">
-                        {BADGES.map((badge) => (
-                            <li key={badge.name} className="flex items-center justify-between">
-                            <span className={badge.color}>{badge.name}</span>
-                            <span className="font-mono text-slate-500">
-                                {badge.minXP.toLocaleString()}
-                                {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
-                            </span>
-                            </li>
-                        ))}
+          <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className='h-full cursor-help'>
+                        <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()}>
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-slate-500 hover:text-slate-300">
+                                        <HelpCircle className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 bg-background border-border">
+                                    <div className="space-y-4 p-2">
+                                    <div>
+                                        <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
+                                        <ul className="space-y-2 text-sm">
+                                            {BADGES.map((badge) => (
+                                                <li key={badge.name} className="flex items-center justify-between">
+                                                <span className={badge.color}>{badge.name}</span>
+                                                <span className="font-mono text-slate-500">
+                                                    {badge.minXP.toLocaleString()}
+                                                    {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
+                                                </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </StatCard>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-background border-border p-2">
+                    <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
+                        <li>Create an echo: <span className="font-mono text-accent">+10 XP</span></li>
+                        <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
+                        <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
+                        <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
                     </ul>
-                </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-        <StatCard icon={FileText} label="Posts" value={displayUser.postCount || 0} />
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+
+        <StatCard icon={FileText} label="Echoes" value={displayUser.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
         <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer hover:bg-primary/5 transition-colors rounded-lg' : 'cursor-default'}>
             <StatCard icon={UserPlus} label="Followers" value={displayUser.followersCount || 0} />
@@ -389,7 +415,7 @@ export default function ProfilePage() {
       {isOwnProfile && <BackupAndRestore user={displayUser} />}
 
       <div>
-        <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {displayUser.anonName}</h2>
+        <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Echoes by {displayUser.anonName}</h2>
         {posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map((post) => (
@@ -397,7 +423,7 @@ export default function ProfilePage() {
             ))}
           </div>
         ) : (
-          <p className="text-slate-400 text-center py-8 font-mono">This user hasn't whispered anything yet.</p>
+          <p className="text-slate-400 text-center py-8 font-mono">This user hasn't echoed anything yet.</p>
         )}
       </div>
     </div>

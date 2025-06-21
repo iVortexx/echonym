@@ -72,7 +72,7 @@ export default function Home() {
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Terminal className="h-8 w-8 text-accent" />
             <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              WhisperNet
+              Echonym
             </h1>
           </div>
           <p className="text-slate-400 font-mono text-sm">{">"} anonymous security research & exploits</p>

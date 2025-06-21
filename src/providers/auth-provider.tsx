@@ -1,18 +1,16 @@
 
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
 import { generateAnonName } from '@/lib/name-generator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Copy } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { buildAvatarUrl } from '@/lib/utils';
 import { findUserByRecoveryId } from '@/lib/actions';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 
 const RECOVERY_ID_KEY = 'whispernet_recovery_id';
 
@@ -37,35 +35,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { toast, dismiss } = useToast();
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser(prevUser => prevUser ? { ...prevUser, ...updatedData } : null);
   };
-  
-  const showBackupToast = useCallback((recoveryId: string) => {
-      const toastId = 'backup-toast';
-      toast({
-        id: toastId,
-        title: '⚠️ Backup Your Account!',
-        description: 'Save your Recovery ID to prevent permanent loss.',
-        duration: Infinity, // This toast should be persistent
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard.writeText(recoveryId);
-              dismiss(toastId);
-              toast({ title: '✅ Recovery ID Copied!' });
-            }}
-          >
-            <Copy className="mr-2 h-4 w-4" />
-            Copy
-          </Button>
-        ),
-      });
-  }, [toast, dismiss]);
 
   useEffect(() => {
     let unsubscribeUser: () => void = () => {};
@@ -110,7 +83,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const existingUser = { ...userDoc.data(), uid: userDoc.id } as User;
                 setUser(existingUser);
                 // Sync localStorage with the correct recovery ID from DB.
-                localStorage.setItem(RECOVERY_ID_KEY, existingUser.recoveryId);
+                if (existingUser.recoveryId) {
+                  localStorage.setItem(RECOVERY_ID_KEY, existingUser.recoveryId);
+                }
             } else {
                 // This is a brand-new anonymous user. Create their profile.
                 try {
@@ -134,10 +109,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         savedPosts: [],
                         hiddenPosts: [],
                     };
-                    await setDoc(userDocRef, newUser);
+                    
+                    const batch = writeBatch(db);
+                    batch.set(userDocRef, newUser);
+
+                    // Create welcome notification
+                    const notificationRef = doc(collection(db, 'users', fbUser.uid, 'notifications'));
+                    batch.set(notificationRef, {
+                        type: 'welcome',
+                        message: 'Welcome to Echonym! Be sure to back up your Recovery ID from your profile to keep your account safe.',
+                        read: false,
+                        createdAt: serverTimestamp(),
+                    });
+
+                    await batch.commit();
+
                     // The onSnapshot will fire again with the new user data.
                     localStorage.setItem(RECOVERY_ID_KEY, newRecoveryId);
-                    showBackupToast(newRecoveryId);
                 } catch (e: any) {
                     console.error("Error creating user document:", e);
                     setError("Failed to initialize user profile.");
@@ -157,7 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       unsubscribeAuth();
       unsubscribeUser();
     };
-  }, [showBackupToast]);
+  }, []);
 
   if (error) {
     return (
@@ -175,7 +163,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center space-y-4">
-          <h1 className="text-3xl font-bold font-mono bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">WhisperNet</h1>
+          <h1 className="text-3xl font-bold font-mono bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Echonym</h1>
           <p className="text-muted-foreground">Initializing anonymous session...</p>
           <Skeleton className="h-4 w-48 bg-muted" />
         </div>

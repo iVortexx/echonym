@@ -46,7 +46,7 @@ const generateKeywords = (title: string, content: string): string[] => {
 // The user's UID is passed from the client, as server actions don't have auth context.
 export async function createPost(rawInput: unknown, userId: string) {
   if (!userId) {
-    return { error: "You must be logged in to post." }
+    return { error: "You must be logged in to create an echo." }
   }
 
   const validation = PostSchema.safeParse(rawInput)
@@ -76,7 +76,7 @@ export async function createPost(rawInput: unknown, userId: string) {
       tags = suggested.tags;
     } catch (e) {
       console.error("Failed to generate tags:", e);
-      aiWarning = "Post created, but AI tag suggestion failed. Please add tags manually.";
+      aiWarning = "Echo created, but AI tag suggestion failed. Please add tags manually.";
       tags = [];
     }
   }
@@ -136,7 +136,7 @@ export async function createPost(rawInput: unknown, userId: string) {
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes.",
       }
     }
-    return { error: e.message || "Failed to create post." }
+    return { error: e.message || "Failed to create echo." }
   }
 }
 
@@ -154,7 +154,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
     try {
         const postDoc = await getDoc(postRef);
         if (!postDoc.exists() || postDoc.data().userId !== userId) {
-            return { error: "Post not found or you do not have permission to edit it." };
+            return { error: "Echo not found or you do not have permission to edit it." };
         }
 
         if (!tags || tags.length === 0) {
@@ -163,7 +163,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
                 tags = suggested.tags;
             } catch (e) {
                 console.error("Failed to generate tags for update:", e);
-                aiWarning = "Post updated, but AI tag suggestion failed. Please add tags manually.";
+                aiWarning = "Echo updated, but AI tag suggestion failed. Please add tags manually.";
                 tags = [];
             }
         }
@@ -184,7 +184,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
         return { success: true, postId, warning: aiWarning };
     } catch (e: any) {
         console.error("Error updating post:", e);
-        return { error: "Failed to update post." };
+        return { error: "Failed to update echo." };
     }
 }
 
@@ -201,7 +201,7 @@ export async function deletePost(postId: string, userId: string) {
             ]);
             
             if (!postDoc.exists() || postDoc.data().userId !== userId) {
-                throw new Error("Post not found or permission denied.");
+                throw new Error("Echo not found or permission denied.");
             }
             if (!userDoc.exists()) {
                 throw new Error("User not found.");
@@ -219,7 +219,7 @@ export async function deletePost(postId: string, userId: string) {
         return { success: true };
     } catch (e: any) {
         console.error("Error deleting post:", e);
-        return { error: e.message || "Failed to delete post." };
+        return { error: e.message || "Failed to delete echo." };
     }
 }
 
@@ -485,14 +485,14 @@ export async function getTagSuggestions(content: string) {
 
 export async function scorePost(input: ScorePostInput): Promise<ScorePostOutput> {
   if (!input.title.trim() || !input.content.trim()) {
-    return { score: 0, clarity: "Please provide a title and content.", safety: "N/A" }
+    return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
   }
   try {
     const result = await scorePostFlow(input)
     return result
   } catch (error: any) {
     console.error("Error fetching post score:", error)
-    return { score: 0, clarity: "Could not analyze post.", safety: "Error during analysis."}
+    return { score: 0, clarity: "Could not analyze echo.", safety: "Error during analysis."}
   }
 }
 
@@ -909,4 +909,3 @@ export async function markNotificationAsRead(userId: string, notificationId: str
     return { error: "Failed to update notification." };
   }
 }
-
