@@ -215,19 +215,15 @@ export async function handleVote(
       const authorId = itemData.userId;
       if (!authorId) throw new Error("Item author not found.");
       
-      const authorRef = doc(db, "users", authorId);
-
       const currentVote = voteSnap.data()?.type as VoteType | undefined;
       let upvotes_inc = 0;
       let downvotes_inc = 0;
-      let xp_inc = 0;
 
       // Case 1: Toggling the same vote off
       if (currentVote === voteType) {
         transaction.delete(voteRef);
         if (voteType === 'up') {
           upvotes_inc = -1;
-          xp_inc = -2;
         } else { // 'down'
           downvotes_inc = -1;
         }
@@ -238,11 +234,9 @@ export async function handleVote(
         if (voteType === 'up') { // from down to up
           upvotes_inc = 1;
           downvotes_inc = -1;
-          xp_inc = 2;
         } else { // from up to down
           upvotes_inc = -1;
           downvotes_inc = 1;
-          xp_inc = -2;
         }
       }
       // Case 3: New vote
@@ -254,7 +248,6 @@ export async function handleVote(
 
         if (voteType === 'up') {
           upvotes_inc = 1;
-          xp_inc = 2;
         } else { // 'down'
           downvotes_inc = 1;
         }
@@ -266,17 +259,9 @@ export async function handleVote(
         downvotes: increment(downvotes_inc),
       });
 
-      // Update the author's stats if it's not a self-vote
-      if (userId !== authorId) {
-        const authorSnap = await transaction.get(authorRef);
-        if (authorSnap.exists()) {
-          transaction.update(authorRef, {
-            xp: increment(xp_inc),
-            totalUpvotes: increment(upvotes_inc),
-            totalDownvotes: increment(downvotes_inc),
-          });
-        }
-      }
+      // NOTE: We no longer update author stats here to avoid permission errors.
+      // This logic would be better suited for a Cloud Function (backend trigger)
+      // to securely update another user's document.
     });
 
     revalidatePath(`/`);

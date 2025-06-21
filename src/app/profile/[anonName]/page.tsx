@@ -6,7 +6,7 @@ import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, ThumbsUp, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, ThumbsDown } from "lucide-react"
+import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge } from "@/lib/utils"
@@ -104,7 +104,7 @@ export default function ProfilePage() {
 
   const AvatarComponent = (
     <Avatar className="h-24 w-24 ring-4 ring-blue-500/30 cursor-pointer group">
-      <AvatarImage src={user.avatarUrl} alt={user.anonName} />
+      <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
       <AvatarFallback className="bg-blue-900/50 text-blue-300">
         <UserIcon className="h-12 w-12" />
       </AvatarFallback>
@@ -151,10 +151,8 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()} />
-        <StatCard icon={ThumbsUp} label="Total Upvotes" value={(user.totalUpvotes || 0).toLocaleString()} />
-        <StatCard icon={ThumbsDown} label="Total Downvotes" value={(user.totalDownvotes || 0).toLocaleString()} />
         <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
         <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
