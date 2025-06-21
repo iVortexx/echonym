@@ -84,7 +84,14 @@ export default function ProfilePage() {
       const userRef = doc(db, 'users', userToFetch.uid);
       unsubscribeUser = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
-          const updatedUser = { uid: docSnap.id, ...docSnap.data() } as User;
+          const data = docSnap.data();
+          const updatedUser = { 
+            uid: docSnap.id, 
+            ...data,
+            createdAt: data.createdAt && typeof (data.createdAt as any).toDate === 'function'
+                ? (data.createdAt as Timestamp).toDate().toISOString()
+                : (data.createdAt as string),
+          } as User;
           if (!isOwnProfile) {
             setFetchedUser(updatedUser);
           }
@@ -278,10 +285,10 @@ export default function ProfilePage() {
         </Popover>
         <StatCard icon={FileText} label="Posts" value={displayUser.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
-        <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+        <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer hover:bg-primary/5 transition-colors rounded-lg' : 'cursor-default'}>
             <StatCard icon={UserPlus} label="Followers" value={displayUser.followersCount || 0} />
         </div>
-        <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className={(displayUser.followingCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+        <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className={(displayUser.followingCount || 0) > 0 ? 'cursor-pointer hover:bg-primary/5 transition-colors rounded-lg' : 'cursor-default'}>
             <StatCard icon={Users} label="Following" value={displayUser.followingCount || 0} />
         </div>
         <StatCard icon={Calendar} label="Joined" value={isJoinDateInvalid ? 'N/A' : format(joinDate, "MMM d, yyyy")} />

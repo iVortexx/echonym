@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserIcon, PlusCircle, Home, Terminal } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { NotificationBell } from "../notification-bell"
+import { MobileSidebar } from "./mobile-sidebar"
 
 export function Header() {
   const { user } = useAuth()
@@ -23,10 +24,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
       <div className="container flex h-14 items-center">
-        <div className="mr-4 flex items-center">
+        <div className="flex items-center">
+           <div className="md:hidden mr-2">
+            <MobileSidebar />
+          </div>
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Terminal className="h-6 w-6 text-accent" />
-            <span className="font-bold font-mono text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="hidden sm:inline-block font-bold font-mono text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               WhisperNet
             </span>
           </Link>
@@ -39,7 +43,7 @@ export function Header() {
           >
             <Link href="/create">
               <PlusCircle className="mr-2 h-4 w-4" />
-              Create Post
+              <span className="hidden sm:inline">Create Post</span>
             </Link>
           </Button>
 

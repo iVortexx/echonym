@@ -62,6 +62,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
   const [optimisticUpvotes, setOptimisticUpvotes] = useState(post.upvotes)
   const [optimisticDownvotes, setOptimisticDownvotes] = useState(post.downvotes)
   const [isSaved, setIsSaved] = useState(currentUser?.savedPosts?.includes(post.id) ?? false)
+  const [isTogglingSave, setIsTogglingSave] = useState(false)
   const [isHidden, setIsHidden] = useState(currentUser?.hiddenPosts?.includes(post.id) ?? false)
 
 
@@ -156,8 +157,11 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     });
   };
 
-  const handleSave = async () => {
-    if (!currentUser) return;
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!currentUser || isTogglingSave) return;
+    setIsTogglingSave(true);
     const result = await toggleUserPostList(currentUser.uid, post.id, 'savedPosts');
     if (result.success) {
       toast({ title: result.wasInList ? "Post unsaved" : "Post saved!" });
@@ -169,6 +173,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     } else {
       toast({ variant: "destructive", title: "Error", description: result.error });
     }
+    setIsTogglingSave(false);
   };
 
   const handleHide = async () => {
@@ -302,9 +307,6 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
                   <DropdownMenuItem onClick={handleShare}>
                     <LinkIcon className="mr-2 h-4 w-4" /> Share
                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={() => handleSave()}>
-                    <Bookmark className="mr-2 h-4 w-4" /> {isSaved ? "Unsave" : "Save"}
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHide()}>
                     <EyeOff className="mr-2 h-4 w-4" /> {isHidden ? "Unhide" : "Hide"}
                   </DropdownMenuItem>
@@ -393,6 +395,18 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
                   <MessageCircle className="h-4 w-4 mr-1" />
                   <span>{post.commentCount || 0}</span>
                 </Link>
+              </Button>
+               <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-slate-400 hover:text-accent hover:bg-accent/10"
+                disabled={isPreview || isTogglingSave}
+                onClick={handleSave}
+              >
+                <Bookmark className={`h-4 w-4 mr-1 ${isSaved ? 'text-accent fill-accent' : ''}`} />
+                 <span className="hidden sm:inline">
+                  {isTogglingSave ? '...' : (isSaved ? "Saved" : "Save")}
+                 </span>
               </Button>
             </div>
 

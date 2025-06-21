@@ -11,7 +11,12 @@ import { debounce } from "lodash"
 import Link from "next/link"
 import { Skeleton } from "./ui/skeleton"
 
-export function UserSearchSidebar() {
+interface UserSearchSidebarProps {
+  isMobile?: boolean;
+  onSelectUser?: () => void;
+}
+
+export function UserSearchSidebar({ isMobile = false, onSelectUser }: UserSearchSidebarProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,8 +39,8 @@ export function UserSearchSidebar() {
     debouncedSearch(query)
   }, [query, debouncedSearch])
 
-  return (
-    <div className="bg-card border-border rounded-lg p-4 space-y-4 sticky top-20">
+  const content = (
+    <>
       <h3 className="font-mono text-lg text-slate-200">Find User</h3>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -64,6 +69,7 @@ export function UserSearchSidebar() {
           <Link
             href={`/profile/${encodeURIComponent(user.anonName)}`}
             key={user.uid}
+            onClick={onSelectUser}
             className="flex items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors"
           >
             <Avatar className="h-10 w-10">
@@ -76,6 +82,16 @@ export function UserSearchSidebar() {
           </Link>
         ))}
       </div>
+    </>
+  );
+
+  if (isMobile) {
+    return <div className="space-y-4">{content}</div>
+  }
+
+  return (
+    <div className="bg-card border-border rounded-lg p-4 space-y-4 sticky top-20">
+      {content}
     </div>
   )
 }

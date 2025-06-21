@@ -76,9 +76,12 @@ export default function SavedPostsPage() {
     
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Saved Whispers
-            </h1>
+            <div className="text-center md:text-left">
+                <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Saved Whispers
+                </h1>
+                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} your personal archive of notable discoveries</p>
+            </div>
             <PostFeed posts={posts} isLoading={false} />
         </div>
     );

@@ -75,9 +75,12 @@ export default function HiddenPostsPage() {
     
     return (
         <div className="space-y-8">
-             <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Hidden Whispers
-            </h1>
+             <div className="text-center md:text-left">
+                <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                    Hidden Whispers
+                </h1>
+                <p className="text-slate-400 font-mono text-sm mt-1">{'>'} posts you've chosen to remove from your feed</p>
+            </div>
             <PostFeed posts={posts} isLoading={false} filterHiddenPosts={false} />
         </div>
     );
