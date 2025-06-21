@@ -1,3 +1,4 @@
+
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -34,10 +35,13 @@ export function getBadgeForXP(xp: number) {
 }
 
 export function getNextBadge(xp: number) {
-    const currentBadgeIndex = BADGES.findIndex(badge => xp >= badge.minXP && xp < badge.maxXP);
-    if (currentBadgeIndex === -1 || currentBadgeIndex === BADGES.length - 1) {
+    const currentBadge = getBadgeForXP(xp);
+    const currentBadgeIndex = BADGES.findIndex(b => b.name === currentBadge.name);
+
+    if (currentBadgeIndex >= BADGES.length - 1) {
         return null;
     }
+    
     return BADGES[currentBadgeIndex + 1];
 }
 
