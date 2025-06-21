@@ -39,10 +39,11 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-2">
           <Button
             asChild
+            variant="outline"
             className="font-mono"
           >
             <Link href="/create">
-              <PlusCircle className="mr-2 h-4 w-4" />
+              <PlusCircle className="h-4 w-4" />
               <span className="hidden xs:inline-block">Create Echo</span>
             </Link>
           </Button>
