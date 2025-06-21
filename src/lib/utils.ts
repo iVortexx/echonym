@@ -35,14 +35,22 @@ export function getBadgeForXP(xp: number) {
 }
 
 export function getNextBadge(xp: number) {
-    const currentBadge = getBadgeForXP(xp);
-    const currentBadgeIndex = BADGES.findIndex(b => b.name === currentBadge.name);
-
-    if (currentBadgeIndex >= BADGES.length - 1) {
+    const currentBadgeIndex = BADGES.findIndex(b => xp >= b.minXP && xp <= b.maxXP);
+    if (currentBadgeIndex === -1) {
+        // This case handles if XP is somehow outside all ranges, defaulting to finding the current badge.
+        const currentBadge = getBadgeForXP(xp);
+        const currentIndex = BADGES.findIndex(b => b.name === currentBadge.name);
+        if (currentIndex < BADGES.length - 1) {
+            return BADGES[currentIndex + 1];
+        }
         return null;
     }
+
+    if (currentBadgeIndex < BADGES.length - 1) {
+        return BADGES[currentBadgeIndex + 1];
+    }
     
-    return BADGES[currentBadgeIndex + 1];
+    return null;
 }
 
 export function buildAvatarUrl(options: Record<string, string | string[]>) {

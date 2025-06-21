@@ -24,7 +24,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { AvatarEditor } from "@/components/avatar-editor"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { FollowListDialog } from "@/components/follow-list-dialog"
 import {
@@ -49,97 +49,101 @@ function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementT
   )
 }
 
-// We need to fetch data on the client side to get live updates after editing.
 export default function ProfilePage() {
   const params = useParams()
   const { toast } = useToast()
-  // Ensure anonName is a string, as useParams can return string | string[]
-  const rawAnonName = Array.isArray(params.anonName) ? params.anonName[0] : params.anonName
-  
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, loading: authLoading } = useAuth()
   const router = useRouter()
 
-  const [user, setUser] = useState<User | null>(null)
+  const rawAnonName = Array.isArray(params.anonName) ? params.anonName[0] : params.anonName
+  const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
+  
+  const [fetchedUser, setFetchedUser] = useState<User | null>(null)
   const [posts, setPosts] = useState<PostType[]>([])
-  const [loading, setLoading] = useState(true)
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
   const [isFollowing, setIsFollowing] = useState(false)
-  const [isFollowLoading, setIsFollowLoading] = useState(true)
+  const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [dialogType, setDialogType] = useState<'followers' | 'following' | null>(null)
+  const [loading, setLoading] = useState(true)
 
-
-  const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
-  const isOwnProfile = currentUser?.uid === user?.uid
+  const isOwnProfile = useMemo(() => currentUser?.anonName === anonName, [currentUser, anonName]);
+  const displayUser = isOwnProfile ? currentUser : fetchedUser;
 
   useEffect(() => {
-    // Only fetch data if we have a valid name
-    if (!anonName || !currentUser) {
-      return;
-    }
+    if (!anonName || authLoading) return;
     
     async function fetchData() {
-      setLoading(true)
-      const fetchedUser = await getUserByAnonName(anonName)
-      if (!fetchedUser) {
-        notFound()
-        return
-      }
-      const fetchedPosts = await getPostsByUserId(fetchedUser.uid)
-      
-      if (currentUser && fetchedPosts.length > 0) {
-        const postIds = fetchedPosts.map(p => p.id);
-        const votes = await getUserVotes(currentUser.uid, postIds, 'post');
-        setUserVotes(votes);
+      setLoading(true);
+
+      const userToFetch = isOwnProfile ? currentUser : await getUserByAnonName(anonName);
+
+      if (!userToFetch) {
+        setLoading(false);
+        notFound();
+        return;
       }
       
-      setUser(fetchedUser)
-
-      if (currentUser && fetchedUser && currentUser.uid !== fetchedUser.uid) {
-        setIsFollowLoading(true);
-        const followingStatus = await checkIsFollowing(currentUser.uid, fetchedUser.uid);
-        setIsFollowing(followingStatus);
-        setIsFollowLoading(false);
-      } else {
-        setIsFollowLoading(false);
+      if (!isOwnProfile) {
+        setFetchedUser(userToFetch);
+      }
+      
+      const fetchedPosts = await getPostsByUserId(userToFetch.uid);
+      
+      if (currentUser) {
+        if (fetchedPosts.length > 0) {
+          const postIds = fetchedPosts.map(p => p.id);
+          const votes = await getUserVotes(currentUser.uid, postIds, 'post');
+          setUserVotes(votes);
+        }
+        if (!isOwnProfile) {
+          setIsFollowLoading(true);
+          const followingStatus = await checkIsFollowing(currentUser.uid, userToFetch.uid);
+          setIsFollowing(followingStatus);
+          setIsFollowLoading(false);
+        }
       }
 
-      setPosts(fetchedPosts)
-      setLoading(false)
+      setPosts(fetchedPosts);
+      setLoading(false);
     }
-    fetchData()
-  }, [anonName, currentUser])
+
+    fetchData();
+  }, [anonName, currentUser, isOwnProfile, authLoading]);
 
   const handleAvatarSave = (newAvatarUrl: string) => {
-    if (user) {
-      setUser({ ...user, avatarUrl: newAvatarUrl })
-      // Re-fetch posts to show updated avatar on posts if we decide to
-      router.refresh()
+    if (displayUser) {
+      setFetchedUser(prev => prev ? { ...prev, avatarUrl: newAvatarUrl } : null);
+      router.refresh();
     }
   }
 
   const handleFollowToggle = async () => {
-    if (!currentUser || !user || isOwnProfile || isFollowLoading) return;
+    if (!currentUser || !displayUser || isOwnProfile || isFollowLoading) return;
 
     setIsFollowLoading(true);
     const previousIsFollowing = isFollowing;
-    const previousFollowersCount = user.followersCount || 0;
+    const previousFollowersCount = displayUser.followersCount || 0;
     
     // Optimistic update
     setIsFollowing(!isFollowing);
-    setUser(u => u ? { ...u, followersCount: (u.followersCount || 0) + (!isFollowing ? 1 : -1) } : null);
-
-    const result = await toggleFollowUser(currentUser.uid, user.uid);
+    const updatedUser = { ...displayUser, followersCount: (displayUser.followersCount || 0) + (!isFollowing ? 1 : -1) };
+    if (!isOwnProfile) {
+      setFetchedUser(updatedUser);
+    }
+    
+    const result = await toggleFollowUser(currentUser.uid, displayUser.uid);
 
     setIsFollowLoading(false);
     
     if (result.success) {
       toast({
-        title: result.wasFollowing ? `Unfollowed ${user.anonName}` : `Followed ${user.anonName}`
+        title: result.wasFollowing ? `Unfollowed ${displayUser.anonName}` : `Followed ${displayUser.anonName}`
       });
     } else {
-      // Revert optimistic update on error
       setIsFollowing(previousIsFollowing);
-      setUser(u => u ? { ...u, followersCount: previousFollowersCount } : null);
+      if (!isOwnProfile) {
+         setFetchedUser(prev => prev ? { ...prev, followersCount: previousFollowersCount } : null);
+      }
       toast({
         variant: "destructive",
         title: "Error",
@@ -149,7 +153,7 @@ export default function ProfilePage() {
   }
 
 
-  if (loading || !user) {
+  if (loading || !displayUser) {
     return (
       <div className="space-y-8">
         <Card className="bg-card border-border rounded-lg p-6">
@@ -166,12 +170,12 @@ export default function ProfilePage() {
     )
   }
 
-  const nextBadge = getNextBadge(user.xp)
-  const joinDate = new Date(user.createdAt as string)
+  const nextBadge = getNextBadge(displayUser.xp);
+  const joinDate = new Date(displayUser.createdAt as string);
 
   const AvatarComponent = (
     <Avatar className="h-24 w-24 ring-4 ring-primary/30 cursor-pointer group object-cover">
-      <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
+      <AvatarImage src={displayUser.avatarUrl} alt={displayUser.anonName} className="object-cover" />
       <AvatarFallback className="bg-secondary text-primary">
         <UserIcon className="h-12 w-12" />
       </AvatarFallback>
@@ -181,7 +185,7 @@ export default function ProfilePage() {
         </div>
       )}
     </Avatar>
-  )
+  );
 
   return (
     <div className="space-y-8">
@@ -194,7 +198,7 @@ export default function ProfilePage() {
                 <DialogHeader>
                   <DialogTitle className="font-mono text-xl text-primary">Avatar Editor</DialogTitle>
                 </DialogHeader>
-                <AvatarEditor user={user} onSave={handleAvatarSave} />
+                <AvatarEditor user={displayUser} onSave={handleAvatarSave} />
               </DialogContent>
             </Dialog>
           ) : (
@@ -202,7 +206,7 @@ export default function ProfilePage() {
           )}
           <div className="flex-1 text-center sm:text-left">
             <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <h1 className="text-4xl font-bold font-mono text-primary">{user.anonName}</h1>
+              <h1 className="text-4xl font-bold font-mono text-primary">{displayUser.anonName}</h1>
               {!isOwnProfile && (
                 <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
                   {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
@@ -211,36 +215,16 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-              <UserBadge xp={user.xp} />
+              <UserBadge xp={displayUser.xp} />
               <span className="text-slate-400 text-sm">Joined {formatDistanceToNow(joinDate, { addSuffix: true })}</span>
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className="cursor-help">
-                        <XPBar xp={user.xp} />
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="bg-background border-border text-slate-300">
-                    <div className="p-2">
-                        <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
-                        <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                            <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
-                            <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
-                            <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
-                            <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
-                        </ul>
-                    </div>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-
+          <XPBar xp={displayUser.xp} />
           {nextBadge && (
             <p className="text-center text-sm text-slate-400 mt-2">
-              {nextBadge.minXP - user.xp} XP to reach <span className={getBadgeForXP(nextBadge.minXP).color}>{nextBadge.name}</span>
+              {nextBadge.minXP - displayUser.xp} XP to reach <span className={getBadgeForXP(nextBadge.minXP).color}>{nextBadge.name}</span>
             </p>
           )}
         </CardContent>
@@ -248,7 +232,7 @@ export default function ProfilePage() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="h-full">
-            <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()}>
+            <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()}>
                 <Popover>
                 <PopoverTrigger asChild>
                     <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-8 w-8 text-slate-500 hover:text-slate-300">
@@ -259,16 +243,25 @@ export default function ProfilePage() {
                     <div className="space-y-4 p-2">
                     <div>
                         <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                        <ul className="space-y-2 text-sm text-slate-400">
-                        {BADGES.map((badge) => (
-                            <li key={badge.name} className="flex items-center justify-between">
-                            <span className={badge.color}>{badge.name}</span>
-                            <span className="font-mono text-slate-500">
-                                {badge.minXP.toLocaleString()}
-                                {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
-                            </span>
-                            </li>
-                        ))}
+                        <ul className="space-y-2 text-sm">
+                            {BADGES.map((badge) => (
+                                <li key={badge.name} className="flex items-center justify-between">
+                                <span className={badge.color}>{badge.name}</span>
+                                <span className="font-mono text-slate-500">
+                                    {badge.minXP.toLocaleString()}
+                                    {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
+                                </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="border-t border-border pt-3">
+                         <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
+                        <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
+                            <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
+                            <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
+                            <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
+                            <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
                         </ul>
                     </div>
                     </div>
@@ -276,22 +269,22 @@ export default function ProfilePage() {
                 </Popover>
             </StatCard>
         </div>
-        <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
-        <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
-        <div onClick={() => (user.followersCount || 0) > 0 && setDialogType('followers')} className={(user.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
-            <StatCard icon={UserPlus} label="Followers" value={user.followersCount || 0} />
+        <StatCard icon={FileText} label="Posts" value={displayUser.postCount || 0} />
+        <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
+        <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className={(displayUser.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+            <StatCard icon={UserPlus} label="Followers" value={displayUser.followersCount || 0} />
         </div>
-        <div onClick={() => (user.followingCount || 0) > 0 && setDialogType('following')} className={(user.followingCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
-            <StatCard icon={Users} label="Following" value={user.followingCount || 0} />
+        <div onClick={() => (displayUser.followingCount || 0) > 0 && setDialogType('following')} className={(displayUser.followingCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+            <StatCard icon={Users} label="Following" value={displayUser.followingCount || 0} />
         </div>
         <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
       </div>
 
       <Dialog open={!!dialogType} onOpenChange={(open) => !open && setDialogType(null)}>
         <DialogContent className="max-w-md bg-background border-border">
-            {dialogType && user && (
+            {dialogType && displayUser && (
                 <FollowListDialog
-                    userId={user.uid}
+                    userId={displayUser.uid}
                     type={dialogType}
                     onClose={() => setDialogType(null)}
                 />
@@ -301,7 +294,7 @@ export default function ProfilePage() {
 
 
       <div>
-        <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {user.anonName}</h2>
+        <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {displayUser.anonName}</h2>
         {posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map((post) => (
