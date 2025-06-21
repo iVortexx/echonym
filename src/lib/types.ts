@@ -7,6 +7,7 @@ export interface User {
   xp: number
   createdAt: Timestamp | string
   recoveryId: string;
+  activeAuthUid?: string; // The currently active Firebase Auth UID for this user
   postCount?: number
   commentCount?: number
   avatarUrl?: string

@@ -909,3 +909,45 @@ export async function markNotificationAsRead(userId: string, notificationId: str
     return { error: "Failed to update notification." };
   }
 }
+
+export async function linkNewAuthSession(recoveryId: string, newAuthUid: string) {
+    if (!recoveryId || !newAuthUid) {
+        return { error: "Missing recovery ID or new Auth UID." };
+    }
+
+    try {
+        const usersRef = collection(db, "users");
+        // Find the user document by its persistent recoveryId
+        const userQuery = query(usersRef, where("recoveryId", "==", recoveryId), limit(1));
+        const userSnapshot = await getDocs(userQuery);
+
+        if (userSnapshot.empty) {
+            return { error: "No user found with that recovery ID." };
+        }
+        
+        const userDocRef = userSnapshot.docs[0].ref;
+
+        // Unlink any old auth session to prevent conflicts
+        const oldLinkQuery = query(usersRef, where("activeAuthUid", "==", newAuthUid), limit(1));
+        const oldLinkSnapshot = await getDocs(oldLinkQuery);
+
+        const batch = writeBatch(db);
+
+        if (!oldLinkSnapshot.empty) {
+            oldLinkSnapshot.forEach(doc => {
+                 // Set old link to null to break the connection
+                batch.update(doc.ref, { activeAuthUid: null });
+            });
+        }
+        
+        // Link the new auth session to the restored user document
+        batch.update(userDocRef, { activeAuthUid: newAuthUid });
+        
+        await batch.commit();
+
+        return { success: true };
+    } catch (e: any) {
+        console.error("Error linking new auth session:", e);
+        return { error: "Failed to link new session." };
+    }
+}

@@ -3,13 +3,13 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection, query, where, limit, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 import { buildAvatarUrl } from '@/lib/utils';
-import { findUserByRecoveryId, getUserByAnonName } from '@/lib/actions';
+import { getUserByAnonName, linkNewAuthSession } from '@/lib/actions';
 
 const RECOVERY_ID_KEY = 'echonym_recovery_id';
 
@@ -85,73 +85,87 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         setFirebaseUser(fbUser);
-        const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
 
+        // This is the main logic for handling a new session.
+        // It could be a brand new user, a returning user, or a restored user.
+        
+        // Step 1: Handle account restoration if a recovery key is present.
+        const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
         if (savedRecoveryId) {
-            const recoveredUser = await findUserByRecoveryId(savedRecoveryId);
-            if (recoveredUser) {
-                unsubscribeUser = onSnapshot(doc(db, 'users', recoveredUser.uid), (userDoc) => {
-                    if (userDoc.exists()) {
-                        setUser({ ...userDoc.data(), uid: userDoc.id } as User);
-                    }
-                });
-                setLoading(false);
-                return;
+            const linkResult = await linkNewAuthSession(savedRecoveryId, fbUser.uid);
+            if (linkResult.success) {
+                localStorage.removeItem(RECOVERY_ID_KEY); // Clean up after successful link
             } else {
+                console.error("Failed to link restored account:", linkResult.error);
+                setError("Could not restore account session. The recovery ID might be invalid.");
                 localStorage.removeItem(RECOVERY_ID_KEY);
             }
         }
-        
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        unsubscribeUser = onSnapshot(userDocRef, async (userDoc) => {
-            if (userDoc.exists()) {
-                const existingUser = { ...userDoc.data(), uid: userDoc.id } as User;
-                setUser(existingUser);
-                if (existingUser.recoveryId) {
-                  localStorage.setItem(RECOVERY_ID_KEY, existingUser.recoveryId);
-                }
+
+        // Step 2: Find the user document linked to the current auth session.
+        const userQuery = query(collection(db, 'users'), where('activeAuthUid', '==', fbUser.uid), limit(1));
+
+        unsubscribeUser = onSnapshot(userQuery, async (snapshot) => {
+            if (!snapshot.empty) {
+                // Found the user linked to this auth session.
+                const userDoc = snapshot.docs[0];
+                setUser({ ...userDoc.data(), uid: userDoc.id } as User);
+                setLoading(false);
             } else {
-                try {
-                    const newAnonName = await generateUniqueAnonName();
-                    const newRecoveryId = crypto.randomUUID();
-                    const avatarOptions = { seed: newAnonName };
-                    const avatarUrl = buildAvatarUrl(avatarOptions);
+                // No user is linked to this auth session. This must be a brand new user.
+                // We double-check that a document with this UID doesn't already exist (legacy check).
+                const userDocRef = doc(db, 'users', fbUser.uid);
+                const docSnap = await getDoc(userDocRef);
 
-                    const newUser: User = {
-                        uid: fbUser.uid,
-                        anonName: newAnonName,
-                        xp: 0,
-                        createdAt: serverTimestamp() as any,
-                        recoveryId: newRecoveryId,
-                        postCount: 0,
-                        commentCount: 0,
-                        followersCount: 0,
-                        followingCount: 0,
-                        avatarUrl,
-                        avatarOptions,
-                        savedPosts: [],
-                        hiddenPosts: [],
-                    };
-                    
-                    const batch = writeBatch(db);
-                    batch.set(userDocRef, newUser);
+                if (docSnap.exists()) {
+                     // Legacy user found, link it.
+                     await updateDoc(userDocRef, { activeAuthUid: fbUser.uid });
+                     setUser({ ...docSnap.data(), uid: docSnap.id } as User);
+                } else {
+                    // Create a new user profile.
+                    try {
+                        const newAnonName = await generateUniqueAnonName();
+                        const newRecoveryId = crypto.randomUUID();
+                        const avatarOptions = { seed: newAnonName };
+                        const avatarUrl = buildAvatarUrl(avatarOptions);
 
-                    const notificationRef = doc(collection(db, 'users', fbUser.uid, 'notifications'));
-                    batch.set(notificationRef, {
-                        type: 'welcome',
-                        message: 'Welcome to Echonym! Be sure to back up your Recovery ID from your profile to keep your account safe.',
-                        read: false,
-                        createdAt: serverTimestamp(),
-                    });
+                        const newUser: User = {
+                            uid: fbUser.uid,
+                            anonName: newAnonName,
+                            xp: 0,
+                            createdAt: serverTimestamp() as any,
+                            recoveryId: newRecoveryId,
+                            activeAuthUid: fbUser.uid, // Link the new auth session
+                            postCount: 0,
+                            commentCount: 0,
+                            followersCount: 0,
+                            followingCount: 0,
+                            avatarUrl,
+                            avatarOptions,
+                            savedPosts: [],
+                            hiddenPosts: [],
+                        };
+                        
+                        const batch = writeBatch(db);
+                        batch.set(userDocRef, newUser);
 
-                    await batch.commit();
-                    localStorage.setItem(RECOVERY_ID_KEY, newRecoveryId);
-                } catch (e: any) {
-                    console.error("Error creating user document:", e);
-                    setError("Failed to initialize user profile.");
+                        const notificationRef = doc(collection(db, 'users', fbUser.uid, 'notifications'));
+                        batch.set(notificationRef, {
+                            type: 'welcome',
+                            message: 'Welcome to Echonym! Be sure to back up your Recovery ID from your profile to keep your account safe.',
+                            read: false,
+                            createdAt: serverTimestamp(),
+                        });
+
+                        await batch.commit();
+                        // The user will be set by the new snapshot listener we are about to create.
+                    } catch (e: any) {
+                        console.error("Error creating user document:", e);
+                        setError("Failed to initialize user profile.");
+                    }
                 }
+                setLoading(false);
             }
-            setLoading(false);
         }, (err) => {
             console.error("Firestore user listener error:", err);
             setError("Failed to sync user profile.");
@@ -197,5 +211,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-    

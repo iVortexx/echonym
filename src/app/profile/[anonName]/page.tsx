@@ -27,7 +27,7 @@ import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState, useMemo } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { FollowListDialog } from "@/components/follow-list-dialog"
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -64,13 +64,15 @@ function BackupAndRestore({ user }: { user: User }) {
     }
     setIsRestoring(true);
     const result = await findUserByRecoveryId(recoveryInput.trim());
-    setIsRestoring(false);
 
     if (result) {
       localStorage.setItem('echonym_recovery_id', result.recoveryId);
-      toast({ title: "✅ Account Found!", description: "Your account will be restored shortly." });
-      setTimeout(() => window.location.reload(), 1500);
+      await auth.signOut();
+      toast({ title: "✅ Account Found!", description: "Restoring your session..." });
+      // The reload will trigger the AuthProvider to handle the new session
+      window.location.reload();
     } else {
+      setIsRestoring(false);
       toast({ variant: "destructive", title: "Restore Failed", description: "The Recovery ID is invalid." });
     }
   };
@@ -101,6 +103,7 @@ function BackupAndRestore({ user }: { user: User }) {
               onChange={(e) => setRecoveryInput(e.target.value)}
               placeholder="Paste your Recovery ID here"
               className="bg-background border-border"
+              disabled={isRestoring}
             />
             <Button onClick={handleRestore} disabled={isRestoring}>
               {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : "Restore"}
@@ -423,4 +426,3 @@ export default function ProfilePage() {
     
 
     
-
