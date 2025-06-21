@@ -31,7 +31,6 @@ import { db } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 function StatCard({ icon: Icon, label, value, children, isClickable }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode, isClickable?: boolean }) {
   return (
@@ -87,19 +86,11 @@ function BackupAndRestore({ user }: { user: User }) {
       <div className="space-y-6 pt-4">
         <div className="space-y-2">
           <Label className="font-mono text-sm text-slate-300">Your Unique Recovery ID</Label>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
+          
                  <Button variant="outline" onClick={handleCopy} className="w-full justify-start">
                     <KeyRound className="mr-2 h-4 w-4" />
                     Copy Recovery ID
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Used to restore your anonymous account.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
           <p className="text-xs text-amber-500/80">Store this safely. It's the ONLY way to recover your account.</p>
         </div>
         <div className="space-y-2">
@@ -363,50 +354,34 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className='h-full cursor-help'>
-                        <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()}>
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-slate-500 hover:text-slate-300">
-                                        <HelpCircle className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 bg-background border-border text-foreground">
-                                    <div className="space-y-4 p-2">
-                                    <div>
-                                        <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                                        <ul className="space-y-2 text-sm">
-                                            {BADGES.map((badge) => (
-                                                <li key={badge.name} className="flex items-center justify-between">
-                                                <span className={badge.color}>{badge.name}</span>
-                                                <span className="font-mono text-slate-500">
-                                                    {badge.minXP.toLocaleString()}
-                                                    {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
-                                                </span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </StatCard>
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent className="bg-background border-border p-2">
-                    <ul className="list-disc list-inside text-xs text-slate-400 space-y-1">
-                        <li>Create an echo: <span className="font-mono text-accent">+10 XP</span></li>
-                        <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
-                        <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
-                        <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
+        <StatCard icon={TrendingUp} label="Reputation" value={displayUser.xp.toLocaleString()}>
+            <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-slate-500 hover:text-slate-300">
+                    <HelpCircle className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 bg-background border-border text-foreground">
+                <div className="space-y-4 p-2">
+                <div>
+                    <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
+                    <ul className="space-y-2 text-sm">
+                        {BADGES.map((badge) => (
+                            <li key={badge.name} className="flex items-center justify-between">
+                            <span className={badge.color}>{badge.name}</span>
+                            <span className="font-mono text-slate-500">
+                                {badge.minXP.toLocaleString()}
+                                {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
+                            </span>
+                            </li>
+                        ))}
                     </ul>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-
+                </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+        </StatCard>
+        
         <StatCard icon={FileText} label="Echoes" value={displayUser.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={displayUser.commentCount || 0} />
         <div onClick={() => (displayUser.followersCount || 0) > 0 && setDialogType('followers')} className="cursor-pointer">
@@ -448,3 +423,4 @@ export default function ProfilePage() {
     
 
     
+
