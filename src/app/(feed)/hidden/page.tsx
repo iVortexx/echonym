@@ -78,7 +78,7 @@ export default function HiddenPostsPage() {
              <h1 className="text-3xl font-mono font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Hidden Whispers
             </h1>
-            <PostFeed posts={posts} isLoading={false} />
+            <PostFeed posts={posts} isLoading={false} filterHiddenPosts={false} />
         </div>
     );
 }

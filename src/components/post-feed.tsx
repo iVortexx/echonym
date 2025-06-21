@@ -12,18 +12,22 @@ import { getUserVotes } from "@/lib/actions"
 interface PostFeedProps {
   posts: Post[];
   isLoading: boolean;
+  filterHiddenPosts?: boolean;
 }
 
-export function PostFeed({ posts: initialPosts, isLoading }: PostFeedProps) {
+export function PostFeed({ posts: initialPosts, isLoading, filterHiddenPosts = true }: PostFeedProps) {
   const { user } = useAuth();
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
   const [visiblePosts, setVisiblePosts] = useState<Post[]>([]);
 
   useEffect(() => {
-    const hiddenPostIds = user?.hiddenPosts || [];
-    const postsToShow = initialPosts.filter(post => !hiddenPostIds.includes(post.id));
+    let postsToShow = initialPosts;
+    if (filterHiddenPosts) {
+        const hiddenPostIds = user?.hiddenPosts || [];
+        postsToShow = initialPosts.filter(post => !hiddenPostIds.includes(post.id));
+    }
     setVisiblePosts(postsToShow);
-  }, [initialPosts, user]);
+  }, [initialPosts, user, filterHiddenPosts]);
 
   useEffect(() => {
     async function fetchVotes() {
