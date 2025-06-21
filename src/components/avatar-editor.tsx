@@ -6,9 +6,8 @@ import { useState } from "react"
 import type { User } from "@/lib/types"
 import { buildAvatarUrl } from "@/lib/utils"
 import { Button } from "./ui/button"
-import { ScrollArea, ScrollBar } from "./ui/scroll-area"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
-import { UserIcon, Check, Loader2, RefreshCw } from "lucide-react"
+import { UserIcon, Check, Loader2, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { updateUserAvatar } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -23,6 +22,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
   hairStyles,
   eyeStyles,
@@ -41,22 +42,61 @@ interface AvatarEditorProps {
   onSave: (newUrl: string) => void
 }
 
-const optionCategories = [
-  { name: "Hair", key: "hair", options: hairStyles },
-  { name: "Eyes", key: "eyes", options: eyeStyles },
-  { name: "Eyebrows", key: "eyebrows", options: eyebrowStyles },
-  { name: "Mouth", key: "mouth", options: mouthStyles },
-  { name: "Glasses", key: "glasses", options: glasses },
-  { name: "Earrings", key: "earrings", options: earrings },
-  { name: "Features", key: "features", options: features },
-]
+const StyleSelector = ({
+  label,
+  value,
+  options,
+  onChange,
+  isOptional = false,
+}: {
+  label: string
+  value: string | undefined
+  options: readonly string[]
+  onChange: (newValue: string | undefined) => void
+  isOptional?: boolean
+}) => {
+  const displayOptions = isOptional ? ["None", ...options] : [...options]
+  const currentIndex = value ? displayOptions.indexOf(value) : 0
 
-const colorCategories = [
-  { name: "Skin Tone", key: "skinColor", options: skinColors },
-  { name: "Hair Color", key: "hairColor", options: hairColors },
-]
+  const handlePrev = () => {
+    const newIndex = (currentIndex - 1 + displayOptions.length) % displayOptions.length
+    onChange(isOptional && newIndex === 0 ? undefined : displayOptions[newIndex])
+  }
 
-const multiSelectCategories = ["features"]
+  const handleNext = () => {
+    const newIndex = (currentIndex + 1) % displayOptions.length
+    onChange(isOptional && newIndex === 0 ? undefined : displayOptions[newIndex])
+  }
+
+  const currentOptionValue = displayOptions[currentIndex]
+  const displayName = currentOptionValue !== "None"
+    ? currentOptionValue.replace(/([A-Z0-9])/g, " $1").replace(/^./, (str) => str.toUpperCase()).trim()
+    : "None"
+  
+  const totalUserOptions = options.length
+  const currentUserOptionIndex = isOptional ? currentIndex : currentIndex + 1
+
+  return (
+    <div className="space-y-1">
+      <Label className="font-mono text-sm text-slate-400">{label}</Label>
+      <div className="flex items-center justify-between bg-slate-800/50 rounded-md p-1">
+        <Button variant="ghost" size="icon" onClick={handlePrev} className="h-8 w-8 text-slate-400 hover:text-slate-100">
+          <ChevronLeft />
+        </Button>
+        <div className="text-center font-mono">
+          <p className="text-sm text-slate-200">{displayName}</p>
+          <p className="text-xs text-slate-500">
+            {isOptional ? `${currentIndex} / ${totalUserOptions}` : `${currentUserOptionIndex} / ${totalUserOptions}`}
+          </p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={handleNext} className="h-8 w-8 text-slate-400 hover:text-slate-100">
+          <ChevronRight />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 
 export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const [options, setOptions] = useState<Record<string, any>>(user.avatarOptions || { seed: user.anonName })
@@ -64,32 +104,42 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const { toast } = useToast()
   const { updateUser } = useAuth()
 
-  const handleOptionChange = (key: string, value: string) => {
+  const handleOptionChange = (key: string, value: string | undefined) => {
     setOptions((prev) => {
-      const newOptions: Record<string, any> = { ...prev }
-      delete newOptions.seed
-
-      if (multiSelectCategories.includes(key)) {
-        const currentValues: string[] = newOptions[key] || []
-        if (currentValues.includes(value)) {
-          newOptions[key] = currentValues.filter((v) => v !== value)
-        } else {
-          newOptions[key] = [...currentValues, value]
-        }
-        if (newOptions[key].length === 0) {
-          delete newOptions[key]
-        }
+      const newOptions = { ...prev };
+      delete newOptions.seed; // Remove seed on first customization
+      if (value === undefined) {
+        delete newOptions[key];
       } else {
-        if (newOptions[key] === value) {
-          delete newOptions[key]
-        } else {
-          newOptions[key] = value
-        }
+        newOptions[key] = value;
       }
-      return newOptions
-    })
-  }
+      return newOptions;
+    });
+  };
   
+  const handleFeatureToggle = (feature: string, checked: boolean) => {
+    setOptions(prev => {
+        const newOptions = { ...prev };
+        delete newOptions.seed;
+        const currentFeatures: string[] = newOptions.features || [];
+        let newFeatures: string[];
+
+        if (checked) {
+            newFeatures = [...currentFeatures, feature];
+        } else {
+            newFeatures = currentFeatures.filter(f => f !== feature);
+        }
+
+        if (newFeatures.length > 0) {
+            newOptions.features = newFeatures;
+        } else {
+            delete newOptions.features;
+        }
+
+        return newOptions;
+    });
+  };
+
   const handleColorChange = (key: string, value: string) => {
      setOptions((prev) => ({
       ...prev,
@@ -161,41 +211,42 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
             <TabsTrigger value="styles">Styles</TabsTrigger>
             <TabsTrigger value="colors">Colors</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="styles" className="mt-4">
-            <Accordion type="multiple" className="w-full space-y-2">
-              {optionCategories.map((cat) => (
-                <AccordionItem value={cat.name} key={cat.name} className="bg-slate-900 rounded-lg border-slate-700/50 px-4">
-                  <AccordionTrigger className="py-3 font-mono text-slate-300 hover:no-underline">
-                    {cat.name}
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <ScrollArea className="w-full whitespace-nowrap rounded-md">
-                      <div className="flex space-x-2 pb-3">
-                        {cat.options.map((opt) => (
-                          <Button
-                            key={opt}
-                            variant={
-                              multiSelectCategories.includes(cat.key)
-                                ? options[cat.key]?.includes(opt) ? 'default' : 'outline'
-                                : options[cat.key] === opt ? 'default' : 'outline'
-                            }
-                            onClick={() => handleOptionChange(cat.key, opt)}
-                            className="capitalize"
-                          >
-                            {opt.replace(/([A-Z])/g, ' $1').trim()}
-                          </Button>
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+             <div className="space-y-4 max-h-[400px] overflow-y-auto p-1 pr-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <StyleSelector label="Hair" value={options.hair} options={hairStyles} onChange={(v) => handleOptionChange('hair', v)} />
+                    <StyleSelector label="Eyes" value={options.eyes} options={eyeStyles} onChange={(v) => handleOptionChange('eyes', v)} />
+                    <StyleSelector label="Eyebrows" value={options.eyebrows} options={eyebrowStyles} onChange={(v) => handleOptionChange('eyebrows', v)} />
+                    <StyleSelector label="Mouth" value={options.mouth} options={mouthStyles} onChange={(v) => handleOptionChange('mouth', v)} />
+                    <StyleSelector label="Glasses" value={options.glasses} options={glasses} onChange={(v) => handleOptionChange('glasses', v)} isOptional />
+                    <StyleSelector label="Earrings" value={options.earrings} options={earrings} onChange={(v) => handleOptionChange('earrings', v)} isOptional />
+                </div>
+                
+                <div>
+                  <h4 className="font-mono text-sm text-slate-400 mb-2">Features</h4>
+                  <div className="space-y-2">
+                  {features.map((feature) => (
+                    <div key={feature} className="flex items-center justify-between rounded-md bg-slate-800/50 p-2 h-11">
+                      <Label htmlFor={feature} className="text-slate-300 capitalize">{feature}</Label>
+                      <Switch
+                        id={feature}
+                        checked={options.features?.includes(feature) ?? false}
+                        onCheckedChange={(checked) => handleFeatureToggle(feature, checked)}
+                      />
+                    </div>
+                  ))}
+                  </div>
+                </div>
+            </div>
           </TabsContent>
+
           <TabsContent value="colors" className="mt-4">
             <div className="space-y-4 p-4 bg-slate-900 rounded-lg">
-              {colorCategories.map((cat) => (
+              {[
+                { name: "Skin Tone", key: "skinColor", options: skinColors },
+                { name: "Hair Color", key: "hairColor", options: hairColors },
+              ].map((cat) => (
                 <div key={cat.name}>
                   <h4 className="font-mono text-slate-300 mb-2">{cat.name}</h4>
                     <div className="flex flex-wrap gap-2">
