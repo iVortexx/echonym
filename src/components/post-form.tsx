@@ -48,6 +48,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
 
   const [aiScore, setAiScore] = useState<ScoreState | null>(null)
   const [isScoring, setIsScoring] = useState(false)
+  const [previewTimestamp] = useState(new Date().toISOString());
 
   // Load draft from localStorage on initial render for new posts
   useEffect(() => {
@@ -165,7 +166,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
     }
   }
 
-  const previewPost: Post = {
+  const previewPost: Post = useMemo(() => ({
     id: postToEdit?.id || "preview",
     title: title || "Untitled Echo",
     content: content || "Start typing to see your echo live...",
@@ -173,12 +174,12 @@ export function PostForm({ postToEdit }: PostFormProps) {
     anonName: user?.anonName || "Anonymous",
     xp: user?.xp || 0,
     avatarUrl: user?.avatarUrl,
-    createdAt: postToEdit?.createdAt || new Date().toISOString(),
+    createdAt: postToEdit?.createdAt || previewTimestamp,
     upvotes: postToEdit?.upvotes || 0,
     downvotes: postToEdit?.downvotes || 0,
     commentCount: postToEdit?.commentCount || 0,
     userId: user?.uid || "",
-  }
+  }), [title, content, tags, user, postToEdit, previewTimestamp]);
 
   const editorForm = (
       <Card className="bg-card border-border h-full">
@@ -256,7 +257,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
             <Button
               type="submit"
               disabled={isSubmitting || !title || !content}
-              className="w-full bg-gradient-to-r from-primary to-accent text-white font-mono text-lg py-6 disabled:opacity-50"
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-mono text-lg py-6 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
