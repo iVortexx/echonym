@@ -5,6 +5,10 @@ export interface User {
   anonName: string
   xp: number
   createdAt: Timestamp
+  postCount?: number
+  commentCount?: number
+  totalUpvotes?: number
+  totalDownvotes?: number
 }
 
 export interface Post {

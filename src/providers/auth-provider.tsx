@@ -46,6 +46,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             anonName: newAnonName,
             xp: 0,
             createdAt: serverTimestamp() as any,
+            postCount: 0,
+            commentCount: 0,
+            totalUpvotes: 0,
+            totalDownvotes: 0,
           };
           await setDoc(userDocRef, newUser);
           setUser(newUser);

@@ -7,6 +7,12 @@ import {
   doc,
   runTransaction,
   serverTimestamp,
+  increment,
+  query,
+  where,
+  getDocs,
+  limit,
+  orderBy,
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User } from "./types"
@@ -58,7 +64,7 @@ export async function createPost(rawInput: unknown, userId: string) {
       const userData = userDoc.data() as User
       const newXp = userData.xp + 10
 
-      transaction.update(userDocRef, { xp: newXp })
+      transaction.update(userDocRef, { xp: newXp, postCount: increment(1) })
 
       const postCollectionRef = collection(db, "posts")
       const newPostRef = doc(postCollectionRef)
@@ -135,7 +141,7 @@ export async function createComment(rawInput: unknown, userId: string) {
       const postData = postDoc.data() as Post
 
       const newXp = userData.xp + 5
-      transaction.update(userDocRef, { xp: newXp })
+      transaction.update(userDocRef, { xp: newXp, commentCount: increment(1) })
 
       const newCommentCount = (postData.commentCount || 0) + 1
       transaction.update(postDocRef, { commentCount: newCommentCount })
@@ -243,12 +249,14 @@ export async function handleVote(
       })
       
       // Only update author's XP if it's not their own post and the author exists
-      if (xpChange !== 0 && userId !== postAuthorId) {
+      if (userId !== postAuthorId) {
         const authorSnap = await transaction.get(postAuthorRef)
         if (authorSnap.exists()) {
-            const authorData = authorSnap.data()
-            const newXp = (authorData.xp || 0) + xpChange
-            transaction.update(postAuthorRef, { xp: newXp })
+            transaction.update(postAuthorRef, { 
+                xp: increment(xpChange),
+                totalUpvotes: increment(upvoteChange),
+                totalDownvotes: increment(downvoteChange)
+            })
         }
       }
     })
@@ -295,5 +303,50 @@ export async function scorePost(input: ScorePostInput): Promise<ScorePostOutput>
   } catch (error: any) {
     console.error("Error fetching post score:", error)
     return { score: 0, clarity: "Could not analyze post.", safety: "Error during analysis."}
+  }
+}
+
+export async function searchUsers(nameQuery: string): Promise<User[]> {
+  if (!nameQuery) return []
+  try {
+    const usersRef = collection(db, "users")
+    const q = query(
+      usersRef,
+      where("anonName", ">=", nameQuery),
+      where("anonName", "<=", nameQuery + "\uf8ff"),
+      limit(10)
+    )
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map((doc) => doc.data() as User)
+  } catch (error) {
+    console.error("Error searching users:", error)
+    return []
+  }
+}
+
+export async function getUserByAnonName(anonName: string): Promise<User | null> {
+  try {
+    const usersRef = collection(db, "users")
+    const q = query(usersRef, where("anonName", "==", anonName), limit(1))
+    const querySnapshot = await getDocs(q)
+    if (querySnapshot.empty) {
+      return null
+    }
+    return querySnapshot.docs[0].data() as User
+  } catch (error) {
+    console.error("Error getting user by anon name:", error)
+    return null
+  }
+}
+
+export async function getPostsByUserId(userId: string): Promise<Post[]> {
+  try {
+    const postsRef = collection(db, "posts")
+    const q = query(postsRef, where("userId", "==", userId), orderBy("createdAt", "desc"))
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Post))
+  } catch (error) {
+    console.error("Error getting posts by user ID:", error)
+    return []
   }
 }
