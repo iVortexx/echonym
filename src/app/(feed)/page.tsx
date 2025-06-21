@@ -27,7 +27,7 @@ export default function Home() {
     let qBuilder: Query<DocumentData> = collection(db, "posts");
 
     if (tag !== "all") {
-      qBuilder = query(qBuilder, where("tag", "==", tag));
+      qBuilder = query(qBuilder, where("tags", "array-contains", tag));
     }
     
     if (q) {

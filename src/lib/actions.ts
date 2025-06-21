@@ -33,7 +33,7 @@ import { buildAvatarUrl } from "./utils"
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   content: z.string().min(1, "Content is required"),
-  tag: z.string().optional(),
+  tags: z.array(z.string()).max(5, "You can add up to 5 tags.").optional(),
 })
 
 const generateKeywords = (title: string, content: string): string[] => {
@@ -55,7 +55,7 @@ export async function createPost(rawInput: unknown, userId: string) {
     return { error: validation.error.issues.map((i) => i.message).join(", ") }
   }
 
-  const { title, content, tag } = validation.data
+  let { title, content, tags } = validation.data
 
   let summary: string | undefined;
   if (content.length > 300) { // Only summarize longer posts
@@ -66,6 +66,17 @@ export async function createPost(rawInput: unknown, userId: string) {
       console.error("Failed to generate summary:", e);
       // Don't block post creation if summary fails
       summary = undefined;
+    }
+  }
+  
+  if (!tags || tags.length === 0) {
+    try {
+      const suggested = await suggestTags({ content });
+      tags = suggested.tags;
+    } catch (e) {
+      console.error("Failed to generate tags:", e);
+      // Don't block post creation if tagging fails
+      tags = [];
     }
   }
 
@@ -85,6 +96,9 @@ export async function createPost(rawInput: unknown, userId: string) {
       const postCollectionRef = collection(db, "posts")
       const newPostRef = doc(postCollectionRef)
 
+      const postKeywords = generateKeywords(title, content);
+      const allKeywords = tags && tags.length > 0 ? Array.from(new Set([...postKeywords, ...tags])) : postKeywords;
+
       const postPayload: any = {
         userId: userId,
         title,
@@ -96,11 +110,11 @@ export async function createPost(rawInput: unknown, userId: string) {
         anonName: userData.anonName,
         xp: newXp,
         avatarUrl: userData.avatarUrl,
-        searchKeywords: generateKeywords(title, content),
+        searchKeywords: allKeywords,
       }
 
-      if (tag) {
-        postPayload.tag = tag
+      if (tags && tags.length > 0) {
+        postPayload.tags = tags
       }
 
       if (summary) {
@@ -132,7 +146,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
     const validation = PostSchema.safeParse(rawInput);
     if (!validation.success) return { error: "Invalid data." };
 
-    const { title, content, tag } = validation.data;
+    let { title, content, tags } = validation.data;
     const postRef = doc(db, "posts", postId);
 
     try {
@@ -141,11 +155,25 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
             return { error: "Post not found or you do not have permission to edit it." };
         }
 
+        if (!tags || tags.length === 0) {
+            try {
+                const suggested = await suggestTags({ content });
+                tags = suggested.tags;
+            } catch (e) {
+                console.error("Failed to generate tags for update:", e);
+                tags = [];
+            }
+        }
+        
+        const postKeywords = generateKeywords(title, content);
+        const allKeywords = tags && tags.length > 0 ? Array.from(new Set([...postKeywords, ...tags])) : postKeywords;
+
+
         await updateDoc(postRef, {
             title,
             content,
-            tag: tag || null,
-            searchKeywords: generateKeywords(title, content),
+            tags: tags || [],
+            searchKeywords: allKeywords,
         });
 
         revalidatePath(`/`);

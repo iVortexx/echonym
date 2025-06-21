@@ -22,7 +22,7 @@ export interface Post {
   anonName: string
   title: string
   content: string
-  tag?: string
+  tags?: string[]
   summary?: string
   createdAt: Timestamp | string
   upvotes: number

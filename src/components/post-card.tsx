@@ -275,21 +275,25 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
                   </Link>
                   <UserBadge xp={(isOwnPost && currentUser) ? currentUser.xp : post.xp || 0} />
                 </div>
-                <p className="text-slate-400 text-xs font-mono">
-                  {formatTimeAgo(post.createdAt)}
-                  {post.tag && (
-                    <>
-                      {" • "}
-                      <Badge
-                        variant="outline"
-                        className="text-xs px-1 py-0 h-4 border-accent/30 text-accent bg-accent/10"
-                      >
-                        <Hash className="h-2 w-2 mr-1" />
-                        {post.tag}
-                      </Badge>
-                    </>
+                <div className="flex items-center flex-wrap gap-x-2 text-slate-400 text-xs font-mono">
+                  <span>{formatTimeAgo(post.createdAt)}</span>
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span>•</span>
+                      {post.tags.map((tag) => (
+                        <Link key={tag} href={`/?tag=${tag}`} onClick={(e) => e.stopPropagation()}>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1.5 py-0.5 border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
+                          >
+                            <Hash className="h-2.5 w-2.5 mr-1" />
+                            {tag}
+                          </Badge>
+                        </Link>
+                      ))}
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
             </div>
              <AlertDialog>

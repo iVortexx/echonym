@@ -2,7 +2,7 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, useMemo } from "react"
 import { useAuth } from "@/hooks/use-auth"
 import { createPost, scorePost, updatePost } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
@@ -12,10 +12,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Loader2, Sparkles, ShieldCheck, HelpCircle } from "lucide-react"
+import { Loader2, Sparkles, ShieldCheck, HelpCircle, Hash, X } from "lucide-react"
 import { debounce } from "lodash"
 import { PostCard } from "./post-card"
 import type { Post } from "@/lib/types"
+import { Badge } from "./ui/badge"
 
 type ScoreState = {
   score: number
@@ -39,6 +40,9 @@ export function PostForm({ postToEdit }: PostFormProps) {
   const [content, setContent] = useState(postToEdit?.content || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDraftSaved, setIsDraftSaved] = useState(false)
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>(postToEdit?.tags || []);
+
 
   const [aiScore, setAiScore] = useState<ScoreState | null>(null)
   const [isScoring, setIsScoring] = useState(false)
@@ -48,17 +52,18 @@ export function PostForm({ postToEdit }: PostFormProps) {
     if (!isEditing) {
         const draft = localStorage.getItem("postDraft")
         if (draft) {
-          const { title, content } = JSON.parse(draft)
+          const { title, content, tags } = JSON.parse(draft)
           setTitle(title)
           setContent(content)
+          setTags(tags || [])
         }
     }
   }, [isEditing])
 
   // Save draft to localStorage on change for new posts
   const debouncedSaveDraft = useCallback(
-    debounce((newTitle: string, newContent: string) => {
-      localStorage.setItem("postDraft", JSON.stringify({ title: newTitle, content: newContent }))
+    debounce((newTitle: string, newContent: string, newTags: string[]) => {
+      localStorage.setItem("postDraft", JSON.stringify({ title: newTitle, content: newContent, tags: newTags }))
       setIsDraftSaved(true)
       setTimeout(() => setIsDraftSaved(false), 2000)
     }, 1000),
@@ -66,10 +71,10 @@ export function PostForm({ postToEdit }: PostFormProps) {
   )
 
   useEffect(() => {
-    if (!isEditing && (title || content)) {
-      debouncedSaveDraft(title, content)
+    if (!isEditing && (title || content || tags.length > 0)) {
+      debouncedSaveDraft(title, content, tags)
     }
-  }, [title, content, debouncedSaveDraft, isEditing])
+  }, [title, content, tags, debouncedSaveDraft, isEditing])
 
   const debouncedGetScore = useCallback(
     debounce(async (newTitle: string, newContent: string) => {
@@ -95,10 +100,21 @@ export function PostForm({ postToEdit }: PostFormProps) {
     debouncedGetScore(title, content)
   }, [title, content, debouncedGetScore])
 
-  const parseTag = (text: string): string | undefined => {
-    const match = text.match(/#(\w+)/)
-    return match ? match[1] : undefined
-  }
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      const newTag = tagInput.trim().replace(/#/g, '');
+      if (newTag && !tags.includes(newTag) && tags.length < 5) {
+        setTags([...tags, newTag]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,11 +127,10 @@ export function PostForm({ postToEdit }: PostFormProps) {
       return
     }
     setIsSubmitting(true)
-    const tag = parseTag(content)
 
     const result = isEditing 
-        ? await updatePost(postToEdit.id, { title, content, tag }, firebaseUser.uid)
-        : await createPost({ title, content, tag }, firebaseUser.uid);
+        ? await updatePost(postToEdit.id, { title, content, tags }, firebaseUser.uid)
+        : await createPost({ title, content, tags }, firebaseUser.uid);
 
 
     if (result?.error) {
@@ -141,7 +156,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
     id: postToEdit?.id || "preview",
     title: title || "Untitled Whisper",
     content: content || "Start typing to see your post live...",
-    tag: parseTag(content),
+    tags: tags,
     anonName: user?.anonName || "Anonymous",
     xp: user?.xp || 0,
     avatarUrl: user?.avatarUrl,
@@ -180,7 +195,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Share your findings, exploits, or insights... Use #tags to categorize."
+                placeholder="Share your findings, exploits, or insights..."
                 required
                 rows={12}
                 maxLength={5000}
@@ -195,6 +210,37 @@ export function PostForm({ postToEdit }: PostFormProps) {
                 )}
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tags" className="text-slate-300 font-mono">
+                Tags (up to 5)
+              </Label>
+              <Input
+                id="tags"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagInputKeyDown}
+                placeholder="Type a tag and press Space or Enter"
+                className="bg-input border-border text-slate-200 placeholder:text-slate-500"
+                disabled={tags.length >= 5}
+              />
+              <div className="flex flex-wrap gap-2 pt-2 min-h-[2.5rem]">
+                {tags.map(tag => (
+                  <Badge key={tag} variant="outline" className="text-accent bg-accent/10 border-accent/30 flex items-center gap-1">
+                    <Hash className="h-3 w-3" />
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="rounded-full hover:bg-accent/20 p-0.5 ml-1"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
 
             <Button
               type="submit"

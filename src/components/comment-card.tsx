@@ -16,6 +16,8 @@ import { buildAvatarUrl } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { handleVote } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 
 type CommentCardProps = {
@@ -148,7 +150,9 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
           <Dot className="h-3 w-3" />
           <span>{formatTimeAgo(comment.createdAt)} ago</span>
         </div>
-        <p className="text-sm text-slate-200 whitespace-pre-wrap">{comment.content}</p>
+        <div className="prose prose-sm prose-invert max-w-none text-slate-200 break-words">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{comment.content}</ReactMarkdown>
+        </div>
         <div className="flex items-center gap-2 self-start mt-2">
           <VoteButtons
             onVote={handleVoteClick}
