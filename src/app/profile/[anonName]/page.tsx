@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button"
 import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { FollowListDialog } from "@/components/follow-list-dialog"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -57,6 +58,8 @@ export default function ProfilePage() {
   const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
   const [isFollowing, setIsFollowing] = useState(false)
   const [isFollowLoading, setIsFollowLoading] = useState(true)
+  const [dialogType, setDialogType] = useState<'followers' | 'following' | null>(null)
+
 
   const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
   const isOwnProfile = currentUser?.uid === user?.uid
@@ -253,10 +256,27 @@ export default function ProfilePage() {
         </StatCard>
         <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
-        <StatCard icon={UserPlus} label="Followers" value={user.followersCount || 0} />
-        <StatCard icon={Users} label="Following" value={user.followingCount || 0} />
+        <div onClick={() => (user.followersCount || 0) > 0 && setDialogType('followers')} className={(user.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+            <StatCard icon={UserPlus} label="Followers" value={user.followersCount || 0} />
+        </div>
+        <div onClick={() => (user.followingCount || 0) > 0 && setDialogType('following')} className={(user.followingCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
+            <StatCard icon={Users} label="Following" value={user.followingCount || 0} />
+        </div>
         <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
       </div>
+
+      <Dialog open={!!dialogType} onOpenChange={(open) => !open && setDialogType(null)}>
+        <DialogContent className="max-w-md bg-slate-950 border-blue-500/20">
+            {dialogType && user && (
+                <FollowListDialog
+                    userId={user.uid}
+                    type={dialogType}
+                    onClose={() => setDialogType(null)}
+                />
+            )}
+        </DialogContent>
+      </Dialog>
+
 
       <div>
         <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {user.anonName}</h2>

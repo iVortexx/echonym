@@ -41,6 +41,7 @@ import { useState, useEffect } from "react"
 import { handleVote, deletePost, toggleUserPostList } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { buildAvatarUrl } from "@/lib/utils"
 
 interface PostCardProps {
   post: Post
@@ -212,9 +213,15 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
   }
 
   const isOwnPost = currentUser?.uid === post.userId;
-  const displayAvatarUrl = isOwnPost ? currentUser?.avatarUrl : post.avatarUrl;
   const score = optimisticUpvotes - optimisticDownvotes;
 
+  let displayAvatarUrl = post.avatarUrl;
+  if (isOwnPost && currentUser?.avatarUrl) {
+      displayAvatarUrl = currentUser.avatarUrl;
+  }
+  if (!displayAvatarUrl) {
+      displayAvatarUrl = buildAvatarUrl({ seed: post.anonName || 'default' });
+  }
 
   return (
     <motion.div
@@ -230,13 +237,10 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
             <div className="flex items-start space-x-3 flex-1">
               <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
                 <Avatar className="h-10 w-10 ring-2 ring-blue-500/30">
-                  {displayAvatarUrl ? (
-                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
-                  ) : (
-                    <AvatarFallback className="bg-blue-900/50 text-blue-300">
-                      <UserIcon className="h-5 w-5" />
-                    </AvatarFallback>
-                  )}
+                  <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
+                  <AvatarFallback className="bg-blue-900/50 text-blue-300">
+                    <UserIcon className="h-5 w-5" />
+                  </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
               </Link>

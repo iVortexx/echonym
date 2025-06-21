@@ -12,6 +12,7 @@ import { Badge } from "./ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
+import { buildAvatarUrl } from "@/lib/utils"
 
 
 type CommentCardProps = {
@@ -33,9 +34,16 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
     return "..."
   }
 
-  const isOwnComment = currentUser?.uid === comment.userId;
-  const displayAvatarUrl = isOwnComment ? currentUser?.avatarUrl : comment.avatarUrl;
-  const isOriginalPoster = postAuthorId === comment.userId;
+  const isOwnComment = currentUser?.uid === comment.userId
+  const isOriginalPoster = postAuthorId === comment.userId
+
+  let displayAvatarUrl = comment.avatarUrl
+  if (isOwnComment && currentUser?.avatarUrl) {
+    displayAvatarUrl = currentUser.avatarUrl
+  }
+  if (!displayAvatarUrl) {
+    displayAvatarUrl = buildAvatarUrl({ seed: comment.anonName || "default" })
+  }
 
   return (
     <motion.div
@@ -48,13 +56,10 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
     >
       <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
         <Avatar className="h-8 w-8 mt-1 flex-shrink-0 cursor-pointer">
-          {displayAvatarUrl ? (
-             <AvatarImage src={displayAvatarUrl} alt={comment.anonName} className="object-cover" />
-          ) : (
-            <AvatarFallback className="bg-blue-900/50 text-blue-300">
-              <UserIcon className="h-4 w-4" />
-            </AvatarFallback>
-          )}
+          <AvatarImage src={displayAvatarUrl} alt={comment.anonName} className="object-cover" />
+          <AvatarFallback className="bg-blue-900/50 text-blue-300">
+            <UserIcon className="h-4 w-4" />
+          </AvatarFallback>
         </Avatar>
       </Link>
       <div className="flex-1">

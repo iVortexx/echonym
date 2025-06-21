@@ -618,3 +618,67 @@ export async function getPostsByIds(postIds: string[]): Promise<Post[]> {
         return [];
     }
 }
+
+
+export async function getUsersByIds(userIds: string[]): Promise<User[]> {
+    if (userIds.length === 0) return [];
+    
+    const chunks: string[][] = [];
+    for (let i = 0; i < userIds.length; i += 30) {
+        chunks.push(userIds.slice(i, i + 30));
+    }
+    
+    try {
+        const userPromises = chunks.map(chunk => {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("__name__", "in", chunk));
+            return getDocs(q);
+        });
+        
+        const snapshotResults = await Promise.all(userPromises);
+        const users: User[] = [];
+        
+        snapshotResults.forEach(snapshot => {
+            snapshot.docs.forEach(doc => {
+                 const user = { uid: doc.id, ...doc.data() } as User;
+                 users.push({
+                   ...user,
+                   createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+                     ? (user.createdAt as Timestamp).toDate().toISOString()
+                     : (user.createdAt as string),
+                 });
+            });
+        });
+        
+        return users;
+    } catch (e) {
+        console.error("Error fetching users by IDs:", e);
+        return [];
+    }
+}
+
+export async function getFollowers(userId: string): Promise<User[]> {
+    if (!userId) return [];
+    try {
+        const followersRef = collection(db, `users/${userId}/followers`);
+        const snapshot = await getDocs(followersRef);
+        const followerIds = snapshot.docs.map(doc => doc.id);
+        return await getUsersByIds(followerIds);
+    } catch (e) {
+        console.error("Error fetching followers:", e);
+        return [];
+    }
+}
+
+export async function getFollowing(userId: string): Promise<User[]> {
+    if (!userId) return [];
+    try {
+        const followingRef = collection(db, `users/${userId}/following`);
+        const snapshot = await getDocs(followingRef);
+        const followingIds = snapshot.docs.map(doc => doc.id);
+        return await getUsersByIds(followingIds);
+    } catch (e) {
+        console.error("Error fetching following:", e);
+        return [];
+    }
+}
