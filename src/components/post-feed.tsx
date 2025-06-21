@@ -1,22 +1,26 @@
+
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { collection, query, orderBy, getDocs, limit, startAfter, where, Query, DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { AnimatePresence } from "framer-motion"
-import type { Post } from "@/lib/types"
+import type { Post, VoteType } from "@/lib/types"
 import { PostCard } from "./post-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "./ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ALLOWED_TAGS } from "@/lib/utils"
-import { Flame, Rocket, Sparkles } from "lucide-react"
+import { Flame, Rocket, Sparkles, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
+import { getUserVotes } from "@/lib/actions"
 
 const POSTS_PER_PAGE = 5;
 type SortOrder = "latest" | "trending" | "top";
 
 export function PostFeed() {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -25,6 +29,7 @@ export function PostFeed() {
 
   const [sort, setSort] = useState<SortOrder>("latest")
   const [tag, setTag] = useState<string>("all")
+  const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
 
   const fetchPosts = useCallback(async (reset = false) => {
     if (reset) {
@@ -67,6 +72,12 @@ export function PostFeed() {
       const documentSnapshots = await getDocs(q);
       
       const newPosts = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Post);
+
+      if (user && newPosts.length > 0) {
+        const postIds = newPosts.map(p => p.id);
+        const votes = await getUserVotes(user.uid, postIds, 'post');
+        setUserVotes(prevVotes => ({ ...prevVotes, ...votes }));
+      }
       
       setPosts(prevPosts => reset ? newPosts : [...prevPosts, ...newPosts]);
       
@@ -81,18 +92,18 @@ export function PostFeed() {
 
     } catch (error) {
       console.error("Error fetching posts:", error);
-      // You might want to show a toast message to the user here
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [sort, tag, lastDoc, hasMore, loadingMore]);
+  }, [sort, tag, lastDoc, hasMore, loadingMore, user]);
 
   useEffect(() => {
     setPosts([]);
     setLastDoc(null);
     setHasMore(true);
     fetchPosts(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sort, tag]);
 
   const handleLoadMore = () => {
@@ -163,7 +174,7 @@ export function PostFeed() {
         <div className="space-y-4">
           <AnimatePresence>
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post} userVote={userVotes[post.id]} />
             ))}
           </AnimatePresence>
         </div>
@@ -185,6 +196,3 @@ export function PostFeed() {
     </div>
   )
 }
-
-// Add Loader2 to the imports if it's not there
-import { Loader2 } from "lucide-react"

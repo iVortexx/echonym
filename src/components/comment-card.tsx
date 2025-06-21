@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion"
 import { formatDistanceToNow } from "date-fns"
-import type { Comment } from "@/lib/types"
+import type { Comment, VoteType } from "@/lib/types"
 import { UserBadge } from "./user-badge"
 import { VoteButtons } from "./vote-buttons"
 import { Dot, MessageSquareReply, UserIcon } from "lucide-react"
@@ -16,9 +16,10 @@ import { useAuth } from "@/hooks/use-auth"
 type CommentCardProps = {
   comment: Comment
   onStartReply: (commentId: string) => void
+  userVote?: VoteType | null
 }
 
-export function CommentCard({ comment, onStartReply }: CommentCardProps) {
+export function CommentCard({ comment, onStartReply, userVote }: CommentCardProps) {
   const { user: currentUser } = useAuth()
 
   const formatTimeAgo = (createdAt: any) => {
@@ -45,7 +46,7 @@ export function CommentCard({ comment, onStartReply }: CommentCardProps) {
       <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
         <Avatar className="h-8 w-8 mt-1 flex-shrink-0 cursor-pointer">
           {displayAvatarUrl ? (
-             <AvatarImage src={displayAvatarUrl} alt={comment.anonName} />
+             <AvatarImage src={displayAvatarUrl} alt={comment.anonName} className="object-cover" />
           ) : (
             <AvatarFallback className="bg-blue-900/50 text-blue-300">
               <UserIcon className="h-4 w-4" />
@@ -70,6 +71,7 @@ export function CommentCard({ comment, onStartReply }: CommentCardProps) {
             upvotes={comment.upvotes}
             downvotes={comment.downvotes}
             postId={comment.postId}
+            initialVoteStatus={userVote}
           />
           <Button
             variant="ghost"

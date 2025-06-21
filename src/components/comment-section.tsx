@@ -1,12 +1,15 @@
+
 "use client"
 
 import type React from "react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import type { Comment } from "@/lib/types"
+import type { Comment, VoteType } from "@/lib/types"
 import { CommentCard } from "./comment-card"
 import { CommentForm } from "./comment-form"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
+import { getUserVotes } from "@/lib/actions"
 
 interface CommentSectionProps {
   postId: string
@@ -14,8 +17,22 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ postId, initialComments }: CommentSectionProps) {
+  const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const router = useRouter()
+  const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({});
+
+  useEffect(() => {
+    async function fetchVotes() {
+      if (user && initialComments.length > 0) {
+        const commentIds = initialComments.map(c => c.id);
+        const votes = await getUserVotes(user.uid, commentIds, 'comment');
+        setUserVotes(votes);
+      }
+    }
+    fetchVotes();
+  }, [user, initialComments]);
+
 
   const handleCommentPosted = () => {
     setReplyingTo(null)
@@ -65,6 +82,7 @@ export function CommentSection({ postId, initialComments }: CommentSectionProps)
                 onStartReply={setReplyingTo}
                 onCancelReply={() => setReplyingTo(null)}
                 onCommentPosted={handleCommentPosted}
+                userVotes={userVotes}
               />
             ))
           ) : (
@@ -86,6 +104,7 @@ interface CommentThreadProps {
   onStartReply: (commentId: string) => void
   onCancelReply: () => void
   onCommentPosted: () => void
+  userVotes: Record<string, VoteType>
 }
 
 function CommentThread({
@@ -94,7 +113,8 @@ function CommentThread({
   replyingTo,
   onStartReply,
   onCancelReply,
-  onCommentPosted
+  onCommentPosted,
+  userVotes
 }: CommentThreadProps) {
   const isReplying = replyingTo === comment.id
 
@@ -108,7 +128,11 @@ function CommentThread({
       transition={{ duration: 0.3 }}
       className="flex flex-col gap-4"
     >
-      <CommentCard comment={comment} onStartReply={onStartReply} />
+      <CommentCard 
+        comment={comment} 
+        onStartReply={onStartReply} 
+        userVote={userVotes[comment.id]}
+      />
 
       <AnimatePresence>
         {isReplying && (
@@ -140,6 +164,7 @@ function CommentThread({
               onStartReply={onStartReply}
               onCancelReply={onCancelReply}
               onCommentPosted={onCommentPosted}
+              userVotes={userVotes}
             />
           ))}
         </div>

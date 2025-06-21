@@ -18,7 +18,7 @@ import {
   updateDoc,
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
-import type { Post, VoteType, User } from "./types"
+import type { Post, VoteType, User, Vote } from "./types"
 import { suggestTags } from "@/ai/flows/suggest-tags"
 import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
 import type { ScorePostInput, ScorePostOutput } from "@/ai/flows/score-post-flow"
@@ -270,8 +270,8 @@ export async function handleVote(
         if (authorSnap.exists()) {
             transaction.update(postAuthorRef, { 
                 xp: increment(xpChange),
-                totalUpvotes: increment(upvoteChange),
-                totalDownvotes: increment(downvoteChange)
+                totalUpvotes: increment(upvoteChange > 0 ? upvoteChange : 0),
+                totalDownvotes: increment(downvoteChange > 0 ? downvoteChange : 0)
             })
         }
       }
@@ -292,6 +292,45 @@ export async function handleVote(
       }
     }
     return { error: e.message || "Failed to process vote." }
+  }
+}
+
+export async function getUserVotes(
+  userId: string,
+  itemIds: string[],
+  itemType: "post" | "comment"
+): Promise<Record<string, VoteType>> {
+  if (!userId || itemIds.length === 0) return {};
+  try {
+    const votesRef = collection(db, "votes");
+    const fieldPath = itemType === "post" ? "postId" : "commentId";
+    
+    // Firestore 'in' query is limited to 30 items, so we must chunk the requests.
+    const chunks = [];
+    for (let i = 0; i < itemIds.length; i += 30) {
+        chunks.push(itemIds.slice(i, i + 30));
+    }
+    
+    const userVotes: Record<string, VoteType> = {};
+
+    for (const chunk of chunks) {
+        const q = query(
+          votesRef,
+          where("userId", "==", userId),
+          where(fieldPath, "in", chunk)
+        );
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+          const vote = doc.data() as Vote;
+          const itemId = itemType === "post" ? vote.postId! : vote.commentId!;
+          userVotes[itemId] = vote.type;
+        });
+    }
+
+    return userVotes;
+  } catch (error) {
+    console.error("Error fetching user votes:", error);
+    return {};
   }
 }
 

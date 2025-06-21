@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/accordion"
 import { VoteButtons } from "./vote-buttons"
 import { UserBadge } from "./user-badge"
-import type { Post } from "@/lib/types"
+import type { Post, VoteType } from "@/lib/types"
 import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -23,9 +23,10 @@ import { useAuth } from "@/hooks/use-auth"
 interface PostCardProps {
   post: Post
   isPreview?: boolean
+  userVote?: VoteType | null
 }
 
-export function PostCard({ post, isPreview = false }: PostCardProps) {
+export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
   const { user: currentUser } = useAuth()
 
   const formatTimeAgo = (createdAt: any) => {
@@ -75,7 +76,7 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
               <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
                 <Avatar className="h-10 w-10 ring-2 ring-blue-500/30">
                   {displayAvatarUrl ? (
-                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} />
+                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
                   ) : (
                     <AvatarFallback className="bg-blue-900/50 text-blue-300">
                       <UserIcon className="h-5 w-5" />
@@ -149,7 +150,14 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
           </CardLinkWrapper>
           <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-700/50">
             <div className="flex items-center space-x-1">
-              <VoteButtons itemId={post.id} itemType="post" upvotes={post.upvotes} downvotes={post.downvotes} disabled={isPreview} />
+              <VoteButtons 
+                itemId={post.id} 
+                itemType="post" 
+                upvotes={post.upvotes} 
+                downvotes={post.downvotes} 
+                disabled={isPreview}
+                initialVoteStatus={userVote}
+              />
 
               <Button
                 variant="ghost"

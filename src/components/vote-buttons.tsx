@@ -1,10 +1,13 @@
+
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronUp, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
 import { handleVote } from "@/lib/actions"
+import type { VoteType } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
 
 interface VoteButtonsProps {
   itemId: string
@@ -13,58 +16,71 @@ interface VoteButtonsProps {
   downvotes: number
   postId?: string
   disabled?: boolean
+  initialVoteStatus?: VoteType | null
 }
 
-export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId, disabled = false }: VoteButtonsProps) {
+export function VoteButtons({ 
+    itemId, 
+    itemType, 
+    upvotes, 
+    downvotes, 
+    postId, 
+    disabled = false, 
+    initialVoteStatus 
+}: VoteButtonsProps) {
   const { firebaseUser } = useAuth()
-  const [userVote, setUserVote] = useState<"up" | "down" | null>(null)
-  const [currentUpvotes, setCurrentUpvotes] = useState(upvotes)
-  const [currentDownvotes, setCurrentDownvotes] = useState(downvotes)
+  const { toast } = useToast()
   const [isVoting, setIsVoting] = useState(false)
 
-  const onVote = async (voteType: "up" | "down") => {
+  const [voteStatus, setVoteStatus] = useState(initialVoteStatus || null);
+  const [displayScore, setDisplayScore] = useState(upvotes - downvotes);
+
+  useEffect(() => {
+    setVoteStatus(initialVoteStatus || null);
+    setDisplayScore(upvotes - downvotes);
+  }, [initialVoteStatus, upvotes, downvotes]);
+
+  const onVote = async (newVoteType: "up" | "down") => {
     if (!firebaseUser || isVoting || disabled) return
     setIsVoting(true)
 
-    let previousVote = userVote;
+    const previousStatus = voteStatus;
+    const previousScore = displayScore;
+
+    let newOptimisticStatus: "up" | "down" | null;
+    let scoreChange: number;
+
+    if (previousStatus === newVoteType) { // Toggling vote off
+        newOptimisticStatus = null;
+        scoreChange = newVoteType === 'up' ? -1 : 1;
+    } else { // New vote or changing vote
+        newOptimisticStatus = newVoteType;
+        if (previousStatus === null) { // Brand new vote
+            scoreChange = newVoteType === 'up' ? 1 : -1;
+        } else { // Changing from up to down or vice-versa
+            scoreChange = newVoteType === 'up' ? 2 : -2;
+        }
+    }
     
     // Optimistic UI update
-    if (userVote === voteType) { // Undoing a vote
-      setUserVote(null)
-      voteType === "up" ? setCurrentUpvotes(c => c - 1) : setCurrentDownvotes(c => c - 1)
-    } else { // Casting a new vote or changing vote
-      setUserVote(voteType)
-      if (voteType === "up") {
-        setCurrentUpvotes(c => c + 1)
-        if (previousVote === "down") setCurrentDownvotes(c => c - 1)
-      } else { // downvoting
-        setCurrentDownvotes(c => c + 1)
-        if (previousVote === "up") setCurrentUpvotes(c => c - 1)
-      }
-    }
+    setVoteStatus(newOptimisticStatus);
+    setDisplayScore(prev => prev + scoreChange);
 
-    const result = await handleVote(firebaseUser.uid, itemId, itemType, voteType, postId);
-    
-    // If the server fails, revert the optimistic update
+    const result = await handleVote(firebaseUser.uid, itemId, itemType, newVoteType, postId);
+
     if (result?.error) {
-      setUserVote(previousVote);
-      if (userVote === voteType) {
-        voteType === "up" ? setCurrentUpvotes(c => c + 1) : setCurrentDownvotes(c => c + 1)
-      } else {
-        if (voteType === "up") {
-          setCurrentUpvotes(c => c - 1)
-          if (previousVote === "down") setCurrentDownvotes(c => c + 1)
-        } else {
-          setCurrentDownvotes(c => c - 1)
-          if (previousVote === "up") setCurrentUpvotes(c => c + 1)
-        }
-      }
+        // On error, revert the optimistic update
+        setVoteStatus(previousStatus);
+        setDisplayScore(previousScore);
+        toast({
+            variant: "destructive",
+            title: "Vote Failed",
+            description: "Your vote could not be saved. Please try again.",
+        });
     }
 
     setIsVoting(false)
   }
-
-  const getVoteScore = () => (currentUpvotes || 0) - (currentDownvotes || 0)
 
   return (
     <div className="flex items-center bg-slate-800/50 rounded-lg p-1">
@@ -73,7 +89,7 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId, disa
         size="sm"
         disabled={isVoting || disabled}
         className={`h-7 w-7 p-0 transition-all duration-200 ${
-          userVote === "up"
+          voteStatus === "up"
             ? "text-green-400 bg-green-500/20 hover:bg-green-500/30"
             : "text-slate-400 hover:text-green-400 hover:bg-green-500/10"
         } disabled:opacity-50`}
@@ -81,13 +97,13 @@ export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId, disa
       >
         <ChevronUp className="h-4 w-4" />
       </Button>
-      <span className="text-sm font-mono text-slate-300 min-w-[2rem] text-center">{getVoteScore()}</span>
+      <span className="text-sm font-mono text-slate-300 min-w-[2rem] text-center">{displayScore}</span>
       <Button
         variant="ghost"
         size="sm"
         disabled={isVoting || disabled}
         className={`h-7 w-7 p-0 transition-all duration-200 ${
-          userVote === "down"
+          voteStatus === "down"
             ? "text-red-400 bg-red-500/20 hover:bg-red-500/30"
             : "text-slate-400 hover:text-red-400 hover:bg-red-500/10"
         } disabled:opacity-50`}
