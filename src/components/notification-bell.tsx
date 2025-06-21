@@ -7,7 +7,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { Bell, User, MessageCircle, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { markAllNotificationsAsRead } from '@/lib/actions';
+import { markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/actions';
 import type { Notification } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
@@ -17,6 +17,7 @@ import { Skeleton } from './ui/skeleton';
 function NotificationItem({ notification, onOpen }: { notification: Notification; onOpen: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const getIcon = () => {
     switch (notification.type) {
@@ -58,8 +59,14 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
+    
+    // Mark as read before navigating
+    if (user && !notification.read) {
+      await markNotificationAsRead(user.uid, notification.id);
+    }
+    
     const link = getLink();
     const targetPathname = link.split('#')[0];
 

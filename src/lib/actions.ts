@@ -754,3 +754,20 @@ export async function markAllNotificationsAsRead(userId: string) {
     return { error: "Failed to update notifications." };
   }
 }
+
+export async function markNotificationAsRead(userId: string, notificationId: string) {
+  if (!userId) return { error: "Authentication required." };
+  
+  const notificationRef = doc(db, `users/${userId}/notifications`, notificationId);
+  
+  try {
+    await updateDoc(notificationRef, { read: true });
+    // The onSnapshot listener in useNotifications will catch this and update the UI.
+    // Revalidating is a good fallback and ensures the bell in the header updates.
+    revalidatePath('/profile', 'layout'); 
+    return { success: true };
+  } catch(e: any) {
+    console.error("Error marking notification as read:", e);
+    return { error: "Failed to update notification." };
+  }
+}
