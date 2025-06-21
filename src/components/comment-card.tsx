@@ -1,17 +1,26 @@
-"use client";
+"use client"
 
-import { motion } from "framer-motion";
-import { formatDistanceToNow } from 'date-fns';
-import { Comment } from '@/lib/types';
-import { UserBadge } from './user-badge';
-import { VoteButtons } from './vote-buttons';
-import { Dot } from "lucide-react";
+import { motion } from "framer-motion"
+import { formatDistanceToNow } from "date-fns"
+import type { Comment } from "@/lib/types"
+import { UserBadge } from "./user-badge"
+import { VoteButtons } from "./vote-buttons"
+import { Dot } from "lucide-react"
 
 type CommentCardProps = {
-  comment: Comment;
-};
+  comment: Comment
+}
 
 export function CommentCard({ comment }: CommentCardProps) {
+  const formatTimeAgo = (createdAt: any) => {
+    if (typeof createdAt === "string") {
+      return formatDistanceToNow(new Date(createdAt))
+    } else if (createdAt?.toDate) {
+      return formatDistanceToNow(createdAt.toDate())
+    }
+    return "..."
+  }
+
   return (
     <motion.div
       layout
@@ -19,16 +28,16 @@ export function CommentCard({ comment }: CommentCardProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col p-3 rounded-lg bg-background"
+      className="flex flex-col p-3 rounded-lg bg-slate-800/30 border border-slate-700/50"
     >
-      <div className="flex items-center text-xs text-muted-foreground mb-2">
-        <span className="font-code text-accent">{comment.anonName}</span>
+      <div className="flex items-center text-xs text-slate-400 mb-2">
+        <span className="font-mono text-blue-300">{comment.anonName}</span>
         <UserBadge xp={comment.xp} className="ml-2" />
-        <Dot />
-        <span>{comment.createdAt ? formatDistanceToNow(typeof comment.createdAt === 'string' ? new Date(comment.createdAt) : comment.createdAt.toDate()) : '...'} ago</span>
+        <Dot className="h-3 w-3" />
+        <span>{formatTimeAgo(comment.createdAt)} ago</span>
       </div>
-      <p className="text-sm text-foreground/90 whitespace-pre-wrap">{comment.content}</p>
-      <div className="self-start mt-1">
+      <p className="text-sm text-slate-200 whitespace-pre-wrap">{comment.content}</p>
+      <div className="self-start mt-2">
         <VoteButtons
           itemId={comment.id}
           itemType="comment"
@@ -38,5 +47,5 @@ export function CommentCard({ comment }: CommentCardProps) {
         />
       </div>
     </motion.div>
-  );
+  )
 }

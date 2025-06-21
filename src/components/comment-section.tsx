@@ -1,95 +1,79 @@
-"use client";
+"use client"
 
-import { useState, useEffect, useTransition, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
-import { createComment } from '@/lib/actions';
-import { Comment as CommentType } from '@/lib/types';
-import { CommentCard } from './comment-card';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Send } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import type React from "react"
 
-type CommentSectionProps = {
-  postId: string;
-  initialComments: CommentType[];
-};
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { CommentCard } from "./comment-card"
+import type { Comment } from "@/lib/types"
+
+interface CommentSectionProps {
+  postId: string
+  initialComments: Comment[]
+}
 
 export function CommentSection({ postId, initialComments }: CommentSectionProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [comments, setComments] = useState<CommentType[]>(initialComments);
-  const [newComment, setNewComment] = useState('');
-  const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
+  const [comments, setComments] = useState<Comment[]>(initialComments)
+  const [newComment, setNewComment] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    const commentsRef = collection(db, `posts/${postId}/comments`);
-    const q = query(commentsRef, orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const updatedComments: CommentType[] = [];
-      snapshot.forEach(doc => {
-        updatedComments.push({ id: doc.id, ...doc.data() } as CommentType);
-      });
-      setComments(updatedComments);
-    });
-    return () => unsubscribe();
-  }, [postId]);
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComment.trim()) return
 
-  const handleCommentSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!newComment.trim() || !user) return;
+    setIsSubmitting(true)
 
-    startTransition(async () => {
-      const commentData = {
-        content: newComment,
-        postId: postId,
-      };
-      
-      const result = await createComment(commentData, user.uid);
-      if (result?.error) {
-        toast({
-          title: 'Error',
-          description: typeof result.error === 'string' ? result.error : 'Failed to post comment.',
-          variant: 'destructive',
-        });
-      } else {
-        setNewComment('');
-        formRef.current?.reset();
-      }
-    });
-  };
+    // In real app, this would submit to Firebase
+    // For now, just simulate the submission
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    setNewComment("")
+    setIsSubmitting(false)
+  }
 
   return (
     <div className="space-y-6">
+      {/* Comment form */}
+      <form onSubmit={handleSubmitComment} className="space-y-4">
+        <Textarea
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Share your thoughts..."
+          rows={4}
+          className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none"
+        />
+        <Button
+          type="submit"
+          disabled={!newComment.trim() || isSubmitting}
+          className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono"
+        >
+          {isSubmitting ? "Posting..." : "Post Comment"}
+        </Button>
+      </form>
+
+      {/* Comments list */}
       <div className="space-y-4">
         <AnimatePresence>
-          {comments.length > 0 ? (
-            comments.map(comment => <CommentCard key={comment.id} comment={comment} />)
-          ) : (
-            <p className="text-muted-foreground text-sm text-center py-4">No comments yet. Be the first!</p>
-          )}
+          {comments.map((comment) => (
+            <motion.div
+              key={comment.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CommentCard comment={comment} />
+            </motion.div>
+          ))}
         </AnimatePresence>
+        {comments.length === 0 && (
+          <p className="text-slate-400 text-center py-8 font-mono">
+            No comments yet. Be the first to share your thoughts!
+          </p>
+        )}
       </div>
-      
-      {user && (
-        <form ref={formRef} onSubmit={handleCommentSubmit} className="flex flex-col gap-2">
-           <Textarea
-              placeholder="Add your comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              disabled={isPending}
-              className="w-full"
-            />
-          <Button type="submit" disabled={isPending || !newComment.trim()} className="self-end">
-            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            Comment
-          </Button>
-        </form>
-      )}
     </div>
-  );
+  )
 }

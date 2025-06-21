@@ -1,36 +1,41 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider } from '@/providers/auth-provider';
-import { Header } from '@/components/layout/header';
-import { cn } from '@/lib/utils';
+import type React from "react"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Header } from "@/components/layout/header"
+import { AuthProvider } from "@/providers/auth-provider"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'WhisperNet',
-  description: 'An anonymous social platform.',
-};
+  title: "/dev/whispers - Anonymous Security Research",
+  description: "Anonymous platform for security researchers and hackers",
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet" />
-      </head>
-      <body className={cn('font-body antialiased min-h-screen flex flex-col')}>
+    <html lang="en">
+      <body className={inter.className}>
         <AuthProvider>
-          <Header />
-          <main className="flex-1 container mx-auto px-4 py-8">
-            {children}
-          </main>
-          <Toaster />
+          <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+            <div
+              className="absolute inset-0 opacity-50 pointer-events-none"
+              style={{
+                backgroundImage:
+                  "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23334155' fillOpacity='0.05'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+              }}
+            />
+            <div className="relative">
+              <Header />
+              <main className="container mx-auto py-8 px-4">{children}</main>
+            </div>
+          </div>
         </AuthProvider>
       </body>
     </html>
-  );
+  )
 }

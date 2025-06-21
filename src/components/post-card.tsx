@@ -1,63 +1,140 @@
-"use client";
+"use client"
+import { motion } from "framer-motion"
+import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { VoteButtons } from "./vote-buttons"
+import { UserBadge } from "./user-badge"
+import type { Post } from "@/lib/types"
+import Link from "next/link"
 
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { Post } from "@/lib/types";
-import { formatDistanceToNow } from "date-fns";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card";
-import { UserBadge } from "./user-badge";
-import { VoteButtons } from "./vote-buttons";
-import { Badge } from "./ui/badge";
-import { MessageSquare, Dot } from "lucide-react";
+interface PostCardProps {
+  post: Post
+}
 
-type PostCardProps = {
-  post: Post;
-  isLink?: boolean;
-};
+export function PostCard({ post }: PostCardProps) {
+  const formatTimeAgo = (createdAt: any) => {
+    let date: Date
 
-export function PostCard({ post, isLink = true }: PostCardProps) {
-  const cardContent = (
-    <>
-      {post.tag && <Badge variant="secondary" className="mb-2">{post.tag}</Badge>}
-      <CardHeader className="p-0">
-        <CardTitle className="text-xl font-bold font-headline uppercase tracking-wide mb-2">{post.title}</CardTitle>
-        <div className="flex items-center text-sm text-muted-foreground mb-4">
-          <span className="font-code text-accent">{post.anonName}</span>
-          <UserBadge xp={post.xp} className="ml-2" />
-          <Dot />
-          <span>{post.createdAt ? formatDistanceToNow(typeof post.createdAt === 'string' ? new Date(post.createdAt) : post.createdAt.toDate()) : '...'} ago</span>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <p className="text-foreground/80 whitespace-pre-wrap line-clamp-4">{post.content}</p>
-      </CardContent>
-      <CardFooter className="p-0 mt-4 flex justify-between items-center">
-        <VoteButtons itemId={post.id} itemType="post" upvotes={post.upvotes} downvotes={post.downvotes} />
-        <div className="flex items-center gap-2 text-muted-foreground hover:text-accent transition-colors">
-          <MessageSquare className="w-5 h-5" />
-          <span>{post.commentCount || 0}</span>
-        </div>
-      </CardFooter>
-    </>
-  );
+    if (typeof createdAt === "string") {
+      date = new Date(createdAt)
+    } else if (createdAt.seconds) {
+      // Firestore Timestamp
+      date = new Date(createdAt.seconds * 1000)
+    } else {
+      date = new Date(createdAt)
+    }
+
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diffInSeconds < 60) return `${diffInSeconds}s`
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`
+    return `${Math.floor(diffInSeconds / 86400)}d`
+  }
 
   return (
     <motion.div
-      layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
     >
-      <Card className="p-6 rounded-2xl border-primary/20 bg-card/80 backdrop-blur-sm hover:border-primary/60 hover:scale-[1.01] hover:shadow-lg hover:shadow-primary/10 transition-all duration-300">
-        {isLink ? (
-          <Link href={`/post/${post.id}`} className="block">
-            {cardContent}
+      <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm hover:border-blue-400/40 transition-all duration-300">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3 flex-1">
+              <div className="relative">
+                <Avatar className="h-8 w-8 ring-2 ring-blue-500/30">
+                  <AvatarImage src="/placeholder.svg" alt={post.anonName} />
+                  <AvatarFallback className="bg-blue-900/50 text-blue-300 text-xs font-mono">
+                    {post.anonName.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-1">
+                  <Terminal className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                  <p className="font-mono text-sm text-blue-300 truncate">{post.anonName}</p>
+                  <UserBadge xp={post.xp} />
+                </div>
+                <p className="text-slate-400 text-xs font-mono">
+                  {formatTimeAgo(post.createdAt)}
+                  {post.tag && (
+                    <>
+                      {" • "}
+                      <Badge
+                        variant="outline"
+                        className="text-xs px-1 py-0 h-4 border-cyan-500/30 text-cyan-400 bg-cyan-500/10"
+                      >
+                        <Hash className="h-2 w-2 mr-1" />
+                        {post.tag}
+                      </Badge>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 flex-shrink-0"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Link href={`/post/${post.id}`} className="block cursor-pointer group">
+            <div className="relative">
+              <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
+              <div className="pl-4">
+                <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-blue-300 transition-colors">
+                  {post.title}
+                </h3>
+                <p className="text-sm leading-relaxed mb-4 text-slate-300 font-light line-clamp-3">{post.content}</p>
+              </div>
+            </div>
           </Link>
-        ) : (
-          <div>{cardContent}</div>
-        )}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+            <div className="flex items-center space-x-1">
+              <VoteButtons itemId={post.id} itemType="post" upvotes={post.upvotes} downvotes={post.downvotes} />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 font-mono text-xs"
+              >
+                <MessageCircle className="h-4 w-4 mr-1" />
+                <span>{post.commentCount}</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+              >
+                <Share className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
+                <span className="text-green-400">{post.upvotes}↑</span>
+                <span className="text-red-400">{post.downvotes}↓</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Zap className="h-3 w-3 text-yellow-400 animate-pulse" />
+                <span className="text-xs font-mono text-slate-500">live</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
     </motion.div>
-  );
+  )
 }

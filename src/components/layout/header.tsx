@@ -1,8 +1,8 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
+import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,56 +10,68 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User as UserIcon, PlusCircle, Home } from 'lucide-react';
-import { UserBadge } from "../user-badge";
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserIcon, PlusCircle, Home, Terminal } from "lucide-react"
+import { UserBadge } from "@/components/user-badge"
 
 export function Header() {
-  const { user } = useAuth();
+  const { user } = useAuth()
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-primary/20 bg-background/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-50 w-full border-b border-blue-500/20 bg-slate-950/80 backdrop-blur-lg">
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-6 w-6 text-primary"><rect width="256" height="256" fill="none"></rect><path d="M48.2,160.3a20,20,0,0,1-16.4-30.7L92.9,35.7a20,20,0,0,1,34.2,0l61.1,93.9a20,20,0,0,1-16.4,30.7Z" opacity="0.2"></path><path d="M141.2,216a20,20,0,0,1-17.7-9.9L62.4,88.3a20.1,20.1,0,0,1,9.9-25.7,20.5,20.5,0,0,1,25.8,9.8l61.1,93.9a20,20,0,0,1-17.9,30Z" opacity="0.2"></path><path d="M48.2,160.3a20,20,0,0,1-16.4-30.7L92.9,35.7a20,20,0,0,1,34.2,0l61.1,93.9a20,20,0,0,1-16.4,30.7H48.2Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"></path><path d="M141.2,216a20,20,0,0,1-17.7-9.9L62.4,88.3a20.1,20.1,0,0,1,9.9-25.7,20.5,20.5,0,0,1,25.8,9.8l61.1,93.9a20,20,0,0,1-17.9,30Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"></path></svg>
-            <span className="font-bold font-headline text-lg">WhisperNet</span>
+            <Terminal className="h-6 w-6 text-blue-400" />
+            <span className="font-bold font-mono text-lg bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              /dev/whispers
+            </span>
           </Link>
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <Button asChild>
+          <Button
+            asChild
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono"
+          >
             <Link href="/create">
               <PlusCircle className="mr-2 h-4 w-4" />
               Create Post
             </Link>
           </Button>
-          
+
           {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full">
-                  <Avatar>
-                    <AvatarFallback className="bg-primary/20">
-                      <UserIcon className="h-5 w-5 text-primary" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full hover:bg-blue-500/10 border border-blue-500/20"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-blue-900/50 text-blue-300">
+                      <UserIcon className="h-5 w-5" />
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent
+                align="end"
+                className="bg-slate-900/95 border-blue-500/20 backdrop-blur-sm text-slate-200"
+              >
                 <DropdownMenuLabel className="flex flex-col">
-                  <span className="font-code">{user.anonName}</span>
+                  <span className="font-mono text-blue-300">{user.anonName}</span>
                   <UserBadge xp={user.xp} />
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuSeparator className="bg-slate-700/50" />
+                <DropdownMenuItem asChild className="hover:bg-blue-500/10 focus:bg-blue-500/10">
                   <Link href="/profile">
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="hover:bg-blue-500/10 focus:bg-blue-500/10">
                   <Link href="/">
                     <Home className="mr-2 h-4 w-4" />
                     <span>Feed</span>
@@ -71,5 +83,5 @@ export function Header() {
         </div>
       </div>
     </header>
-  );
+  )
 }

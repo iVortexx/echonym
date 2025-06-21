@@ -1,100 +1,79 @@
-"use client";
+"use client"
 
-import { useState, useTransition, useEffect } from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
-import { Button } from './ui/button';
-import { cn } from '@/lib/utils';
-import { handleVote } from '@/lib/actions';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
-import { type VoteType } from '@/lib/types';
+import { useState } from "react"
+import { ChevronUp, ChevronDown } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-type VoteButtonsProps = {
-  itemId: string;
-  itemType: 'post' | 'comment';
-  upvotes: number;
-  downvotes: number;
-  postId?: string;
-};
+interface VoteButtonsProps {
+  itemId: string
+  itemType: "post" | "comment"
+  upvotes: number
+  downvotes: number
+  postId?: string
+}
 
 export function VoteButtons({ itemId, itemType, upvotes, downvotes, postId }: VoteButtonsProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [userVote, setUserVote] = useState<"up" | "down" | null>(null)
+  const [currentUpvotes, setCurrentUpvotes] = useState(upvotes)
+  const [currentDownvotes, setCurrentDownvotes] = useState(downvotes)
 
-  const [userVote, setUserVote] = useState<'up' | 'down' | null>(null);
-  const [score, setScore] = useState(upvotes - downvotes);
-
-  // This effect syncs the score if the parent component gets new data,
-  // without resetting the user's optimistic vote selection.
-  useEffect(() => {
-    setScore(upvotes - downvotes);
-  }, [upvotes, downvotes]);
-
-  const onVote = (voteType: VoteType) => {
-    if (!user) {
-      toast({ title: "Authentication required", description: "You must have a session to vote.", variant: "destructive" });
-      return;
-    }
-    
-    if (isPending) {
-      return;
-    }
-
-    const previousVote = userVote;
-    const previousScore = score;
-    
-    // Optimistically update UI
-    let newScore = score;
+  const handleVote = (voteType: "up" | "down") => {
     if (userVote === voteType) {
-      // Undoing the vote
-      setUserVote(null);
-      newScore += (voteType === 'up' ? -1 : 1);
-    } else if (userVote !== null) {
-      // Changing the vote
-      setUserVote(voteType);
-      newScore += (voteType === 'up' ? 2 : -2);
-    } else {
-      // Casting a new vote
-      setUserVote(voteType);
-      newScore += (voteType === 'up' ? 1 : -1);
-    }
-    setScore(newScore);
-
-    startTransition(async () => {
-      const result = await handleVote(user.uid, itemId, itemType, voteType, postId);
-      if (result?.error) {
-        toast({ title: "Vote failed", description: result.error, variant: "destructive" });
-        // On error, revert the optimistic update
-        setUserVote(previousVote);
-        setScore(previousScore);
+      // Remove vote
+      if (voteType === "up") {
+        setCurrentUpvotes(currentUpvotes - 1)
+      } else {
+        setCurrentDownvotes(currentDownvotes - 1)
       }
-    });
-  };
+      setUserVote(null)
+    } else {
+      // Change or add vote
+      if (userVote === "up") {
+        setCurrentUpvotes(currentUpvotes - 1)
+        setCurrentDownvotes(currentDownvotes + 1)
+      } else if (userVote === "down") {
+        setCurrentDownvotes(currentDownvotes - 1)
+        setCurrentUpvotes(currentUpvotes + 1)
+      } else {
+        if (voteType === "up") {
+          setCurrentUpvotes(currentUpvotes + 1)
+        } else {
+          setCurrentDownvotes(currentDownvotes + 1)
+        }
+      }
+      setUserVote(voteType)
+    }
+  }
+
+  const getVoteScore = () => currentUpvotes - currentDownvotes
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center bg-slate-800/50 rounded-lg p-1">
       <Button
         variant="ghost"
-        size="icon"
-        className={cn("h-8 w-8 rounded-full", { "text-primary bg-primary/10": userVote === 'up' })}
-        onClick={() => onVote('up')}
-        disabled={isPending}
+        size="sm"
+        className={`h-7 w-7 p-0 transition-all duration-200 ${
+          userVote === "up"
+            ? "text-green-400 bg-green-500/20 hover:bg-green-500/30"
+            : "text-slate-400 hover:text-green-400 hover:bg-green-500/10"
+        }`}
+        onClick={() => handleVote("up")}
       >
-        <ArrowUp className="w-5 h-5" />
+        <ChevronUp className="h-4 w-4" />
       </Button>
-      <span className="font-bold tabular-nums min-w-[2ch] text-center text-lg">
-        {score}
-      </span>
+      <span className="text-sm font-mono text-slate-300 min-w-[2rem] text-center">{getVoteScore()}</span>
       <Button
         variant="ghost"
-        size="icon"
-        className={cn("h-8 w-8 rounded-full", { "text-destructive bg-destructive/10": userVote === 'down' })}
-        onClick={() => onVote('down')}
-        disabled={isPending}
+        size="sm"
+        className={`h-7 w-7 p-0 transition-all duration-200 ${
+          userVote === "down"
+            ? "text-red-400 bg-red-500/20 hover:bg-red-500/30"
+            : "text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+        }`}
+        onClick={() => handleVote("down")}
       >
-        <ArrowDown className="w-5 h-5" />
+        <ChevronDown className="h-4 w-4" />
       </Button>
     </div>
-  );
+  )
 }

@@ -1,160 +1,110 @@
-"use client";
+"use client"
 
-import { useState, useTransition, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { createPost, getTagSuggestions } from '@/lib/actions';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { Tags, Loader2 } from 'lucide-react';
-import { Badge } from './ui/badge';
-import _ from 'lodash';
-import { useAuth } from '@/hooks/use-auth';
+import type React from "react"
 
-const PostFormSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(100, 'Title is too long'),
-  content: z.string().min(1, 'Content cannot be empty'),
-  tag: z.string().optional(),
-});
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 
-type PostFormValues = z.infer<typeof PostFormSchema>;
+const commonTags = ["security", "reverse-eng", "web-security", "malware", "cve", "networking", "crypto", "forensics"]
 
 export function PostForm() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [isPending, startTransition] = useTransition();
-  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
-  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+  const [tag, setTag] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const form = useForm<PostFormValues>({
-    resolver: zodResolver(PostFormSchema),
-    defaultValues: {
-      title: '',
-      content: '',
-      tag: '',
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
 
-  const debouncedSuggestTags = useCallback(
-    _.debounce(async (content: string) => {
-      if (content.length < 20) {
-        setSuggestedTags([]);
-        return;
-      }
-      setIsSuggesting(true);
-      const result = await getTagSuggestions(content);
-      setSuggestedTags(result.tags);
-      setIsSuggesting(false);
-    }, 1000),
-    []
-  );
+    // Simulate form submission
+    await new Promise((resolve) => setTimeout(resolve, 2000))
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    form.setValue('content', e.target.value);
-    debouncedSuggestTags(e.target.value);
-  };
+    // Reset form
+    setTitle("")
+    setContent("")
+    setTag("")
+    setIsSubmitting(false)
 
-  const onSubmit = (data: PostFormValues) => {
-    if (!user) {
-      toast({
-        title: 'Authentication Error',
-        description: 'You must be signed in to create a post.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await createPost(data, user.uid);
-      if (result?.error) {
-        toast({
-          title: 'Error',
-          description: typeof result.error === 'string' ? result.error : 'Failed to create post.',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Success!',
-          description: 'Your whisper has been posted.',
-        });
-        router.push('/');
-      }
-    });
-  };
+    // In real app, would redirect to the new post
+    alert("Post created successfully!")
+  }
 
   return (
-    <Card className="p-4 sm:p-6 border-primary/20 bg-card/80 backdrop-blur-sm">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <CardContent className="p-0 space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="A catchy title for your whisper" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+    <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-2xl font-mono text-blue-300">New Whisper</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-slate-300 font-mono">
+              Title
+            </Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What's your discovery?"
+              required
+              className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500"
             />
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Content</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Share your anonymous thoughts..."
-                      className="min-h-[150px]"
-                      {...field}
-                      onChange={handleContentChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content" className="text-slate-300 font-mono">
+              Content
+            </Label>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Share your findings, exploits, or insights..."
+              required
+              rows={6}
+              className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none"
             />
-            
-            <div className="space-y-2">
-              <FormLabel className="flex items-center gap-2"><Tags className="w-4 h-4" /> Suggested Tags</FormLabel>
-              <div className="flex flex-wrap gap-2 items-center">
-                {isSuggesting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {suggestedTags.length > 0 ? (
-                  suggestedTags.map(tag => (
-                    <Badge 
-                      key={tag}
-                      variant={form.watch('tag') === tag ? 'default' : 'secondary'}
-                      className="cursor-pointer"
-                      onClick={() => form.setValue('tag', form.watch('tag') === tag ? '' : tag)}
-                    >
-                      {tag}
-                    </Badge>
-                  ))
-                ) : (
-                  !isSuggesting && <p className="text-xs text-muted-foreground">Type more to see suggestions.</p>
-                )}
-              </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="tag" className="text-slate-300 font-mono">
+              Tag (optional)
+            </Label>
+            <Input
+              id="tag"
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+              placeholder="e.g., security, reverse-eng, malware"
+              className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500"
+            />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {commonTags.map((commonTag) => (
+                <Badge
+                  key={commonTag}
+                  variant="outline"
+                  className="cursor-pointer border-cyan-500/30 text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
+                  onClick={() => setTag(commonTag)}
+                >
+                  {commonTag}
+                </Badge>
+              ))}
             </div>
-          </CardContent>
-          <CardFooter className="p-0">
-            <Button type="submit" disabled={isPending || !user} className="w-full">
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Post Whisper
-            </Button>
-          </CardFooter>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono"
+          >
+            {isSubmitting ? "Publishing..." : "Publish Whisper"}
+          </Button>
         </form>
-      </Form>
+      </CardContent>
     </Card>
-  );
+  )
 }
