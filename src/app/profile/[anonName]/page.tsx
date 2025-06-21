@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"
@@ -26,6 +27,12 @@ import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { FollowListDialog } from "@/components/follow-list-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -220,40 +227,52 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()}>
-           <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-8 w-8 text-slate-500 hover:text-slate-300">
-                    <HelpCircle className="h-5 w-5" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 bg-background border-border text-slate-300">
-                <div className="space-y-4 p-2">
-                    <div>
-                        <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
-                        <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
-                            <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
-                            <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
-                        </ul>
-                    </div>
-                    <div>
-                        <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
-                        <ul className="space-y-2 text-sm text-slate-400">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="h-full">
+                <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()}>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-8 w-8 text-slate-500 hover:text-slate-300">
+                        <HelpCircle className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 bg-background border-border text-slate-300">
+                      <div className="space-y-4 p-2">
+                        <div>
+                          <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
+                          <ul className="space-y-2 text-sm text-slate-400">
                             {BADGES.map((badge) => (
-                                <li key={badge.name} className="flex items-center justify-between">
-                                    <span className={badge.color}>{badge.name}</span>
-                                    <span className="font-mono text-slate-500">
-                                        {badge.minXP.toLocaleString()}
-                                        {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : '+'} XP
-                                    </span>
-                                </li>
+                              <li key={badge.name} className="flex items-center justify-between">
+                                <span className={badge.color}>{badge.name}</span>
+                                <span className="font-mono text-slate-500">
+                                  {badge.minXP.toLocaleString()}
+                                  {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : "+"} XP
+                                </span>
+                              </li>
                             ))}
-                        </ul>
-                    </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-        </StatCard>
+                          </ul>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </StatCard>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="bg-background border-border text-slate-300">
+              <div className="p-2">
+                <h4 className="font-semibold text-accent mb-2 font-mono">How to Earn XP</h4>
+                <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
+                  <li>Create a new post: <span className="font-mono text-accent">+10 XP</span></li>
+                  <li>Add a comment: <span className="font-mono text-accent">+5 XP</span></li>
+                  <li>Receive an upvote: <span className="font-mono text-accent">+1 XP</span></li>
+                  <li>Receive a downvote: <span className="font-mono text-red-500">-1 XP</span></li>
+                </ul>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
         <div onClick={() => (user.followersCount || 0) > 0 && setDialogType('followers')} className={(user.followersCount || 0) > 0 ? 'cursor-pointer' : 'cursor-default'}>
