@@ -1,7 +1,7 @@
 "use client"
 import { motion } from "framer-motion"
 import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,31 +9,42 @@ import { VoteButtons } from "./vote-buttons"
 import { UserBadge } from "./user-badge"
 import type { Post } from "@/lib/types"
 import Link from "next/link"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface PostCardProps {
   post: Post
+  isPreview?: boolean
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, isPreview = false }: PostCardProps) {
   const formatTimeAgo = (createdAt: any) => {
-    let date: Date
+    if (!createdAt) return "..."
 
+    let date: Date
     if (typeof createdAt === "string") {
       date = new Date(createdAt)
     } else if (createdAt.seconds) {
-      // Firestore Timestamp
       date = new Date(createdAt.seconds * 1000)
     } else {
-      date = new Date(createdAt)
+      date = new Date() // Fallback for preview mode
     }
 
     const now = new Date()
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-    if (diffInSeconds < 60) return `${diffInSeconds}s`
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`
-    return `${Math.floor(diffInSeconds / 86400)}d`
+    if (diffInSeconds < 5) return "just now"
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    return `${Math.floor(diffInSeconds / 86400)}d ago`
+  }
+
+  const CardLinkWrapper = ({ children }: { children: React.ReactNode }) => {
+    if (isPreview) {
+      return <div>{children}</div>
+    }
+    return <Link href={`/post/${post.id}`} className="block cursor-pointer group">{children}</Link>
   }
 
   return (
@@ -49,9 +60,8 @@ export function PostCard({ post }: PostCardProps) {
             <div className="flex items-start space-x-3 flex-1">
               <div className="relative">
                 <Avatar className="h-8 w-8 ring-2 ring-blue-500/30">
-                  <AvatarImage src="/placeholder.svg" alt={post.anonName} />
                   <AvatarFallback className="bg-blue-900/50 text-blue-300 text-xs font-mono">
-                    {post.anonName.slice(0, 2).toUpperCase()}
+                    {post.anonName?.slice(0, 2).toUpperCase() || '??'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
@@ -59,8 +69,8 @@ export function PostCard({ post }: PostCardProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
                   <Terminal className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                  <p className="font-mono text-sm text-blue-300 truncate">{post.anonName}</p>
-                  <UserBadge xp={post.xp} />
+                  <p className="font-mono text-sm text-blue-300 truncate">{post.anonName || 'Anonymous'}</p>
+                  <UserBadge xp={post.xp || 0} />
                 </div>
                 <p className="text-slate-400 text-xs font-mono">
                   {formatTimeAgo(post.createdAt)}
@@ -89,34 +99,38 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <Link href={`/post/${post.id}`} className="block cursor-pointer group">
+          <CardLinkWrapper>
             <div className="relative">
               <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-blue-500 to-cyan-500 rounded-full opacity-60 group-hover:opacity-100 transition-opacity" />
               <div className="pl-4">
                 <h3 className="text-lg font-semibold text-slate-100 mb-2 leading-tight group-hover:text-blue-300 transition-colors">
-                  {post.title}
+                  {post.title || "Untitled Whisper"}
                 </h3>
-                <p className="text-sm leading-relaxed mb-4 text-slate-300 font-light line-clamp-3">{post.content}</p>
+                 <div className="prose prose-sm prose-invert max-w-none text-slate-300 font-light line-clamp-3">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+                </div>
               </div>
             </div>
-          </Link>
-          <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+          </CardLinkWrapper>
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-700/50">
             <div className="flex items-center space-x-1">
-              <VoteButtons itemId={post.id} itemType="post" upvotes={post.upvotes} downvotes={post.downvotes} />
+              <VoteButtons itemId={post.id} itemType="post" upvotes={post.upvotes} downvotes={post.downvotes} disabled={isPreview} />
 
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 font-mono text-xs"
+                disabled={isPreview}
               >
                 <MessageCircle className="h-4 w-4 mr-1" />
-                <span>{post.commentCount}</span>
+                <span>{post.commentCount || 0}</span>
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+                disabled={isPreview}
               >
                 <Share className="h-4 w-4" />
               </Button>
@@ -124,8 +138,8 @@ export function PostCard({ post }: PostCardProps) {
 
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
-                <span className="text-green-400">{post.upvotes}↑</span>
-                <span className="text-red-400">{post.downvotes}↓</span>
+                <span className="text-green-400">{post.upvotes || 0}↑</span>
+                <span className="text-red-400">{post.downvotes || 0}↓</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Zap className="h-3 w-3 text-yellow-400 animate-pulse" />

@@ -38,6 +38,24 @@
   body {
     @apply bg-background text-foreground;
   }
+  .prose {
+    @apply text-slate-300;
+  }
+  .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    @apply text-slate-100;
+  }
+  .prose strong {
+    @apply text-slate-100;
+  }
+  .prose blockquote {
+    @apply border-l-cyan-400 text-slate-400;
+  }
+  .prose code {
+    @apply text-cyan-300 bg-slate-800 rounded-md px-1.5 py-1 text-sm;
+  }
+  .prose a {
+    @apply text-blue-400 hover:text-blue-300;
+  }
 }
 
 /* Custom scrollbar */

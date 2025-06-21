@@ -1,21 +1,26 @@
 "use client"
 
 import type React from "react"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { createPost, getTagSuggestions } from "@/lib/actions"
+import { createPost, scorePost } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Wand2, Loader2 } from "lucide-react"
+import { Loader2, Sparkles, ShieldCheck, HelpCircle } from "lucide-react"
 import { debounce } from "lodash"
+import { PostCard } from "./post-card"
+import type { Post } from "@/lib/types"
 
-const commonTags = ["security", "reverse-eng", "web-security", "malware", "cve", "networking", "crypto", "forensics"]
+type ScoreState = {
+  score: number
+  clarity: string
+  safety: string
+}
 
 export function PostForm() {
   const { user, firebaseUser } = useAuth()
@@ -24,35 +29,65 @@ export function PostForm() {
 
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
-  const [tag, setTag] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [aiTags, setAiTags] = useState<string[]>([])
-  const [isSuggestingTags, setIsSuggestingTags] = useState(false)
+  const [isDraftSaved, setIsDraftSaved] = useState(false)
 
-  const debouncedSuggestTags = useCallback(
-    debounce(async (newContent: string) => {
-      if (newContent.trim().length < 50) {
-        setAiTags([])
-        return
-      }
-      setIsSuggestingTags(true)
-      try {
-        const { tags } = await getTagSuggestions(newContent)
-        setAiTags(tags.filter((t) => t !== tag)) // Don't suggest the current tag
-      } catch (error) {
-        console.error("Failed to get AI suggestions", error)
-        setAiTags([])
-      } finally {
-        setIsSuggestingTags(false)
-      }
+  const [aiScore, setAiScore] = useState<ScoreState | null>(null)
+  const [isScoring, setIsScoring] = useState(false)
+
+  // Load draft from localStorage on initial render
+  useEffect(() => {
+    const draft = localStorage.getItem("postDraft")
+    if (draft) {
+      const { title, content } = JSON.parse(draft)
+      setTitle(title)
+      setContent(content)
+    }
+  }, [])
+
+  // Save draft to localStorage on change
+  const debouncedSaveDraft = useCallback(
+    debounce((newTitle: string, newContent: string) => {
+      localStorage.setItem("postDraft", JSON.stringify({ title: newTitle, content: newContent }))
+      setIsDraftSaved(true)
+      setTimeout(() => setIsDraftSaved(false), 2000)
     }, 1000),
-    [tag]
+    []
   )
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value
-    setContent(newContent)
-    debouncedSuggestTags(newContent)
+  useEffect(() => {
+    if (title || content) {
+      debouncedSaveDraft(title, content)
+    }
+  }, [title, content, debouncedSaveDraft])
+
+  const debouncedGetScore = useCallback(
+    debounce(async (newTitle: string, newContent: string) => {
+      if (newContent.trim().length < 50 || newTitle.trim().length < 5) {
+        setAiScore(null)
+        return
+      }
+      setIsScoring(true)
+      try {
+        const result = await scorePost({ title: newTitle, content: newContent })
+        setAiScore(result)
+      } catch (error) {
+        console.error("Failed to get AI score", error)
+        setAiScore(null)
+      } finally {
+        setIsScoring(false)
+      }
+    }, 1500),
+    []
+  )
+
+  useEffect(() => {
+    debouncedGetScore(title, content)
+  }, [title, content, debouncedGetScore])
+
+  const parseTag = (text: string): string | undefined => {
+    const match = text.match(/#(\w+)/)
+    return match ? match[1] : undefined
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,6 +101,7 @@ export function PostForm() {
       return
     }
     setIsSubmitting(true)
+    const tag = parseTag(content)
 
     const result = await createPost({ title, content, tag }, firebaseUser.uid)
 
@@ -81,125 +117,151 @@ export function PostForm() {
         title: "Whisper Published!",
         description: "Your post is now live.",
       })
-      // In a real app, you'd likely redirect to the new post page
-      // For now, just redirect to home.
+      localStorage.removeItem("postDraft") // Clear draft on successful submission
       router.push("/")
     }
   }
 
+  const previewPost: Post = {
+    id: "preview",
+    title: title || "Untitled Whisper",
+    content: content || "Start typing to see your post live...",
+    tag: parseTag(content),
+    anonName: user?.anonName || "Anonymous",
+    xp: user?.xp || 0,
+    createdAt: new Date().toISOString(),
+    upvotes: 0,
+    downvotes: 0,
+    commentCount: 0,
+    userId: user?.uid || "",
+  }
+
   return (
-    <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm">
-      <CardHeader>
-        <CardTitle className="text-2xl font-mono text-blue-300">New Whisper</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-slate-300 font-mono">
-              Title
-            </Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What's your discovery?"
-              required
-              className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="content" className="text-slate-300 font-mono">
-              Content
-            </Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={handleContentChange}
-              placeholder="Share your findings, exploits, or insights..."
-              required
-              rows={8}
-              maxLength={2000}
-              className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none"
-            />
-            <div className="text-right text-xs font-mono text-slate-400">
-              {content.length} / 2000
-            </div>
-          </div>
-
-          <div className="space-y-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
+      {/* Editor Panel */}
+      <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm">
+        <CardContent className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="tag" className="text-slate-300 font-mono">
-                  Tag (optional)
-                </Label>
-                {isSuggestingTags && <Loader2 className="h-4 w-4 text-cyan-400 animate-spin" />}
-              </div>
+              <Label htmlFor="title" className="text-slate-300 font-mono">
+                Title
+              </Label>
               <Input
-                id="tag"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-                placeholder="e.g., cve, malware-analysis"
-                className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500"
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What's your discovery?"
+                required
+                className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 text-lg"
               />
             </div>
 
-            {(aiTags.length > 0 || commonTags.length > 0) && (
-              <div className="space-y-3">
-                {aiTags.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-mono text-slate-400 mb-2 flex items-center">
-                      <Wand2 className="h-4 w-4 mr-2 text-cyan-400" />
-                      AI Suggestions
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {aiTags.map((aiTag) => (
-                        <Badge
-                          key={aiTag}
-                          variant="outline"
-                          className="cursor-pointer border-cyan-500/30 text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors"
-                          onClick={() => setTag(aiTag)}
-                        >
-                          {aiTag}
-                        </Badge>
-                      ))}
+            <div className="space-y-2">
+              <Label htmlFor="content" className="text-slate-300 font-mono">
+                Content (Markdown supported)
+              </Label>
+              <Textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Share your findings, exploits, or insights... Use #tags to categorize."
+                required
+                rows={12}
+                maxLength={5000}
+                className="bg-slate-800/50 border-slate-600 text-slate-200 placeholder:text-slate-500 resize-none font-mono text-sm leading-relaxed"
+              />
+              <div className="flex justify-between items-center text-xs font-mono text-slate-400">
+                <span>{content.length} / 5000</span>
+                <span className={`transition-opacity ${isDraftSaved ? 'opacity-100' : 'opacity-0'}`}>
+                  Draft saved
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting || !title || !content}
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono text-lg py-6 disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Publishing...
+                </>
+              ) : (
+                "Publish Whisper"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Preview and AI Score Panel */}
+      <div className="space-y-8 mt-8 lg:mt-0">
+        <div>
+          <h3 className="text-lg font-bold font-headline text-slate-300 mb-2">Live Preview</h3>
+          <PostCard post={previewPost} isPreview />
+        </div>
+        <div>
+           <h3 className="text-lg font-bold font-headline text-slate-300 mb-2 flex items-center">
+             AI Analysis
+             {isScoring && <Loader2 className="ml-2 h-4 w-4 animate-spin text-cyan-400" />}
+           </h3>
+           <Card className="bg-slate-900/50 border-blue-500/20 backdrop-blur-sm p-6">
+             {aiScore ? (
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 relative h-20 w-20">
+                    <svg className="h-full w-full" viewBox="0 0 36 36">
+                      <path
+                        className="text-slate-700"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      />
+                      <path
+                        className="text-cyan-400"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeDasharray={`${aiScore.score}, 100`}
+                        strokeLinecap="round"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-slate-100">{aiScore.score}</span>
                     </div>
                   </div>
-                )}
-                <div>
-                  <h4 className="text-sm font-mono text-slate-400 mb-2">Common Tags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {commonTags.map((commonTag) => (
-                      <Badge
-                        key={commonTag}
-                        variant="outline"
-                        className="cursor-pointer border-slate-600 text-slate-400 bg-slate-800/30 hover:bg-slate-700/50 transition-colors"
-                        onClick={() => setTag(commonTag)}
-                      >
-                        {commonTag}
-                      </Badge>
-                    ))}
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="flex items-center text-sm font-semibold text-slate-300">
+                        <Sparkles className="h-4 w-4 mr-2 text-cyan-400"/>
+                        Clarity
+                      </h4>
+                      <p className="text-xs text-slate-400">{aiScore.clarity}</p>
+                    </div>
+                     <div>
+                      <h4 className="flex items-center text-sm font-semibold text-slate-300">
+                        <ShieldCheck className="h-4 w-4 mr-2 text-green-400"/>
+                        Safety
+                      </h4>
+                      <p className="text-xs text-slate-400">{aiScore.safety}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isSubmitting || !title || !content}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-mono disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...
-              </>
-            ) : (
-              "Publish Whisper"
-            )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+             ) : (
+                <div className="text-center text-slate-500 font-mono text-sm py-8">
+                  <HelpCircle className="mx-auto h-8 w-8 mb-2"/>
+                  Start writing your post to get AI feedback on quality and safety.
+               </div>
+             )}
+           </Card>
+        </div>
+      </div>
+    </div>
   )
 }

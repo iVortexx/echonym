@@ -1,17 +1,18 @@
 "use server"
 
 import { z } from "zod"
-import { db, storage } from "./firebase"
+import { db } from "./firebase"
 import {
   collection,
   doc,
   runTransaction,
   serverTimestamp,
 } from "firebase/firestore"
-import { ref, uploadString, getDownloadURL } from "firebase/storage"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User } from "./types"
 import { suggestTags } from "@/ai/flows/suggest-tags"
+import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
+import type { ScorePostInput, ScorePostOutput } from "@/ai/flows/score-post-flow"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -72,7 +73,7 @@ export async function createPost(rawInput: unknown, userId: string) {
     return { success: true }
   } catch (e: any) {
     console.error("Error creating post:", e)
-    if (e.code === "permission-denied") {
+    if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes.",
@@ -145,7 +146,7 @@ export async function createComment(rawInput: unknown, userId: string) {
     return { success: true }
   } catch (e: any) {
     console.error("Error creating comment:", e)
-    if (e.code === "permission-denied") {
+    if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes.",
@@ -242,7 +243,7 @@ export async function handleVote(
     return { success: true }
   } catch (e: any) {
     console.error("Vote transaction failed:", e)
-    if (e.code === "permission-denied") {
+    if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console.",
@@ -264,5 +265,18 @@ export async function getTagSuggestions(content: string) {
     // Don't show an error to the user, just return no tags.
     // This can happen if the GEMINI_API_KEY is not set.
     return { tags: [] }
+  }
+}
+
+export async function scorePost(input: ScorePostInput): Promise<ScorePostOutput> {
+  if (!input.title.trim() || !input.content.trim()) {
+    return { score: 0, clarity: "Please provide a title and content.", safety: "N/A" }
+  }
+  try {
+    const result = await scorePostFlow(input)
+    return result
+  } catch (error: any) {
+    console.error("Error fetching post score:", error)
+    return { score: 0, clarity: "Could not analyze post.", safety: "Error during analysis."}
   }
 }
