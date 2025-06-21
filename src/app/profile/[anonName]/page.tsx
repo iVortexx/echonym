@@ -2,17 +2,17 @@
 
 "use client"
 
-import { getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"
+import { findUserByRecoveryId, getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"
 import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2 } from "lucide-react"
+import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle, Users, UserPlus, Loader2, KeyRound, Copy } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge, BADGES } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
 import {
   Dialog,
@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast"
 import { FollowListDialog } from "@/components/follow-list-dialog"
 import { db } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
+import { Input } from "@/components/ui/input"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -44,6 +45,74 @@ function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementT
     </Card>
   )
 }
+
+function BackupAndRestore({ user }: { user: User }) {
+  const { toast } = useToast();
+  const [recoveryInput, setRecoveryInput] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(user.recoveryId);
+    toast({ title: "✅ Recovery ID Copied!", description: "Store it in a safe place." });
+  };
+
+  const handleRestore = async () => {
+    if (!recoveryInput.trim()) {
+      toast({ variant: "destructive", title: "Error", description: "Please enter a Recovery ID." });
+      return;
+    }
+    setIsRestoring(true);
+    const result = await findUserByRecoveryId(recoveryInput.trim());
+    setIsRestoring(false);
+
+    if (result) {
+      localStorage.setItem('whispernet_recovery_id', result.recoveryId);
+      toast({ title: "✅ Account Found!", description: "Your account will be restored shortly." });
+      setTimeout(() => window.location.reload(), 1500);
+    } else {
+      toast({ variant: "destructive", title: "Restore Failed", description: "The Recovery ID is invalid." });
+    }
+  };
+
+  return (
+    <Card className="bg-card border-border rounded-lg">
+      <CardHeader>
+        <CardTitle className="font-mono text-lg text-primary">Backup & Restore</CardTitle>
+        <CardDescription className="text-slate-400">
+          Use your Recovery ID to restore your anonymous identity on other devices.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label className="font-mono text-sm text-slate-300">Your Unique Recovery ID</Label>
+          <div className="flex items-center gap-2 p-2 rounded-md bg-input border-border">
+            <KeyRound className="h-4 w-4 text-accent" />
+            <p className="font-mono text-xs text-slate-400 truncate flex-1">{user.recoveryId}</p>
+            <Button size="sm" variant="ghost" onClick={handleCopy}>
+              <Copy className="h-4 w-4 mr-2" /> Copy
+            </Button>
+          </div>
+          <p className="text-xs text-amber-500/80">Store this safely. It's the ONLY way to recover your account.</p>
+        </div>
+        <div className="space-y-2">
+          <Label className="font-mono text-sm text-slate-300">Restore an Account</Label>
+          <div className="flex items-center gap-2">
+            <Input 
+              value={recoveryInput}
+              onChange={(e) => setRecoveryInput(e.target.value)}
+              placeholder="Paste your Recovery ID here"
+              className="bg-background border-border"
+            />
+            <Button onClick={handleRestore} disabled={isRestoring}>
+              {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : "Restore"}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function ProfilePage() {
   const params = useParams()
@@ -305,7 +374,8 @@ export default function ProfilePage() {
             )}
         </DialogContent>
       </Dialog>
-
+      
+      {isOwnProfile && <BackupAndRestore user={displayUser} />}
 
       <div>
         <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {displayUser.anonName}</h2>

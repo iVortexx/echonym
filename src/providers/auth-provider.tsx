@@ -1,15 +1,20 @@
 
 "use client";
 
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
 import { generateAnonName } from '@/lib/name-generator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Copy } from 'lucide-react';
 import { buildAvatarUrl } from '@/lib/utils';
+import { findUserByRecoveryId } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+
+const RECOVERY_ID_KEY = 'whispernet_recovery_id';
 
 interface AuthContextType {
   user: User | null;
@@ -32,86 +37,127 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast, dismiss } = useToast();
 
   const updateUser = (updatedData: Partial<User>) => {
     setUser(prevUser => prevUser ? { ...prevUser, ...updatedData } : null);
   };
+  
+  const showBackupToast = useCallback((recoveryId: string) => {
+      const toastId = 'backup-toast';
+      toast({
+        id: toastId,
+        title: '⚠️ Backup Your Account!',
+        description: 'Save your Recovery ID to prevent permanent loss.',
+        duration: Infinity, // This toast should be persistent
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(recoveryId);
+              dismiss(toastId);
+              toast({ title: '✅ Recovery ID Copied!' });
+            }}
+          >
+            <Copy className="mr-2 h-4 w-4" />
+            Copy
+          </Button>
+        ),
+      });
+  }, [toast, dismiss]);
 
   useEffect(() => {
     let unsubscribeUser: () => void = () => {};
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (fbUser) => {
-      // Clean up previous user listener if auth state changes
-      unsubscribeUser(); 
-
-      setError(null);
-      if (fbUser) {
-        setFirebaseUser(fbUser);
-        const userDocRef = doc(db, 'users', fbUser.uid);
-
-        // Set up a real-time listener for the user document
-        unsubscribeUser = onSnapshot(userDocRef, async (userDoc) => {
-          if (userDoc.exists()) {
-            setUser({ ...userDoc.data(), uid: fbUser.uid } as User);
-            setLoading(false);
-          } else {
-            // User is authenticated but doesn't have a doc yet -> new user
+    const handleUserSession = async (fbUser: FirebaseUser | null) => {
+        if (!fbUser) {
             try {
-              const newAnonName = generateAnonName();
-              const avatarOptions = { seed: newAnonName };
-              const avatarUrl = buildAvatarUrl(avatarOptions);
-              
-              const newUser: User = {
-                uid: fbUser.uid,
-                anonName: newAnonName,
-                xp: 0,
-                createdAt: serverTimestamp() as any, // This will be converted on write
-                postCount: 0,
-                commentCount: 0,
-                followersCount: 0,
-                followingCount: 0,
-                avatarUrl,
-                avatarOptions,
-                savedPosts: [],
-                hiddenPosts: [],
-              };
-              // This write will trigger the onSnapshot listener again, which will then set the user state.
-              await setDoc(userDocRef, newUser);
+                // If there's no fbUser, sign in anonymously. The listener will run again.
+                await signInAnonymously(auth);
             } catch (e: any) {
-               console.error("Error creating user document:", e);
-               setError("Failed to initialize user profile.");
-               setLoading(false);
+                console.error("Firebase Anonymous Sign-in Error:", e);
+                setError(`Authentication failed: ${e.message}`);
+                setLoading(false);
             }
-          }
-        }, (error) => {
-            console.error("Firestore user listener error:", error);
+            return;
+        }
+
+        setFirebaseUser(fbUser);
+        const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
+
+        if (savedRecoveryId) {
+            // Priority 1: User has a recovery ID in localStorage.
+            const recoveredUser = await findUserByRecoveryId(savedRecoveryId);
+            if (recoveredUser) {
+                unsubscribeUser = onSnapshot(doc(db, 'users', recoveredUser.uid), (userDoc) => {
+                    if (userDoc.exists()) {
+                        setUser({ ...userDoc.data(), uid: userDoc.id } as User);
+                    }
+                });
+                setLoading(false);
+                return;
+            } else {
+                // The saved ID is invalid, clear it and proceed as a new session.
+                localStorage.removeItem(RECOVERY_ID_KEY);
+            }
+        }
+        
+        // Priority 2: No valid recovery ID. Use Firebase UID to find or create the user.
+        const userDocRef = doc(db, 'users', fbUser.uid);
+        unsubscribeUser = onSnapshot(userDocRef, async (userDoc) => {
+            if (userDoc.exists()) {
+                const existingUser = { ...userDoc.data(), uid: userDoc.id } as User;
+                setUser(existingUser);
+                // Sync localStorage with the correct recovery ID from DB.
+                localStorage.setItem(RECOVERY_ID_KEY, existingUser.recoveryId);
+            } else {
+                // This is a brand-new anonymous user. Create their profile.
+                try {
+                    const newAnonName = generateAnonName();
+                    const newRecoveryId = crypto.randomUUID();
+                    const avatarOptions = { seed: newAnonName };
+                    const avatarUrl = buildAvatarUrl(avatarOptions);
+
+                    const newUser: User = {
+                        uid: fbUser.uid,
+                        anonName: newAnonName,
+                        xp: 0,
+                        createdAt: serverTimestamp() as any,
+                        recoveryId: newRecoveryId,
+                        postCount: 0,
+                        commentCount: 0,
+                        followersCount: 0,
+                        followingCount: 0,
+                        avatarUrl,
+                        avatarOptions,
+                        savedPosts: [],
+                        hiddenPosts: [],
+                    };
+                    await setDoc(userDocRef, newUser);
+                    // The onSnapshot will fire again with the new user data.
+                    localStorage.setItem(RECOVERY_ID_KEY, newRecoveryId);
+                    showBackupToast(newRecoveryId);
+                } catch (e: any) {
+                    console.error("Error creating user document:", e);
+                    setError("Failed to initialize user profile.");
+                }
+            }
+            setLoading(false);
+        }, (err) => {
+            console.error("Firestore user listener error:", err);
             setError("Failed to sync user profile.");
             setLoading(false);
         });
-      } else {
-        // No user, attempt anonymous sign-in
-        try {
-          await signInAnonymously(auth);
-          // The onAuthStateChanged listener will handle the new user state
-        } catch (e: any) {
-          console.error("Firebase Anonymous Sign-in Error:", e);
-          if (e.code === 'auth/configuration-not-found') {
-            setError(
-              'Could not sign in. Please ensure Anonymous Authentication is enabled in your Firebase project settings (Authentication > Sign-in method).'
-            );
-          } else {
-            setError(`An unexpected error occurred during authentication: ${e.message}`);
-          }
-          setLoading(false);
-        }
-      }
-    });
+    };
+
+    const unsubscribeAuth = onAuthStateChanged(auth, handleUserSession);
 
     return () => {
       unsubscribeAuth();
       unsubscribeUser();
     };
-  }, []);
+  }, [showBackupToast]);
 
   if (error) {
     return (

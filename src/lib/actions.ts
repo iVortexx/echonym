@@ -545,6 +545,30 @@ export async function getUserByAnonName(anonName: string): Promise<User | null> 
   }
 }
 
+export async function findUserByRecoveryId(recoveryId: string): Promise<User | null> {
+  if (!recoveryId) return null;
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("recoveryId", "==", recoveryId), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return null;
+    }
+    const userDoc = querySnapshot.docs[0];
+    const user = { uid: userDoc.id, ...userDoc.data() } as User;
+     return {
+      ...user,
+      createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+        ? (user.createdAt as Timestamp).toDate().toISOString()
+        : (user.createdAt as string),
+    };
+  } catch (error) {
+    console.error("Error finding user by recovery ID:", error);
+    return null;
+  }
+}
+
+
 export async function getPostsByUserId(userId: string): Promise<Post[]> {
   try {
     const postsRef = collection(db, "posts")

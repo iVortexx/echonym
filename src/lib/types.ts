@@ -6,6 +6,7 @@ export interface User {
   anonName: string
   xp: number
   createdAt: Timestamp | string
+  recoveryId: string;
   postCount?: number
   commentCount?: number
   avatarUrl?: string
