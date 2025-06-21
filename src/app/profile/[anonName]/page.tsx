@@ -30,6 +30,7 @@ import { FollowListDialog } from "@/components/follow-list-dialog"
 import { db } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
@@ -392,3 +393,5 @@ export default function ProfilePage() {
     </div>
   )
 }
+
+    
