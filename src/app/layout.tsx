@@ -1,9 +1,11 @@
+
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Oswald, Source_Code_Pro } from "next/font/google"
 import "./globals.css"
 import { Header } from "@/components/layout/header"
 import { AuthProvider } from "@/providers/auth-provider"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -50,6 +52,7 @@ export default function RootLayout({
               <main className="container mx-auto py-8 px-4">{children}</main>
             </div>
           </div>
+          <Toaster />
         </AuthProvider>
       </body>
     </html>
