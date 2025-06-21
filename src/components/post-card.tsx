@@ -37,7 +37,7 @@ import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useAuth } from "@/hooks/use-auth"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { handleVote, deletePost, toggleUserPostList } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -240,13 +240,16 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
   const isOwnPost = currentUser?.uid === post.userId;
   const score = optimisticUpvotes - optimisticDownvotes;
 
-  let displayAvatarUrl = post.avatarUrl;
-  if (isOwnPost && currentUser?.avatarUrl) {
-      displayAvatarUrl = currentUser.avatarUrl;
-  }
-  if (!displayAvatarUrl) {
-      displayAvatarUrl = buildAvatarUrl({ seed: post.anonName || 'default' });
-  }
+  const displayAvatarUrl = useMemo(() => {
+    let url = post.avatarUrl;
+    if (isOwnPost && currentUser?.avatarUrl) {
+      url = currentUser.avatarUrl;
+    }
+    if (!url) {
+      url = buildAvatarUrl({ seed: post.anonName || 'default' });
+    }
+    return url;
+  }, [post.avatarUrl, post.anonName, currentUser?.avatarUrl, isOwnPost]);
 
   return (
     <motion.div
