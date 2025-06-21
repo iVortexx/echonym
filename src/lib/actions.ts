@@ -1,86 +1,84 @@
-"use server";
+"use server"
 
-import { z } from "zod";
-import { db } from "./firebase";
+import { z } from "zod"
+import { db, storage } from "./firebase"
 import {
   collection,
   doc,
   runTransaction,
-  query,
-  where,
-  getDocs,
   serverTimestamp,
-} from "firebase/firestore";
-import { revalidatePath } from "next/cache";
-import { Post, VoteType, User } from "./types";
-import { suggestTags } from "@/ai/flows/suggest-tags";
+} from "firebase/firestore"
+import { ref, uploadString, getDownloadURL } from "firebase/storage"
+import { revalidatePath } from "next/cache"
+import type { Post, VoteType, User } from "./types"
+import { suggestTags } from "@/ai/flows/suggest-tags"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   content: z.string().min(1, "Content is required"),
   tag: z.string().optional(),
-});
+})
 
 // The user's UID is passed from the client, as server actions don't have auth context.
 export async function createPost(rawInput: unknown, userId: string) {
   if (!userId) {
-    return { error: "You must be logged in to post." };
+    return { error: "You must be logged in to post." }
   }
 
-  const validation = PostSchema.safeParse(rawInput);
+  const validation = PostSchema.safeParse(rawInput)
 
   if (!validation.success) {
-    return { error: validation.error.issues.map((i) => i.message).join(", ") };
+    return { error: validation.error.issues.map((i) => i.message).join(", ") }
   }
 
-  const { title, content, tag } = validation.data;
+  const { title, content, tag } = validation.data
 
-  const userDocRef = doc(db, "users", userId);
+  const userDocRef = doc(db, "users", userId)
 
   try {
-    const postPayload: any = {
-      userId: userId,
-      title,
-      content,
-      createdAt: serverTimestamp(),
-      upvotes: 0,
-      downvotes: 0,
-      commentCount: 0,
-    };
-
-    if (tag) {
-      postPayload.tag = tag;
-    }
-
     await runTransaction(db, async (transaction) => {
-      const userDoc = await transaction.get(userDocRef);
+      const userDoc = await transaction.get(userDocRef)
       if (!userDoc.exists()) {
-        throw new Error("User document does not exist! Cannot create post.");
+        throw new Error("User document does not exist! Cannot create post.")
       }
-      const userData = userDoc.data() as User;
-      const newXp = userData.xp + 10;
+      const userData = userDoc.data() as User
+      const newXp = userData.xp + 10
 
-      transaction.update(userDocRef, { xp: newXp });
+      transaction.update(userDocRef, { xp: newXp })
 
-      const postCollectionRef = collection(db, "posts");
-      transaction.set(doc(postCollectionRef), {
-        ...postPayload,
+      const postCollectionRef = collection(db, "posts")
+      const newPostRef = doc(postCollectionRef)
+
+      const postPayload: any = {
+        userId: userId,
+        title,
+        content,
+        createdAt: serverTimestamp(),
+        upvotes: 0,
+        downvotes: 0,
+        commentCount: 0,
         anonName: userData.anonName,
         xp: userData.xp,
-      });
-    });
+      }
 
-    revalidatePath("/");
-    return { success: true };
+      if (tag) {
+        postPayload.tag = tag
+      }
+
+      transaction.set(newPostRef, postPayload)
+    })
+
+    revalidatePath("/")
+    return { success: true }
   } catch (e: any) {
-    console.error("Error creating post:", e);
+    console.error("Error creating post:", e)
     if (e.code === "permission-denied") {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes.",
-      };
+      }
     }
-    return { error: e.message || "Failed to create post." };
+    return { error: e.message || "Failed to create post." }
   }
 }
 
@@ -88,43 +86,43 @@ const CommentSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
   postId: z.string(),
   parentId: z.string().optional(),
-});
+})
 
 export async function createComment(rawInput: unknown, userId: string) {
   if (!userId) {
-    return { error: "You must be logged in to comment." };
+    return { error: "You must be logged in to comment." }
   }
 
-  const validation = CommentSchema.safeParse(rawInput);
+  const validation = CommentSchema.safeParse(rawInput)
 
   if (!validation.success) {
-    return { error: "Invalid comment data." };
+    return { error: "Invalid comment data." }
   }
 
-  const { content, postId, parentId } = validation.data;
+  const { content, postId, parentId } = validation.data
 
-  const userDocRef = doc(db, "users", userId);
-  const postDocRef = doc(db, "posts", postId);
+  const userDocRef = doc(db, "users", userId)
+  const postDocRef = doc(db, "posts", postId)
 
   try {
     await runTransaction(db, async (transaction) => {
-      const userDoc = await transaction.get(userDocRef);
-      const postDoc = await transaction.get(postDocRef);
+      const userDoc = await transaction.get(userDocRef)
+      const postDoc = await transaction.get(postDocRef)
 
       if (!userDoc.exists() || !postDoc.exists()) {
-        throw new Error("User or Post document does not exist!");
+        throw new Error("User or Post document does not exist!")
       }
 
-      const userData = userDoc.data() as User;
-      const postData = postDoc.data() as Post;
+      const userData = userDoc.data() as User
+      const postData = postDoc.data() as Post
 
-      const newXp = userData.xp + 5;
-      transaction.update(userDocRef, { xp: newXp });
+      const newXp = userData.xp + 5
+      transaction.update(userDocRef, { xp: newXp })
 
-      const newCommentCount = (postData.commentCount || 0) + 1;
-      transaction.update(postDocRef, { commentCount: newCommentCount });
+      const newCommentCount = (postData.commentCount || 0) + 1
+      transaction.update(postDocRef, { commentCount: newCommentCount })
 
-      const commentCollectionRef = collection(db, `posts/${postId}/comments`);
+      const commentCollectionRef = collection(db, `posts/${postId}/comments`)
       const commentData: any = {
         postId,
         userId: userId,
@@ -134,26 +132,26 @@ export async function createComment(rawInput: unknown, userId: string) {
         createdAt: serverTimestamp(),
         upvotes: 0,
         downvotes: 0,
-      };
-
-      if (parentId) {
-        commentData.parentId = parentId;
       }
 
-      transaction.set(doc(commentCollectionRef), commentData);
-    });
+      if (parentId) {
+        commentData.parentId = parentId
+      }
 
-    revalidatePath(`/post/${postId}`);
-    return { success: true };
+      transaction.set(doc(commentCollectionRef), commentData)
+    })
+
+    revalidatePath(`/post/${postId}`)
+    return { success: true }
   } catch (e: any) {
-    console.error("Error creating comment:", e);
+    console.error("Error creating comment:", e)
     if (e.code === "permission-denied") {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console to allow writes.",
-      };
+      }
     }
-    return { error: e.message || "Failed to create comment." };
+    return { error: e.message || "Failed to create comment." }
   }
 }
 
@@ -164,104 +162,107 @@ export async function handleVote(
   voteType: VoteType,
   postId?: string
 ) {
-  if (!userId) return { error: "Not authenticated" };
-  if (itemType === "comment" && !postId) return { error: "Post ID is missing" };
+  if (!userId) return { error: "Not authenticated" }
+  if (itemType === "comment" && !postId) return { error: "Post ID is missing" }
 
   const itemRef =
     itemType === "post"
       ? doc(db, "posts", itemId)
-      : doc(db, `posts/${postId}/comments/${itemId}`);
+      : doc(db, `posts/${postId}/comments/${itemId}`)
 
-  const voteId = `${userId}_${itemType}_${itemId}`;
-  const voteRef = doc(db, "votes", voteId);
+  const voteId = `${userId}_${itemType}_${itemId}`
+  const voteRef = doc(db, "votes", voteId)
 
   try {
     await runTransaction(db, async (transaction) => {
       const [itemSnap, voteSnap] = await Promise.all([
         transaction.get(itemRef),
         transaction.get(voteRef),
-      ]);
+      ])
 
-      if (!itemSnap.exists()) throw new Error("Item not found");
+      if (!itemSnap.exists()) throw new Error("Item not found")
 
-      const itemData = itemSnap.data();
-      const postAuthorId = itemData.userId;
-      const postAuthorRef = doc(db, "users", postAuthorId);
-      const authorSnap = await transaction.get(postAuthorRef);
-
-      let upvoteChange = 0;
-      let downvoteChange = 0;
-      let xpChange = 0;
+      const itemData = itemSnap.data()
+      const postAuthorId = itemData.userId
+      const postAuthorRef = doc(db, "users", postAuthorId)
+      
+      let upvoteChange = 0
+      let downvoteChange = 0
+      let xpChange = 0
 
       if (voteSnap.exists()) {
-        const vote = voteSnap.data();
+        const vote = voteSnap.data()
         if (vote.type === voteType) {
-          transaction.delete(voteRef);
-          voteType === "up" ? (upvoteChange = -1, xpChange = -2) : (downvoteChange = -1);
+          // User is toggling their vote off
+          transaction.delete(voteRef)
+          voteType === "up" ? ((upvoteChange = -1), (xpChange = -2)) : (downvoteChange = -1)
         } else {
-          transaction.update(voteRef, { type: voteType });
+          // User is changing their vote
+          transaction.update(voteRef, { type: voteType })
           if (voteType === "up") {
-            upvoteChange = 1;
-            downvoteChange = -1;
-            xpChange = 2;
+            upvoteChange = 1
+            downvoteChange = -1
+            xpChange = 2
           } else {
-            upvoteChange = -1;
-            downvoteChange = 1;
-            xpChange = -2;
+            upvoteChange = -1
+            downvoteChange = 1
+            xpChange = -2
           }
         }
       } else {
+        // User is casting a new vote
         transaction.set(voteRef, {
           userId,
           type: voteType,
           [itemType === "post" ? "postId" : "commentId"]: itemId,
-        });
-        voteType === "up" ? (upvoteChange = 1, xpChange = 2) : (downvoteChange = 1);
+        })
+        voteType === "up" ? ((upvoteChange = 1), (xpChange = 2)) : (downvoteChange = 1)
       }
 
       transaction.update(itemRef, {
         upvotes: (itemData.upvotes || 0) + upvoteChange,
         downvotes: (itemData.downvotes || 0) + downvoteChange,
-      });
-
-      if (xpChange !== 0 && userId !== postAuthorId && authorSnap.exists()) {
-        const authorData = authorSnap.data();
-        const newXp = (authorData.xp || 0) + xpChange;
-        transaction.update(postAuthorRef, { xp: newXp });
+      })
+      
+      // Only update author's XP if it's not their own post and the author exists
+      if (xpChange !== 0 && userId !== postAuthorId) {
+        const authorSnap = await transaction.get(postAuthorRef)
+        if (authorSnap.exists()) {
+            const authorData = authorSnap.data()
+            const newXp = (authorData.xp || 0) + xpChange
+            transaction.update(postAuthorRef, { xp: newXp })
+        }
       }
-    });
+    })
 
-    revalidatePath(itemType === "comment" && postId ? `/post/${postId}` : `/post/${itemId}`);
-    revalidatePath(`/`);
-
-    return { success: true };
-  } catch (e: any)
-   {
-    console.error("Vote transaction failed:", e);
+    // Revalidate paths to update UI across the app
+    revalidatePath(`/`)
+    revalidatePath(itemType === "comment" && postId ? `/post/${postId}` : `/post/${itemId}`)
+    
+    return { success: true }
+  } catch (e: any) {
+    console.error("Vote transaction failed:", e)
     if (e.code === "permission-denied") {
       return {
         error:
           "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console.",
-      };
+      }
     }
-    return { error: e.message || "Failed to process vote." };
+    return { error: e.message || "Failed to process vote." }
   }
 }
 
-
 export async function getTagSuggestions(content: string) {
   if (!content.trim()) {
-    return { tags: [] };
+    return { tags: [] }
   }
   try {
-    const result = await suggestTags({ content });
-    return { tags: result.tags };
+    const result = await suggestTags({ content })
+    return { tags: result.tags || [] }
   } catch (error: any) {
-    console.error("Error fetching tag suggestions:", error);
-    // Don't show an error to the user if the key is just missing.
-    if (error.status === "FAILED_PRECONDITION") {
-      return { tags: [] };
-    }
-    return { tags: [] };
+    console.error("Error fetching tag suggestions:", error)
+    // Don't show an error to the user, just return no tags.
+    // This can happen if the GEMINI_API_KEY is not set.
+    return { tags: [] }
   }
 }

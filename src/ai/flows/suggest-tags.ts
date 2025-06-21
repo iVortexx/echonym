@@ -1,4 +1,3 @@
-// src/ai/flows/suggest-tags.ts
 'use server';
 /**
  * @fileOverview A flow that suggests relevant tags for a post based on its content.
@@ -29,11 +28,12 @@ const prompt = ai.definePrompt({
   name: 'suggestTagsPrompt',
   input: {schema: SuggestTagsInputSchema},
   output: {schema: SuggestTagsOutputSchema},
-  prompt: `You are a social media expert. Your task is to suggest relevant tags for a given post.
+  prompt: `You are an expert in cybersecurity and technology content. Your task is to suggest relevant tags for a given post.
 
-  The tags should be relevant to the content of the post.
-  The tags should be concise and popular.
-  The tags should be chosen from the following list: Tech, Rant, Life, Gaming, News, Music, Art, Food, Travel, Sports.
+  The tags must be relevant to the content of the post.
+  The tags should be concise and commonly used in the security community.
+  You must only choose from the following list of allowed tags: security, reverse-eng, web-security, malware, cve, networking, crypto, forensics.
+  Suggest between 1 and 3 tags.
 
   Content: {{{content}}}
   `,
