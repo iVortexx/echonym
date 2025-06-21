@@ -7,12 +7,15 @@ import { useAuth } from "@/hooks/use-auth";
 import type { Post } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 function HiddenPostSkeleton() {
     return (
         <div className="space-y-4">
              <Skeleton className="h-10 w-1/3" />
+             <Skeleton className="h-10 w-full" />
             {[...Array(3)].map((_, i) => (
             <div key={i} className="bg-card p-6 rounded-lg border border-border">
                 <div className="flex items-center mb-4">
@@ -38,6 +41,7 @@ export default function HiddenPostsPage() {
     const { user, loading: authLoading } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const router = useRouter();
     const searchParams = useSearchParams();
     const q = searchParams.get('q') || "";
 
@@ -60,6 +64,20 @@ export default function HiddenPostsPage() {
 
         fetchData();
     }, [user, authLoading, q]);
+
+    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        const searchQuery = formData.get("search") as string;
+        const params = new URLSearchParams(searchParams);
+        
+        if (searchQuery) {
+            params.set("q", searchQuery);
+        } else {
+            params.delete("q");
+        }
+        router.push(`/hidden?${params.toString()}`);
+    };
     
     if (authLoading || loading) {
         return <HiddenPostSkeleton />;
@@ -81,6 +99,15 @@ export default function HiddenPostsPage() {
                 </h1>
                 <p className="text-slate-400 font-mono text-sm mt-1">{'>'} echoes you've chosen to remove from your feed</p>
             </div>
+             <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                    name="search"
+                    placeholder="Search your hidden echoes..."
+                    defaultValue={q}
+                    className="bg-card border-border pl-9"
+                />
+            </form>
             <PostFeed posts={posts} isLoading={false} filterHiddenPosts={false} />
         </div>
     );

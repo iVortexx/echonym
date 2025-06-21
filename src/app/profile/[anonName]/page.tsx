@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { findUserByRecoveryId, getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"

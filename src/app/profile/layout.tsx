@@ -1,3 +1,4 @@
+
 import { UserSearchSidebar } from '@/components/user-search-sidebar';
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {

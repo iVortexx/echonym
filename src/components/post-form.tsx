@@ -12,11 +12,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Loader2, Sparkles, ShieldCheck, HelpCircle, Hash, X } from "lucide-react"
+import { Loader2, Sparkles, ShieldCheck, HelpCircle, Hash, X, Eye, Code } from "lucide-react"
 import { debounce } from "lodash"
 import { PostCard } from "./post-card"
 import type { Post } from "@/lib/types"
 import { Badge } from "./ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 type ScoreState = {
   score: number
@@ -178,10 +180,8 @@ export function PostForm({ postToEdit }: PostFormProps) {
     userId: user?.uid || "",
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
-      {/* Editor Panel */}
-      <Card className="bg-card border-border">
+  const editorForm = (
+      <Card className="bg-card border-border h-full">
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -269,9 +269,10 @@ export function PostForm({ postToEdit }: PostFormProps) {
           </form>
         </CardContent>
       </Card>
+  )
 
-      {/* Preview and AI Score Panel */}
-      <div className="space-y-8 mt-8 lg:mt-0">
+  const previewAndAiPanel = (
+     <div className="space-y-8">
         <div>
           <h3 className="text-lg font-bold font-mono text-slate-300 mb-2">Live Preview</h3>
           <PostCard post={previewPost} isPreview />
@@ -337,6 +338,31 @@ export function PostForm({ postToEdit }: PostFormProps) {
            </Card>
         </div>
       </div>
-    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop Layout */}
+      <div className="hidden lg:grid grid-cols-1 lg:grid-cols-2 lg:gap-8">
+        {editorForm}
+        {previewAndAiPanel}
+      </div>
+
+      {/* Mobile Layout */}
+       <div className="lg:hidden">
+         <Tabs defaultValue="write" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="write"><Code className="mr-2 h-4 w-4" />Write</TabsTrigger>
+                <TabsTrigger value="preview"><Eye className="mr-2 h-4 w-4" />Preview & AI</TabsTrigger>
+            </TabsList>
+            <TabsContent value="write" className="mt-4">
+                {editorForm}
+            </TabsContent>
+            <TabsContent value="preview" className="mt-4">
+                {previewAndAiPanel}
+            </TabsContent>
+         </Tabs>
+      </div>
+    </>
   )
 }

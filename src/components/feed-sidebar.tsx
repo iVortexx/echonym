@@ -1,17 +1,14 @@
 
 "use client"
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
 import { Button } from "./ui/button"
-import { Home, Bookmark, EyeOff, Search } from "lucide-react"
+import { Home, Bookmark, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function FeedSidebar() {
     const pathname = usePathname();
-    const router = useRouter();
-    const searchParams = useSearchParams();
 
     const menuItems = [
         { href: "/", label: "Home Feed", icon: Home },
@@ -19,32 +16,8 @@ export function FeedSidebar() {
         { href: "/hidden", label: "Hidden Echoes", icon: EyeOff },
     ]
 
-    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        const searchQuery = formData.get("search") as string;
-        const params = new URLSearchParams(searchParams);
-        
-        if (searchQuery) {
-            params.set("q", searchQuery);
-        } else {
-            params.delete("q");
-        }
-        router.push(`${pathname}?${params.toString()}`);
-    };
-
     return (
         <aside className="sticky top-20 h-[calc(100vh-6rem)] w-full max-w-xs space-y-6">
-             <form onSubmit={handleSearch} className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                    name="search"
-                    placeholder="Search echoes..."
-                    defaultValue={searchParams.get("q") || ""}
-                    className="bg-card border-border pl-9"
-                />
-            </form>
-
             <nav>
                 <ul className="space-y-2">
                     {menuItems.map((item) => (

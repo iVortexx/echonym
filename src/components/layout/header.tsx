@@ -43,7 +43,7 @@ export function Header() {
           >
             <Link href="/create">
               <PlusCircle className="mr-2 h-4 w-4" />
-              <span>Create Echo</span>
+              <span className="hidden xs:inline-block">Create Echo</span>
             </Link>
           </Button>
 

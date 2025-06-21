@@ -2,18 +2,20 @@
 "use client"
 
 import { PostFeed } from "@/components/post-feed"
-import { Terminal, Flame, Rocket, Sparkles } from "lucide-react"
+import { Terminal, Flame, Rocket, Sparkles, Search } from "lucide-react"
 import { collection, query, orderBy, limit, where, onSnapshot, Query, DocumentData } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Post } from "@/lib/types"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { Input } from "@/components/ui/input"
 
 type SortOrder = "latest" | "trending" | "top";
 
 export default function Home() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const sort = (searchParams.get('sort') as SortOrder) || "latest";
   const tag = (searchParams.get('tag') as string) || "all";
@@ -65,6 +67,20 @@ export default function Home() {
     return () => unsubscribe();
 
   }, [sort, tag, q]);
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const searchQuery = formData.get("search") as string;
+    const params = new URLSearchParams(searchParams);
+    
+    if (searchQuery) {
+        params.set("q", searchQuery);
+    } else {
+        params.delete("q");
+    }
+    router.push(`/?${params.toString()}`);
+  };
   
   return (
       <div className="space-y-8">
@@ -86,6 +102,15 @@ export default function Home() {
                   <TabsTrigger value="top" asChild><Link href={`/?sort=top&tag=${tag}&q=${q}`}><Rocket className="mr-2 h-4 w-4" />Top</Link></TabsTrigger>
                 </TabsList>
             </Tabs>
+            <form onSubmit={handleSearch} className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                    name="search"
+                    placeholder="Search echoes..."
+                    defaultValue={q}
+                    className="bg-card border-border pl-9 w-full"
+                />
+            </form>
         </div>
 
         {posts.length === 0 && (q || tag !== 'all') && !loading ? (

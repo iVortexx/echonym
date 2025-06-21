@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/sheet"
 import { Button } from '@/components/ui/button'
 import { Menu, Home, Bookmark, EyeOff } from 'lucide-react'
-import { UserSearchSidebar } from '../user-search-sidebar'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -56,10 +55,6 @@ export function MobileSidebar() {
                     ))}
                 </ul>
             </nav>
-            <div className="border-t border-border" />
-            <div className="!mt-0">
-              <UserSearchSidebar isMobile={true} onSelectUser={() => setIsOpen(false)} />
-            </div>
          </div>
       </SheetContent>
     </Sheet>
