@@ -13,6 +13,7 @@ import {
   getDocs,
   limit,
   orderBy,
+  Timestamp,
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User } from "./types"
@@ -317,7 +318,15 @@ export async function searchUsers(nameQuery: string): Promise<User[]> {
       limit(10)
     )
     const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map((doc) => doc.data() as User)
+    return querySnapshot.docs.map((doc) => {
+        const user = doc.data() as User;
+        return {
+          ...user,
+          createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+            ? (user.createdAt as Timestamp).toDate().toISOString()
+            : (user.createdAt as string),
+        } as User;
+      });
   } catch (error) {
     console.error("Error searching users:", error)
     return []
@@ -332,7 +341,13 @@ export async function getUserByAnonName(anonName: string): Promise<User | null> 
     if (querySnapshot.empty) {
       return null
     }
-    return querySnapshot.docs[0].data() as User
+    const user = querySnapshot.docs[0].data() as User;
+    return {
+      ...user,
+      createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+        ? (user.createdAt as Timestamp).toDate().toISOString()
+        : (user.createdAt as string),
+    } as User;
   } catch (error) {
     console.error("Error getting user by anon name:", error)
     return null
@@ -344,7 +359,15 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
     const postsRef = collection(db, "posts")
     const q = query(postsRef, where("userId", "==", userId), orderBy("createdAt", "desc"))
     const querySnapshot = await getDocs(q)
-    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Post))
+    return querySnapshot.docs.map((doc) => {
+        const post = { id: doc.id, ...doc.data() } as Post;
+        return {
+          ...post,
+          createdAt: post.createdAt && typeof (post.createdAt as any).toDate === 'function'
+            ? (post.createdAt as Timestamp).toDate().toISOString()
+            : (post.createdAt as string),
+        };
+      }) as Post[];
   } catch (error) {
     console.error("Error getting posts by user ID:", error)
     return []

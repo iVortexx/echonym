@@ -4,7 +4,7 @@ export interface User {
   uid: string
   anonName: string
   xp: number
-  createdAt: Timestamp
+  createdAt: Timestamp | string
   postCount?: number
   commentCount?: number
   totalUpvotes?: number

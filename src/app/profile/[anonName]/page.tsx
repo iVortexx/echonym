@@ -9,7 +9,6 @@ import { XPBar } from "@/components/xp-bar"
 import { getBadgeForXP, getNextBadge } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import type { Timestamp } from "firebase/firestore"
 
 type ProfilePageProps = {
   params: {
@@ -42,14 +41,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const posts: Post[] = await getPostsByUserId(user.uid)
   const nextBadge = getNextBadge(user.xp)
   
-  const joinDate = (user.createdAt as Timestamp)?.toDate ? (user.createdAt as Timestamp).toDate() : new Date();
-
-  const serializablePosts = posts.map((post) => ({
-    ...post,
-    createdAt: post.createdAt && typeof (post.createdAt as any).toDate === 'function'
-      ? (post.createdAt as Timestamp).toDate().toISOString()
-      : (post.createdAt as string),
-  }));
+  const joinDate = new Date(user.createdAt as string);
 
   return (
     <div className="space-y-8">
@@ -92,9 +84,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       {/* User's Posts */}
       <div>
         <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Whispers by {user.anonName}</h2>
-        {serializablePosts.length > 0 ? (
+        {posts.length > 0 ? (
           <div className="space-y-4">
-            {serializablePosts.map((post) => (
+            {posts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
           </div>
