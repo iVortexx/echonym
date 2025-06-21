@@ -1,9 +1,9 @@
 
 "use client"
 
-import { getUserByAnonName, getPostsByUserId } from "@/lib/actions"
+import { getUserByAnonName, getPostsByUserId, getUserVotes } from "@/lib/actions"
 import { notFound, useRouter, useParams } from "next/navigation"
-import type { Post as PostType, User } from "@/lib/types"
+import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil } from "lucide-react"
@@ -49,13 +49,14 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null)
   const [posts, setPosts] = useState<PostType[]>([])
   const [loading, setLoading] = useState(true)
+  const [userVotes, setUserVotes] = useState<Record<string, VoteType>>({})
 
   const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
   const isOwnProfile = currentUser?.anonName === anonName
 
   useEffect(() => {
     // Only fetch data if we have a valid name
-    if (!anonName) {
+    if (!anonName || !currentUser) {
       return;
     }
     
@@ -67,12 +68,19 @@ export default function ProfilePage() {
         return
       }
       const fetchedPosts = await getPostsByUserId(fetchedUser.uid)
+      
+      if (currentUser && fetchedPosts.length > 0) {
+        const postIds = fetchedPosts.map(p => p.id);
+        const votes = await getUserVotes(currentUser.uid, postIds, 'post');
+        setUserVotes(votes);
+      }
+
       setUser(fetchedUser)
       setPosts(fetchedPosts)
       setLoading(false)
     }
     fetchData()
-  }, [anonName])
+  }, [anonName, currentUser])
 
   const handleAvatarSave = (newAvatarUrl: string) => {
     if (user) {
@@ -103,7 +111,7 @@ export default function ProfilePage() {
   const joinDate = new Date(user.createdAt as string)
 
   const AvatarComponent = (
-    <Avatar className="h-24 w-24 ring-4 ring-blue-500/30 cursor-pointer group">
+    <Avatar className="h-24 w-24 ring-4 ring-blue-500/30 cursor-pointer group object-cover">
       <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
       <AvatarFallback className="bg-blue-900/50 text-blue-300">
         <UserIcon className="h-12 w-12" />
@@ -163,7 +171,7 @@ export default function ProfilePage() {
         {posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post} userVote={userVotes[post.id]} />
             ))}
           </div>
         ) : (

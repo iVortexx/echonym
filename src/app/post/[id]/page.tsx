@@ -1,11 +1,9 @@
 import { doc, getDoc, collection, getDocs, orderBy, query } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Post, Comment } from "@/lib/types"
-import { PostCard } from "@/components/post-card"
-import { CommentSection } from "@/components/comment-section"
 import { notFound } from "next/navigation"
-import { Card } from "@/components/ui/card"
 import type { Timestamp } from "firebase/firestore"
+import { PostDetail } from "@/components/post-detail"
 
 type PostPageProps = {
   params: { id: string }
@@ -52,13 +50,6 @@ export default async function PostPage({ params }: PostPageProps) {
   }))
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <PostCard post={serializablePost} />
-
-      <Card className="mt-6 p-4 sm:p-6 rounded-lg border-blue-500/20 bg-slate-900/50 backdrop-blur-sm">
-        <h2 className="text-xl font-bold mb-4 font-mono text-slate-200">Comments ({post.commentCount || 0})</h2>
-        <CommentSection postId={post.id} initialComments={serializableComments} />
-      </Card>
-    </div>
+    <PostDetail post={serializablePost} initialComments={serializableComments} />
   )
 }

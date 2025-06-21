@@ -19,6 +19,9 @@ import Link from "next/link"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useAuth } from "@/hooks/use-auth"
+import { useState, useEffect } from "react"
+import { handleVote } from "@/lib/actions"
+import { useToast } from "@/hooks/use-toast"
 
 interface PostCardProps {
   post: Post
@@ -27,7 +30,80 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, firebaseUser } = useAuth()
+  const { toast } = useToast()
+
+  const [isVoting, setIsVoting] = useState(false)
+  const [optimisticVote, setOptimisticVote] = useState(userVote)
+  const [optimisticUpvotes, setOptimisticUpvotes] = useState(post.upvotes)
+  const [optimisticDownvotes, setOptimisticDownvotes] = useState(post.downvotes)
+
+  // When the initial prop changes (e.g., navigating between pages), update the state
+  useEffect(() => {
+    setOptimisticVote(userVote)
+    setOptimisticUpvotes(post.upvotes)
+    setOptimisticDownvotes(post.downvotes)
+  }, [userVote, post.upvotes, post.downvotes])
+
+
+  const handleVoteClick = async (newVoteType: "up" | "down") => {
+    if (!firebaseUser || isVoting || isPreview) return
+    
+    setIsVoting(true)
+    const previousVote = optimisticVote
+    const previousUpvotes = optimisticUpvotes
+    const previousDownvotes = optimisticDownvotes
+
+    let newOptimisticStatus: "up" | "down" | null = newVoteType
+    let upvoteChange = 0
+    let downvoteChange = 0
+
+    if (previousVote === newVoteType) { // Toggling vote off
+      newOptimisticStatus = null;
+      if (newVoteType === 'up') upvoteChange = -1;
+      else downvoteChange = -1;
+    } else { // New vote or changing vote
+      if (previousVote === 'up') upvoteChange = -1;
+      else if (previousVote === 'down') downvoteChange = -1;
+      
+      if (newVoteType === 'up') upvoteChange += 1;
+      else downvoteChange += 1;
+    }
+    
+    // Optimistic UI update
+    setOptimisticVote(newOptimisticStatus);
+    setOptimisticUpvotes(prev => prev + upvoteChange);
+    setOptimisticDownvotes(prev => prev + downvoteChange);
+
+    try {
+      const result = await handleVote(firebaseUser.uid, post.id, "post", newVoteType);
+
+      if (result?.error) {
+          // On error, revert the optimistic update
+          setOptimisticVote(previousVote);
+          setOptimisticUpvotes(previousUpvotes);
+          setOptimisticDownvotes(previousDownvotes);
+          toast({
+              variant: "destructive",
+              title: "Vote Failed",
+              description: result.error,
+          });
+      }
+    } catch (error) {
+      setOptimisticVote(previousVote);
+      setOptimisticUpvotes(previousUpvotes);
+      setOptimisticDownvotes(previousDownvotes);
+      toast({
+          variant: "destructive",
+          title: "An Unexpected Error Occurred",
+          description: "Please try again later.",
+      });
+      console.error("Voting failed unexpectedly:", error);
+    } finally {
+      setIsVoting(false);
+    }
+  }
+
 
   const formatTimeAgo = (createdAt: any) => {
     if (!createdAt) return "..."
@@ -60,6 +136,7 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
 
   const isOwnPost = currentUser?.uid === post.userId;
   const displayAvatarUrl = isOwnPost ? currentUser?.avatarUrl : post.avatarUrl;
+  const score = optimisticUpvotes - optimisticDownvotes;
 
 
   return (
@@ -151,12 +228,11 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
           <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-700/50">
             <div className="flex items-center space-x-1">
               <VoteButtons 
-                itemId={post.id} 
-                itemType="post" 
-                upvotes={post.upvotes} 
-                downvotes={post.downvotes} 
+                onVote={handleVoteClick}
+                voteStatus={optimisticVote}
+                score={score}
+                isVoting={isVoting}
                 disabled={isPreview}
-                initialVoteStatus={userVote}
               />
 
               <Button
@@ -181,8 +257,8 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
 
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-1 text-xs font-mono text-slate-500">
-                <span className="text-green-400">{post.upvotes || 0}↑</span>
-                <span className="text-red-400">{post.downvotes || 0}↓</span>
+                <span className="text-green-400">{optimisticUpvotes || 0}↑</span>
+                <span className="text-red-400">{optimisticDownvotes || 0}↓</span>
               </div>
               <div className="flex items-center space-x-1">
                 <Zap className="h-3 w-3 text-yellow-400 animate-pulse" />
