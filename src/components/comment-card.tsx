@@ -7,7 +7,6 @@ import { UserBadge } from "./user-badge"
 import { VoteButtons } from "./vote-buttons"
 import { Dot, MessageSquareReply, UserIcon } from "lucide-react"
 import { Button } from "./ui/button"
-import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import Link from "next/link"
 

@@ -6,8 +6,8 @@ import type { User } from "@/lib/types"
 import { buildAvatarUrl } from "@/lib/utils"
 import { Button } from "./ui/button"
 import { ScrollArea, ScrollBar } from "./ui/scroll-area"
-import Image from "next/image"
-import { Check, Loader2 } from "lucide-react"
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
+import { UserIcon, Check, Loader2 } from "lucide-react"
 import { updateUserAvatar } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -88,9 +88,12 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-1 flex flex-col items-center justify-center space-y-4 p-4 bg-slate-900 rounded-lg">
-        <div className="w-48 h-48 relative ring-4 ring-blue-500/30 rounded-full overflow-hidden">
-          <Image src={avatarUrl} alt="Avatar Preview" layout="fill" />
-        </div>
+        <Avatar className="w-48 h-48 ring-4 ring-blue-500/30">
+          <AvatarImage src={avatarUrl} alt="Avatar Preview" />
+           <AvatarFallback className="bg-slate-800">
+            <UserIcon className="h-24 w-24 text-slate-500" />
+          </AvatarFallback>
+        </Avatar>
         <Button onClick={handleSave} disabled={isSaving} className="w-full">
           {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Avatar"}
         </Button>

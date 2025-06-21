@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/dialog"
 import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
-import Image from "next/image"
 
 function StatCard({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | number }) {
   return (
@@ -104,7 +103,7 @@ export default function ProfilePage() {
 
   const AvatarComponent = (
     <Avatar className="h-24 w-24 ring-4 ring-blue-500/30 cursor-pointer group">
-      {user.avatarUrl && <Image src={user.avatarUrl} alt={user.anonName} width={96} height={96} />}
+      <AvatarImage src={user.avatarUrl} alt={user.anonName} />
       <AvatarFallback className="bg-blue-900/50 text-blue-300">
         <UserIcon className="h-12 w-12" />
       </AvatarFallback>
