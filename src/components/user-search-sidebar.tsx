@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserIcon, Search } from "lucide-react"
 import type { User } from "@/lib/types"
 import { searchUsers } from "@/lib/actions"
@@ -66,6 +66,7 @@ export function UserSearchSidebar() {
             className="flex items-center gap-3 p-2 rounded-md hover:bg-blue-500/10 transition-colors"
           >
             <Avatar className="h-10 w-10">
+              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.anonName} />}
               <AvatarFallback className="bg-blue-900/50 text-blue-300">
                 <UserIcon className="h-5 w-5" />
               </AvatarFallback>

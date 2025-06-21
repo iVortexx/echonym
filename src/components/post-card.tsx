@@ -1,7 +1,7 @@
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash, Text } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { MessageCircle, Share, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -64,18 +64,24 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3 flex-1">
-              <div className="relative">
-                <Avatar className="h-8 w-8 ring-2 ring-blue-500/30">
-                  <AvatarFallback className="bg-blue-900/50 text-blue-300 text-xs font-mono">
-                    {post.anonName?.slice(0, 2).toUpperCase() || '??'}
-                  </AvatarFallback>
+              <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative">
+                <Avatar className="h-10 w-10 ring-2 ring-blue-500/30">
+                  {post.avatarUrl ? (
+                    <AvatarImage src={post.avatarUrl} alt={post.anonName} />
+                  ) : (
+                    <AvatarFallback className="bg-blue-900/50 text-blue-300">
+                      <UserIcon className="h-5 w-5" />
+                    </AvatarFallback>
+                  )}
                 </Avatar>
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
-              </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
+              </Link>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
                   <Terminal className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                  <p className="font-mono text-sm text-blue-300 truncate">{post.anonName || 'Anonymous'}</p>
+                  <Link href={`/profile/${encodeURIComponent(post.anonName)}`}>
+                    <p className="font-mono text-sm text-blue-300 truncate hover:underline">{post.anonName || 'Anonymous'}</p>
+                  </Link>
                   <UserBadge xp={post.xp || 0} />
                 </div>
                 <p className="text-slate-400 text-xs font-mono">

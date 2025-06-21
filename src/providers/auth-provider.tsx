@@ -8,6 +8,7 @@ import { type User } from '@/lib/types';
 import { generateAnonName } from '@/lib/name-generator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
+import { buildAvatarUrl } from '@/lib/utils';
 
 interface AuthContextType {
   user: User | null;
@@ -38,9 +39,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
-          setUser(userDoc.data() as User);
+          setUser({ ...userDoc.data(), uid: fbUser.uid } as User);
         } else {
           const newAnonName = generateAnonName();
+          const avatarOptions = { seed: newAnonName };
+          const avatarUrl = buildAvatarUrl(avatarOptions);
+          
           const newUser: User = {
             uid: fbUser.uid,
             anonName: newAnonName,
@@ -50,6 +54,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             commentCount: 0,
             totalUpvotes: 0,
             totalDownvotes: 0,
+            avatarUrl,
+            avatarOptions,
           };
           await setDoc(userDocRef, newUser);
           setUser(newUser);

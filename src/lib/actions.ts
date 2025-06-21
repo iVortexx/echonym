@@ -14,6 +14,7 @@ import {
   limit,
   orderBy,
   Timestamp,
+  updateDoc,
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User } from "./types"
@@ -21,6 +22,7 @@ import { suggestTags } from "@/ai/flows/suggest-tags"
 import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
 import type { ScorePostInput, ScorePostOutput } from "@/ai/flows/score-post-flow"
 import { summarizePost } from "@/ai/flows/summarize-post-flow"
+import { buildAvatarUrl } from "./utils"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -80,6 +82,7 @@ export async function createPost(rawInput: unknown, userId: string) {
         commentCount: 0,
         anonName: userData.anonName,
         xp: userData.xp,
+        avatarUrl: userData.avatarUrl,
       }
 
       if (tag) {
@@ -157,6 +160,7 @@ export async function createComment(rawInput: unknown, userId: string) {
         createdAt: serverTimestamp(),
         upvotes: 0,
         downvotes: 0,
+        avatarUrl: userData.avatarUrl,
       }
 
       if (parentId) {
@@ -255,8 +259,8 @@ export async function handleVote(
         if (authorSnap.exists()) {
             transaction.update(postAuthorRef, { 
                 xp: increment(xpChange),
-                totalUpvotes: increment(upvoteChange),
-                totalDownvotes: increment(downvoteChange)
+                totalUpvotes: increment(upvoteChange > 0 ? upvoteChange : 0),
+                totalDownvotes: increment(downvoteChange > 0 ? downvoteChange : 0)
             })
         }
       }
@@ -341,8 +345,10 @@ export async function getUserByAnonName(anonName: string): Promise<User | null> 
     if (querySnapshot.empty) {
       return null
     }
-    const user = querySnapshot.docs[0].data() as User;
+    const userDoc = querySnapshot.docs[0];
+    const user = userDoc.data() as User;
     return {
+      uid: userDoc.id,
       ...user,
       createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
         ? (user.createdAt as Timestamp).toDate().toISOString()
@@ -371,5 +377,25 @@ export async function getPostsByUserId(userId: string): Promise<Post[]> {
   } catch (error) {
     console.error("Error getting posts by user ID:", error)
     return []
+  }
+}
+
+
+export async function updateUserAvatar(userId: string, options: Record<string, string>, newUrl: string) {
+  if (!userId) {
+    return { error: "User not authenticated." }
+  }
+
+  try {
+    const userDocRef = doc(db, "users", userId)
+    await updateDoc(userDocRef, {
+      avatarOptions: options,
+      avatarUrl: newUrl,
+    })
+    revalidatePath(`/profile/.*`, 'layout') // Revalidate all profile pages
+    return { success: true }
+  } catch (e: any) {
+    console.error("Error updating avatar:", e)
+    return { error: e.message || "Failed to update avatar." }
   }
 }

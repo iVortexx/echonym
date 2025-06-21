@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserIcon, PlusCircle, Home, Terminal } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 
@@ -50,6 +50,7 @@ export function Header() {
                   className="rounded-full hover:bg-blue-500/10 border border-blue-500/20"
                 >
                   <Avatar className="h-8 w-8">
+                     {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.anonName} />}
                     <AvatarFallback className="bg-blue-900/50 text-blue-300">
                       <UserIcon className="h-5 w-5" />
                     </AvatarFallback>

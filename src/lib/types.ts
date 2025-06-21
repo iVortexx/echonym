@@ -9,6 +9,8 @@ export interface User {
   commentCount?: number
   totalUpvotes?: number
   totalDownvotes?: number
+  avatarUrl?: string
+  avatarOptions?: Record<string, string>
 }
 
 export interface Post {
@@ -24,6 +26,7 @@ export interface Post {
   downvotes: number
   commentCount: number
   xp: number
+  avatarUrl?: string
 }
 
 export interface Comment {
@@ -38,6 +41,7 @@ export interface Comment {
   xp: number
   parentId?: string
   replies?: Comment[]
+  avatarUrl?: string
 }
 
 export type VoteType = "up" | "down"
