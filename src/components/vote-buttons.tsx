@@ -42,10 +42,10 @@ export function VoteButtons({
 
   const onVote = async (newVoteType: "up" | "down") => {
     if (!firebaseUser || isVoting || disabled) return
+    
     setIsVoting(true)
-
-    const previousStatus = voteStatus;
-    const previousScore = displayScore;
+    const previousStatus = voteStatus
+    const previousScore = displayScore
 
     let newOptimisticStatus: "up" | "down" | null;
     let scoreChange: number;
@@ -66,20 +66,32 @@ export function VoteButtons({
     setVoteStatus(newOptimisticStatus);
     setDisplayScore(prev => prev + scoreChange);
 
-    const result = await handleVote(firebaseUser.uid, itemId, itemType, newVoteType, postId);
+    try {
+      const result = await handleVote(firebaseUser.uid, itemId, itemType, newVoteType, postId);
 
-    if (result?.error) {
-        // On error, revert the optimistic update
-        setVoteStatus(previousStatus);
-        setDisplayScore(previousScore);
-        toast({
-            variant: "destructive",
-            title: "Vote Failed",
-            description: "Your vote could not be saved. Please try again.",
-        });
+      if (result?.error) {
+          // On error, revert the optimistic update
+          setVoteStatus(previousStatus);
+          setDisplayScore(previousScore);
+          toast({
+              variant: "destructive",
+              title: "Vote Failed",
+              description: result.error,
+          });
+      }
+    } catch (error) {
+      // Catch any unexpected errors from the action
+      setVoteStatus(previousStatus);
+      setDisplayScore(previousScore);
+      toast({
+          variant: "destructive",
+          title: "An Unexpected Error Occurred",
+          description: "Please try again later.",
+      });
+      console.error("Voting failed unexpectedly:", error);
+    } finally {
+      setIsVoting(false);
     }
-
-    setIsVoting(false)
   }
 
   return (

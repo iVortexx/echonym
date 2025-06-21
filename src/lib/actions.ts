@@ -192,109 +192,101 @@ export async function handleVote(
   voteType: VoteType,
   postId?: string
 ) {
-  if (!userId) return { error: "Not authenticated" }
-  if (itemType === "comment" && !postId) return { error: "Post ID is missing" }
+  if (!userId) return { error: "Not authenticated" };
+  if (itemType === "comment" && !postId) return { error: "Post ID is missing for comment vote" };
 
-  const itemRef =
-    itemType === "post"
+  const itemRef = itemType === "post"
       ? doc(db, "posts", itemId)
-      : doc(db, `posts/${postId}/comments/${itemId}`)
-
-  const voteId = `${userId}_${itemType}_${itemId}`
-  const voteRef = doc(db, "votes", voteId)
+      : doc(db, `posts/${postId}/comments/${itemId}`);
+  
+  const voteId = `${userId}_${itemType}_${itemId}`;
+  const voteRef = doc(db, "votes", voteId);
 
   try {
     await runTransaction(db, async (transaction) => {
       const [itemSnap, voteSnap] = await Promise.all([
         transaction.get(itemRef),
         transaction.get(voteRef),
-      ])
+      ]);
 
-      if (!itemSnap.exists()) throw new Error("Item not found")
+      if (!itemSnap.exists()) throw new Error("Item not found");
 
-      const itemData = itemSnap.data()
-      const postAuthorId = itemData.userId
-      if (!postAuthorId) {
-        throw new Error("Item is missing an author ID.");
-      }
-      const postAuthorRef = doc(db, "users", postAuthorId)
+      const itemData = itemSnap.data();
+      const authorId = itemData.userId;
+      if (!authorId) throw new Error("Item author not found.");
       
-      let upvoteChange = 0
-      let downvoteChange = 0
-      let xpChange = 0
+      const authorRef = doc(db, "users", authorId);
 
-      if (voteSnap.exists()) {
-        const vote = voteSnap.data()
-        if (vote.type === voteType) {
-          // User is toggling their vote off
-          transaction.delete(voteRef)
-          if (voteType === 'up') {
-            upvoteChange = -1;
-            xpChange = -2;
-          } else {
-            downvoteChange = -1;
-          }
-        } else {
-          // User is changing their vote
-          transaction.update(voteRef, { type: voteType })
-          if (voteType === "up") {
-            upvoteChange = 1
-            downvoteChange = -1
-            xpChange = 2
-          } else {
-            upvoteChange = -1
-            downvoteChange = 1
-            xpChange = -2
-          }
-        }
-      } else {
-        // User is casting a new vote
-        transaction.set(voteRef, {
-          userId,
-          type: voteType,
-          [itemType === "post" ? "postId" : "commentId"]: itemId,
-        })
+      const currentVote = voteSnap.data()?.type as VoteType | undefined;
+      let upvotes_inc = 0;
+      let downvotes_inc = 0;
+      let xp_inc = 0;
+
+      // Case 1: Toggling the same vote off
+      if (currentVote === voteType) {
+        transaction.delete(voteRef);
         if (voteType === 'up') {
-            upvoteChange = 1;
-            xpChange = 2;
-        } else {
-            downvoteChange = 1;
+          upvotes_inc = -1;
+          xp_inc = -2;
+        } else { // 'down'
+          downvotes_inc = -1;
         }
       }
+      // Case 2: Changing vote (e.g., from up to down)
+      else if (currentVote) {
+        transaction.update(voteRef, { type: voteType });
+        if (voteType === 'up') { // from down to up
+          upvotes_inc = 1;
+          downvotes_inc = -1;
+          xp_inc = 2;
+        } else { // from up to down
+          upvotes_inc = -1;
+          downvotes_inc = 1;
+          xp_inc = -2;
+        }
+      }
+      // Case 3: New vote
+      else {
+        const votePayload: Vote = { userId, type: voteType };
+        if (itemType === 'post') votePayload.postId = itemId;
+        else votePayload.commentId = itemId;
+        transaction.set(voteRef, votePayload);
 
-      transaction.update(itemRef, {
-        upvotes: increment(upvoteChange),
-        downvotes: increment(downvoteChange),
-      })
+        if (voteType === 'up') {
+          upvotes_inc = 1;
+          xp_inc = 2;
+        } else { // 'down'
+          downvotes_inc = 1;
+        }
+      }
       
-      // Only update author's XP if it's not their own post and the author exists
-      if (userId !== postAuthorId) {
-        const authorSnap = await transaction.get(postAuthorRef)
+      // Update the item's (post or comment) vote counts
+      transaction.update(itemRef, {
+        upvotes: increment(upvotes_inc),
+        downvotes: increment(downvotes_inc),
+      });
+
+      // Update the author's stats if it's not a self-vote
+      if (userId !== authorId) {
+        const authorSnap = await transaction.get(authorRef);
         if (authorSnap.exists()) {
-            transaction.update(postAuthorRef, { 
-                xp: increment(xpChange),
-                totalUpvotes: increment(upvoteChange),
-                totalDownvotes: increment(downvoteChange)
-            })
+          transaction.update(authorRef, {
+            xp: increment(xp_inc),
+            totalUpvotes: increment(upvotes_inc),
+            totalDownvotes: increment(downvotes_inc),
+          });
         }
       }
-    })
+    });
 
-    // Revalidate paths to update UI across the app
-    revalidatePath(`/`)
-    revalidatePath(itemType === "comment" && postId ? `/post/${postId}` : `/post/${itemId}`)
-    revalidatePath('/profile', 'layout')
+    revalidatePath(`/`);
+    revalidatePath(itemType === "comment" && postId ? `/post/${postId}` : `/post/${itemId}`);
+    revalidatePath('/profile', 'layout');
     
-    return { success: true }
+    return { success: true };
   } catch (e: any) {
-    console.error("Vote transaction failed:", e)
-    if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
-      return {
-        error:
-          "Firestore Security Rules are blocking the request. Please update your rules in the Firebase Console.",
-      }
-    }
-    return { error: e.message || "Failed to process vote." }
+    console.error("Vote transaction failed:", e);
+    return { error: e.message || "Failed to process vote." };
   }
 }
 
