@@ -17,9 +17,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Oswald', 'sans-serif'],
-        code: ['"Source Code Pro"', 'monospace'],
+        sans: ['var(--font-inter)', 'sans-serif'],
+        headline: ['var(--font-oswald)', 'sans-serif'],
+        mono: ['var(--font-source-code-pro)', 'monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',

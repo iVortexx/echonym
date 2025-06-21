@@ -1,11 +1,24 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Oswald, Source_Code_Pro } from "next/font/google"
 import "./globals.css"
 import { Header } from "@/components/layout/header"
 import { AuthProvider } from "@/providers/auth-provider"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+})
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  variable: "--font-oswald",
+})
+
+const sourceCodePro = Source_Code_Pro({
+  subsets: ["latin"],
+  variable: "--font-source-code-pro",
+})
 
 export const metadata: Metadata = {
   title: "/dev/whispers - Anonymous Security Research",
@@ -18,8 +31,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${oswald.variable} ${sourceCodePro.variable}`}
+    >
+      <body className="font-sans">
         <AuthProvider>
           <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
             <div
