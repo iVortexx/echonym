@@ -615,7 +615,11 @@ export async function toggleUserPostList(userId: string, postId: string, list: '
         };
 
         await updateDoc(userRef, updatePayload);
+        
         revalidatePath('/');
+        if (list === 'savedPosts') revalidatePath('/saved');
+        if (list === 'hiddenPosts') revalidatePath('/hidden');
+
         return { success: true, wasInList: isPostInList };
     } catch (e: any) {
         console.error(`Error toggling post in ${list}:`, e);
@@ -660,6 +664,62 @@ export async function getPostsByIds(postIds: string[]): Promise<Post[]> {
         console.error("Error fetching posts by IDs:", e);
         return [];
     }
+}
+
+export async function getSavedPostsForUser(userId: string, searchQuery?: string) {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+        return [];
+    }
+    const userData = userSnap.data() as User;
+    const savedPostIds = userData.savedPosts || [];
+    
+    if (savedPostIds.length === 0) {
+        return [];
+    }
+
+    let posts = await getPostsByIds(savedPostIds);
+
+    if (searchQuery) {
+        const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+        if (searchWords.length > 0) {
+            posts = posts.filter(post => 
+                post.searchKeywords && searchWords.every(word => post.searchKeywords.includes(word))
+            );
+        }
+    }
+
+    return posts;
+}
+
+export async function getHiddenPostsForUser(userId: string, searchQuery?: string) {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+        return [];
+    }
+    const userData = userSnap.data() as User;
+    const hiddenPostIds = userData.hiddenPosts || [];
+
+    if (hiddenPostIds.length === 0) {
+        return [];
+    }
+
+    let posts = await getPostsByIds(hiddenPostIds);
+    
+     if (searchQuery) {
+        const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+        if (searchWords.length > 0) {
+            posts = posts.filter(post => 
+                post.searchKeywords && searchWords.every(word => post.searchKeywords.includes(word))
+            );
+        }
+    }
+
+    return posts;
 }
 
 

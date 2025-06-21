@@ -51,7 +51,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, isPreview = false, userVote, onPostHide }: PostCardProps) {
-  const { user: currentUser, firebaseUser } = useAuth()
+  const { user: currentUser, firebaseUser, updateUser } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -60,6 +60,9 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
   const [optimisticVote, setOptimisticVote] = useState(userVote)
   const [optimisticUpvotes, setOptimisticUpvotes] = useState(post.upvotes)
   const [optimisticDownvotes, setOptimisticDownvotes] = useState(post.downvotes)
+  const [isSaved, setIsSaved] = useState(currentUser?.savedPosts?.includes(post.id) ?? false)
+  const [isHidden, setIsHidden] = useState(currentUser?.hiddenPosts?.includes(post.id) ?? false)
+
 
   // When the initial prop changes (e.g., navigating between pages), update the state
   useEffect(() => {
@@ -67,6 +70,11 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
     setOptimisticUpvotes(post.upvotes)
     setOptimisticDownvotes(post.downvotes)
   }, [userVote, post.upvotes, post.downvotes])
+  
+  useEffect(() => {
+    setIsSaved(currentUser?.savedPosts?.includes(post.id) ?? false);
+    setIsHidden(currentUser?.hiddenPosts?.includes(post.id) ?? false);
+  }, [currentUser, post.id]);
 
 
   const handleVoteClick = async (newVoteType: "up" | "down") => {
@@ -148,23 +156,33 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
   };
 
   const handleSave = async () => {
-    if (!firebaseUser) return;
-    const result = await toggleUserPostList(firebaseUser.uid, post.id, 'savedPosts');
+    if (!currentUser) return;
+    const result = await toggleUserPostList(currentUser.uid, post.id, 'savedPosts');
     if (result.success) {
       toast({ title: result.wasInList ? "Post unsaved" : "Post saved!" });
+      setIsSaved(!isSaved); // Optimistic update
+      const newSavedPosts = result.wasInList
+        ? currentUser.savedPosts?.filter(id => id !== post.id)
+        : [...(currentUser.savedPosts || []), post.id];
+      updateUser({ savedPosts: newSavedPosts });
     } else {
       toast({ variant: "destructive", title: "Error", description: result.error });
     }
   };
 
   const handleHide = async () => {
-    if (!firebaseUser) return;
-    const result = await toggleUserPostList(firebaseUser.uid, post.id, 'hiddenPosts');
+    if (!currentUser) return;
+    const result = await toggleUserPostList(currentUser.uid, post.id, 'hiddenPosts');
      if (result.success) {
       toast({ title: result.wasInList ? "Post unhidden" : "Post hidden" });
+      setIsHidden(!isHidden); // Optimistic update
       if (onPostHide && !result.wasInList) {
         onPostHide(post.id);
       }
+      const newHiddenPosts = result.wasInList
+        ? currentUser.hiddenPosts?.filter(id => id !== post.id)
+        : [...(currentUser.hiddenPosts || []), post.id];
+      updateUser({ hiddenPosts: newHiddenPosts });
     } else {
       toast({ variant: "destructive", title: "Error", description: result.error });
     }
@@ -284,10 +302,10 @@ export function PostCard({ post, isPreview = false, userVote, onPostHide }: Post
                     <LinkIcon className="mr-2 h-4 w-4" /> Share
                   </DropdownMenuItem>
                    <DropdownMenuItem onClick={() => handleSave()}>
-                    <Bookmark className="mr-2 h-4 w-4" /> Save
+                    <Bookmark className="mr-2 h-4 w-4" /> {isSaved ? "Unsave" : "Save"}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleHide()}>
-                    <EyeOff className="mr-2 h-4 w-4" /> Hide
+                    <EyeOff className="mr-2 h-4 w-4" /> {isHidden ? "Unhide" : "Hide"}
                   </DropdownMenuItem>
                   {isOwnPost && !isPreview && (
                     <>

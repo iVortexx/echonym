@@ -17,7 +17,12 @@ async function getPosts(sort: SortOrder = "latest", tag: string = "all", searchQ
   }
   
   if (searchQuery) {
-    q = query(q, where("searchKeywords", "array-contains", searchQuery.toLowerCase()));
+    const searchWords = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    if (searchWords.length > 0) {
+      // Note: Firestore 'array-contains-any' is limited to 30 values in the array.
+      // This should be fine for most search queries.
+      q = query(q, where("searchKeywords", "array-contains-any", searchWords.slice(0, 30)));
+    }
   }
 
   // Sorting
@@ -71,7 +76,17 @@ export default async function Home({ searchParams }: { searchParams: { [key: str
             </Tabs>
         </div>
 
-        <PostFeed posts={posts} isLoading={false} />
+        {posts.length === 0 && q ? (
+           <div className="text-center text-slate-400 py-16">
+             <div className="mb-4">
+               <div className="text-6xl mb-4">🤷</div>
+             </div>
+             <p className="text-lg font-mono">No results found for "{q}"</p>
+             <p className="font-mono text-sm">Try a different search term.</p>
+           </div>
+        ) : (
+          <PostFeed posts={posts} isLoading={false} />
+        )}
       </div>
   )
 }
