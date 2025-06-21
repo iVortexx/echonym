@@ -65,6 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             followingCount: 0,
             avatarUrl,
             avatarOptions,
+            savedPosts: [],
+            hiddenPosts: [],
           };
           await setDoc(userDocRef, newUser);
           setUser(newUser);

@@ -17,6 +17,10 @@ import {
   orderBy,
   Timestamp,
   updateDoc,
+  deleteDoc,
+  arrayUnion,
+  arrayRemove,
+  writeBatch
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote } from "./types"
@@ -31,6 +35,13 @@ const PostSchema = z.object({
   content: z.string().min(1, "Content is required"),
   tag: z.string().optional(),
 })
+
+const generateKeywords = (title: string, content: string): string[] => {
+    const text = `${title} ${content}`.toLowerCase();
+    const words = text.split(/\s+/).map(word => word.replace(/[^a-z0-9]/g, ''));
+    return Array.from(new Set(words.filter(word => word.length > 2)));
+};
+
 
 // The user's UID is passed from the client, as server actions don't have auth context.
 export async function createPost(rawInput: unknown, userId: string) {
@@ -61,7 +72,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   const userDocRef = doc(db, "users", userId)
 
   try {
-    await runTransaction(db, async (transaction) => {
+    const newPostId = await runTransaction(db, async (transaction) => {
       const userDoc = await transaction.get(userDocRef)
       if (!userDoc.exists()) {
         throw new Error("User document does not exist! Cannot create post.")
@@ -85,6 +96,7 @@ export async function createPost(rawInput: unknown, userId: string) {
         anonName: userData.anonName,
         xp: userData.xp,
         avatarUrl: userData.avatarUrl,
+        searchKeywords: generateKeywords(title, content),
       }
 
       if (tag) {
@@ -95,11 +107,12 @@ export async function createPost(rawInput: unknown, userId: string) {
         postPayload.summary = summary
       }
 
-      transaction.set(newPostRef, postPayload)
+      transaction.set(newPostRef, postPayload);
+      return newPostRef.id;
     })
 
     revalidatePath("/")
-    return { success: true }
+    return { success: true, postId: newPostId }
   } catch (e: any) {
     console.error("Error creating post:", e)
     if (e.code === "permission-denied" || e.code === 'PERMISSION_DENIED') {
@@ -110,6 +123,63 @@ export async function createPost(rawInput: unknown, userId: string) {
     }
     return { error: e.message || "Failed to create post." }
   }
+}
+
+
+export async function updatePost(postId: string, rawInput: unknown, userId: string) {
+    if (!userId) return { error: "You must be logged in to edit." };
+
+    const validation = PostSchema.safeParse(rawInput);
+    if (!validation.success) return { error: "Invalid data." };
+
+    const { title, content, tag } = validation.data;
+    const postRef = doc(db, "posts", postId);
+
+    try {
+        const postDoc = await getDoc(postRef);
+        if (!postDoc.exists() || postDoc.data().userId !== userId) {
+            return { error: "Post not found or you do not have permission to edit it." };
+        }
+
+        await updateDoc(postRef, {
+            title,
+            content,
+            tag: tag || null,
+            searchKeywords: generateKeywords(title, content),
+        });
+
+        revalidatePath(`/`);
+        revalidatePath(`/post/${postId}`);
+        return { success: true, postId };
+    } catch (e: any) {
+        console.error("Error updating post:", e);
+        return { error: "Failed to update post." };
+    }
+}
+
+export async function deletePost(postId: string, userId: string) {
+    if (!userId) return { error: "Authentication required." };
+    const postRef = doc(db, "posts", postId);
+    const userRef = doc(db, "users", userId);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const postDoc = await transaction.get(postRef);
+            if (!postDoc.exists() || postDoc.data().userId !== userId) {
+                throw new Error("Post not found or permission denied.");
+            }
+
+            transaction.delete(postRef);
+            transaction.update(userRef, { postCount: increment(-1) });
+            // Note: Deleting subcollections (comments, votes) should be handled by a Cloud Function for production apps.
+        });
+        
+        revalidatePath(`/`);
+        return { success: true };
+    } catch (e: any) {
+        console.error("Error deleting post:", e);
+        return { error: e.message || "Failed to delete post." };
+    }
 }
 
 const CommentSchema = z.object({
@@ -484,4 +554,67 @@ export async function toggleFollowUser(currentUserId: string, targetUserId: stri
     console.error("Follow/unfollow transaction failed:", e);
     return { error: e.message || "Failed to follow user." };
   }
+}
+
+export async function toggleUserPostList(userId: string, postId: string, list: 'savedPosts' | 'hiddenPosts') {
+    if (!userId) return { error: "Authentication required." };
+    const userRef = doc(db, "users", userId);
+    try {
+        const userDoc = await getDoc(userRef);
+        if (!userDoc.exists()) return { error: "User not found." };
+        
+        const userData = userDoc.data() as User;
+        const currentList = userData[list] || [];
+        const isPostInList = currentList.includes(postId);
+        
+        const updatePayload = {
+            [list]: isPostInList ? arrayRemove(postId) : arrayUnion(postId)
+        };
+
+        await updateDoc(userRef, updatePayload);
+        revalidatePath('/');
+        return { success: true, wasInList: isPostInList };
+    } catch (e: any) {
+        console.error(`Error toggling post in ${list}:`, e);
+        return { error: `Failed to update ${list}.` };
+    }
+}
+
+
+export async function getPostsByIds(postIds: string[]): Promise<Post[]> {
+    if (postIds.length === 0) return [];
+    
+    // Firestore 'in' query has a limit of 30
+    const chunks: string[][] = [];
+    for (let i = 0; i < postIds.length; i += 30) {
+        chunks.push(postIds.slice(i, i + 30));
+    }
+    
+    try {
+        const postPromises = chunks.map(chunk => {
+            const postsRef = collection(db, "posts");
+            const q = query(postsRef, where("__name__", "in", chunk));
+            return getDocs(q);
+        });
+        
+        const snapshotResults = await Promise.all(postPromises);
+        const posts: Post[] = [];
+        
+        snapshotResults.forEach(snapshot => {
+            snapshot.docs.forEach(doc => {
+                 const post = { id: doc.id, ...doc.data() } as Post;
+                 posts.push({
+                   ...post,
+                   createdAt: post.createdAt && typeof (post.createdAt as any).toDate === 'function'
+                     ? (post.createdAt as Timestamp).toDate().toISOString()
+                     : (post.createdAt as string),
+                 });
+            });
+        });
+        
+        return posts;
+    } catch (e) {
+        console.error("Error fetching posts by IDs:", e);
+        return [];
+    }
 }

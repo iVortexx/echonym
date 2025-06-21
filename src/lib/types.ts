@@ -14,6 +14,8 @@ export interface User {
   avatarOptions?: Record<string, string>
   followersCount?: number
   followingCount?: number
+  savedPosts?: string[]
+  hiddenPosts?: string[]
 }
 
 export interface Post {
@@ -30,6 +32,8 @@ export interface Post {
   commentCount: number
   xp: number
   avatarUrl?: string
+  // For search results, not a stored field
+  searchKeywords?: string[]
 }
 
 export interface Comment {

@@ -1,11 +1,28 @@
 
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon } from "lucide-react"
+import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Zap, Hash, Text, UserIcon, Share, EyeOff, Bookmark, Edit, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Accordion,
   AccordionContent,
@@ -20,20 +37,24 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { useAuth } from "@/hooks/use-auth"
 import { useState, useEffect } from "react"
-import { handleVote } from "@/lib/actions"
+import { handleVote, deletePost, toggleUserPostList } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 interface PostCardProps {
   post: Post
   isPreview?: boolean
   userVote?: VoteType | null
+  onPostHide?: (postId: string) => void
 }
 
-export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
+export function PostCard({ post, isPreview = false, userVote, onPostHide }: PostCardProps) {
   const { user: currentUser, firebaseUser } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
 
   const [isVoting, setIsVoting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [optimisticVote, setOptimisticVote] = useState(userVote)
   const [optimisticUpvotes, setOptimisticUpvotes] = useState(post.upvotes)
   const [optimisticDownvotes, setOptimisticDownvotes] = useState(post.downvotes)
@@ -104,8 +125,8 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
     }
   }
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent link navigation if inside another link
+  const handleShare = (e?: React.MouseEvent) => {
+    e?.preventDefault(); // Prevent link navigation if inside another link
     if (isPreview) return;
 
     const postUrl = `${window.location.origin}/post/${post.id}`;
@@ -124,6 +145,41 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
     });
   };
 
+  const handleSave = async () => {
+    if (!firebaseUser) return;
+    const result = await toggleUserPostList(firebaseUser.uid, post.id, 'savedPosts');
+    if (result.success) {
+      toast({ title: result.wasInList ? "Post unsaved" : "Post saved!" });
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.error });
+    }
+  };
+
+  const handleHide = async () => {
+    if (!firebaseUser) return;
+    const result = await toggleUserPostList(firebaseUser.uid, post.id, 'hiddenPosts');
+     if (result.success) {
+      toast({ title: result.wasInList ? "Post unhidden" : "Post hidden" });
+      if (onPostHide && !result.wasInList) {
+        onPostHide(post.id);
+      }
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.error });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!firebaseUser || !isOwnPost) return;
+    setIsDeleting(true);
+    const result = await deletePost(post.id, firebaseUser.uid);
+    if (result.success) {
+      toast({ title: "Post deleted successfully" });
+      router.push('/'); // Or refresh current page if that's better
+    } else {
+      toast({ variant: "destructive", title: "Error", description: result.error });
+    }
+    setIsDeleting(false);
+  };
 
   const formatTimeAgo = (createdAt: any) => {
     if (!createdAt) return "..."
@@ -165,6 +221,7 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
+      layout
     >
       <Card className="bg-slate-900/50 border-blue-500/20 rounded-lg backdrop-blur-sm hover:border-blue-400/40 transition-all duration-300">
         <CardHeader className="pb-3">
@@ -207,13 +264,60 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 flex-shrink-0"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+             <AlertDialog>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 flex-shrink-0"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-slate-900/95 border-blue-500/20 backdrop-blur-sm text-slate-200">
+                  <DropdownMenuItem onClick={handleShare}>
+                    <Share className="mr-2 h-4 w-4" /> Share
+                  </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => handleSave()}>
+                    <Bookmark className="mr-2 h-4 w-4" /> Save
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleHide()}>
+                    <EyeOff className="mr-2 h-4 w-4" /> Hide
+                  </DropdownMenuItem>
+                  {isOwnPost && !isPreview && (
+                    <>
+                      <DropdownMenuSeparator className="bg-slate-700/50" />
+                      <DropdownMenuItem onClick={() => router.push(`/post/${post.id}/edit`)}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <AlertDialogTrigger asChild>
+                         <DropdownMenuItem 
+                            className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <AlertDialogContent className="bg-slate-950 border-blue-500/20">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-mono text-xl text-blue-300">Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-slate-400">
+                    This will permanently delete your post and all its comments. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -266,16 +370,6 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
                   <MessageCircle className="h-4 w-4 mr-1" />
                   <span>{post.commentCount || 0}</span>
                 </Link>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
-                disabled={isPreview}
-                onClick={handleShare}
-              >
-                <LinkIcon className="h-4 w-4" />
               </Button>
             </div>
 

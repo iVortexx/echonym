@@ -4,7 +4,7 @@
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { createPost, scorePost } from "@/lib/actions"
+import { createPost, scorePost, updatePost } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -23,30 +23,39 @@ type ScoreState = {
   safety: string
 }
 
-export function PostForm() {
+interface PostFormProps {
+    postToEdit?: Post;
+}
+
+
+export function PostForm({ postToEdit }: PostFormProps) {
   const { user, firebaseUser } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
 
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
+  const isEditing = !!postToEdit;
+
+  const [title, setTitle] = useState(postToEdit?.title || "")
+  const [content, setContent] = useState(postToEdit?.content || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDraftSaved, setIsDraftSaved] = useState(false)
 
   const [aiScore, setAiScore] = useState<ScoreState | null>(null)
   const [isScoring, setIsScoring] = useState(false)
 
-  // Load draft from localStorage on initial render
+  // Load draft from localStorage on initial render for new posts
   useEffect(() => {
-    const draft = localStorage.getItem("postDraft")
-    if (draft) {
-      const { title, content } = JSON.parse(draft)
-      setTitle(title)
-      setContent(content)
+    if (!isEditing) {
+        const draft = localStorage.getItem("postDraft")
+        if (draft) {
+          const { title, content } = JSON.parse(draft)
+          setTitle(title)
+          setContent(content)
+        }
     }
-  }, [])
+  }, [isEditing])
 
-  // Save draft to localStorage on change
+  // Save draft to localStorage on change for new posts
   const debouncedSaveDraft = useCallback(
     debounce((newTitle: string, newContent: string) => {
       localStorage.setItem("postDraft", JSON.stringify({ title: newTitle, content: newContent }))
@@ -57,10 +66,10 @@ export function PostForm() {
   )
 
   useEffect(() => {
-    if (title || content) {
+    if (!isEditing && (title || content)) {
       debouncedSaveDraft(title, content)
     }
-  }, [title, content, debouncedSaveDraft])
+  }, [title, content, debouncedSaveDraft, isEditing])
 
   const debouncedGetScore = useCallback(
     debounce(async (newTitle: string, newContent: string) => {
@@ -104,37 +113,42 @@ export function PostForm() {
     setIsSubmitting(true)
     const tag = parseTag(content)
 
-    const result = await createPost({ title, content, tag }, firebaseUser.uid)
+    const result = isEditing 
+        ? await updatePost(postToEdit.id, { title, content, tag }, firebaseUser.uid)
+        : await createPost({ title, content, tag }, firebaseUser.uid);
+
 
     if (result?.error) {
       toast({
         variant: "destructive",
-        title: "Error Creating Post",
+        title: isEditing ? "Error Updating Post" : "Error Creating Post",
         description: result.error,
       })
       setIsSubmitting(false)
     } else {
       toast({
-        title: "Whisper Published!",
+        title: isEditing ? "Whisper Updated!" : "Whisper Published!",
         description: "Your post is now live.",
       })
-      localStorage.removeItem("postDraft") // Clear draft on successful submission
-      router.push("/")
+      if (!isEditing) {
+        localStorage.removeItem("postDraft") // Clear draft on successful submission
+      }
+      router.push(result.postId ? `/post/${result.postId}` : "/");
     }
   }
 
   const previewPost: Post = {
-    id: "preview",
+    id: postToEdit?.id || "preview",
     title: title || "Untitled Whisper",
     content: content || "Start typing to see your post live...",
     tag: parseTag(content),
     anonName: user?.anonName || "Anonymous",
     xp: user?.xp || 0,
     avatarUrl: user?.avatarUrl,
-    createdAt: new Date().toISOString(),
-    upvotes: 0,
-    downvotes: 0,
-    commentCount: 0,
+    createdAt: postToEdit?.createdAt || new Date().toISOString(),
+    upvotes: postToEdit?.upvotes || 0,
+    downvotes: postToEdit?.downvotes || 0,
+    commentCount: postToEdit?.commentCount || 0,
     userId: user?.uid || "",
   }
 
@@ -174,9 +188,11 @@ export function PostForm() {
               />
               <div className="flex justify-between items-center text-xs font-mono text-slate-400">
                 <span>{content.length} / 5000</span>
-                <span className={`transition-opacity ${isDraftSaved ? 'opacity-100' : 'opacity-0'}`}>
-                  Draft saved
-                </span>
+                {!isEditing && (
+                    <span className={`transition-opacity ${isDraftSaved ? 'opacity-100' : 'opacity-0'}`}>
+                    Draft saved
+                    </span>
+                )}
               </div>
             </div>
 
@@ -187,10 +203,10 @@ export function PostForm() {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Publishing...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {isEditing ? "Saving..." : "Publishing..."}
                 </>
               ) : (
-                "Publish Whisper"
+                isEditing ? "Save Changes" : "Publish Whisper"
               )}
             </Button>
           </form>
