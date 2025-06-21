@@ -8,6 +8,7 @@ import { UserBadge } from "./user-badge"
 import { VoteButtons } from "./vote-buttons"
 import { Dot, MessageSquareReply, UserIcon } from "lucide-react"
 import { Button } from "./ui/button"
+import { Badge } from "./ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
@@ -15,11 +16,12 @@ import { useAuth } from "@/hooks/use-auth"
 
 type CommentCardProps = {
   comment: Comment
+  postAuthorId: string
   onStartReply: (commentId: string) => void
   userVote?: VoteType | null
 }
 
-export function CommentCard({ comment, onStartReply, userVote }: CommentCardProps) {
+export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: CommentCardProps) {
   const { user: currentUser } = useAuth()
 
   const formatTimeAgo = (createdAt: any) => {
@@ -33,6 +35,7 @@ export function CommentCard({ comment, onStartReply, userVote }: CommentCardProp
 
   const isOwnComment = currentUser?.uid === comment.userId;
   const displayAvatarUrl = isOwnComment ? currentUser?.avatarUrl : comment.avatarUrl;
+  const isOriginalPoster = postAuthorId === comment.userId;
 
   return (
     <motion.div
@@ -59,6 +62,11 @@ export function CommentCard({ comment, onStartReply, userVote }: CommentCardProp
           <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
             <span className="font-mono text-cyan-400 hover:underline">{comment.anonName}</span>
           </Link>
+          {isOriginalPoster && (
+            <Badge variant="outline" className="ml-2 px-1.5 py-0.5 text-xs font-bold border-blue-400 text-blue-400 bg-blue-500/10">
+              OP
+            </Badge>
+          )}
           <UserBadge xp={comment.xp} className="ml-2" />
           <Dot className="h-3 w-3" />
           <span>{formatTimeAgo(comment.createdAt)} ago</span>

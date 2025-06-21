@@ -13,10 +13,11 @@ import { getUserVotes } from "@/lib/actions"
 
 interface CommentSectionProps {
   postId: string
+  postAuthorId: string
   initialComments: Comment[]
 }
 
-export function CommentSection({ postId, initialComments }: CommentSectionProps) {
+export function CommentSection({ postId, postAuthorId, initialComments }: CommentSectionProps) {
   const { user } = useAuth();
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const router = useRouter()
@@ -78,6 +79,7 @@ export function CommentSection({ postId, initialComments }: CommentSectionProps)
                 key={comment.id}
                 comment={comment}
                 postId={postId}
+                postAuthorId={postAuthorId}
                 replyingTo={replyingTo}
                 onStartReply={setReplyingTo}
                 onCancelReply={() => setReplyingTo(null)}
@@ -100,6 +102,7 @@ export function CommentSection({ postId, initialComments }: CommentSectionProps)
 interface CommentThreadProps {
   comment: Comment & { replies: Comment[] }
   postId: string
+  postAuthorId: string
   replyingTo: string | null
   onStartReply: (commentId: string) => void
   onCancelReply: () => void
@@ -110,6 +113,7 @@ interface CommentThreadProps {
 function CommentThread({
   comment,
   postId,
+  postAuthorId,
   replyingTo,
   onStartReply,
   onCancelReply,
@@ -130,6 +134,7 @@ function CommentThread({
     >
       <CommentCard 
         comment={comment} 
+        postAuthorId={postAuthorId}
         onStartReply={onStartReply} 
         userVote={userVotes[comment.id]}
       />
@@ -160,6 +165,7 @@ function CommentThread({
               key={reply.id}
               comment={reply as Comment & { replies: Comment[] }} // Recursively render replies
               postId={postId}
+              postAuthorId={postAuthorId}
               replyingTo={replyingTo}
               onStartReply={onStartReply}
               onCancelReply={onCancelReply}

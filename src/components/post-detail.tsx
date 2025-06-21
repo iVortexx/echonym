@@ -45,7 +45,7 @@ export function PostDetail({ post, initialComments }: PostDetailProps) {
             <PostCard post={post} userVote={userVote} />
             <Card id="comments" className="mt-6 p-4 sm:p-6 rounded-lg border-blue-500/20 bg-slate-900/50 backdrop-blur-sm">
                 <h2 className="text-xl font-bold mb-4 font-mono text-slate-200">Comments ({post.commentCount || 0})</h2>
-                <CommentSection postId={post.id} initialComments={initialComments} />
+                <CommentSection postId={post.id} postAuthorId={post.userId} initialComments={initialComments} />
             </Card>
         </div>
     );

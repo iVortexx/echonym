@@ -6,10 +6,10 @@ import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil } from "lucide-react"
+import { UserIcon, Award, TrendingUp, FileText, MessageSquare, Calendar, Pencil, HelpCircle } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { XPBar } from "@/components/xp-bar"
-import { getBadgeForXP, getNextBadge } from "@/lib/utils"
+import { getBadgeForXP, getNextBadge, BADGES } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useAuth } from "@/hooks/use-auth"
@@ -20,12 +20,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
 import { AvatarEditor } from "@/components/avatar-editor"
 import { useEffect, useState } from "react"
 
-function StatCard({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: string | number }) {
+function StatCard({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode }) {
   return (
-    <Card className="bg-slate-800/30 border-slate-700/50 p-4">
+    <Card className="bg-slate-800/30 border-slate-700/50 p-4 relative h-full">
       <div className="flex items-center gap-3">
         <Icon className="h-6 w-6 text-cyan-400" />
         <div>
@@ -33,6 +35,7 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ElementType, label
           <p className="text-xl font-bold font-mono text-slate-100">{value}</p>
         </div>
       </div>
+      {children}
     </Card>
   )
 }
@@ -160,7 +163,40 @@ export default function ProfilePage() {
       </Card>
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()} />
+        <StatCard icon={TrendingUp} label="Reputation" value={user.xp.toLocaleString()}>
+           <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-8 w-8 text-slate-500 hover:text-slate-300">
+                    <HelpCircle className="h-5 w-5" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 bg-slate-900 border-slate-700 text-slate-300">
+                <div className="space-y-4 p-2">
+                    <div>
+                        <h4 className="font-semibold text-cyan-400 mb-2 font-mono">How to Earn XP</h4>
+                        <ul className="list-disc list-inside text-sm text-slate-400 space-y-1">
+                            <li>Create a new post: <span className="font-mono text-green-400">+10 XP</span></li>
+                            <li>Add a comment: <span className="font-mono text-green-400">+5 XP</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold text-cyan-400 mb-2 font-mono">Ranks</h4>
+                        <ul className="space-y-2 text-sm text-slate-400">
+                            {BADGES.map((badge) => (
+                                <li key={badge.name} className="flex items-center justify-between">
+                                    <span className={badge.color}>{badge.name}</span>
+                                    <span className="font-mono text-slate-500">
+                                        {badge.minXP.toLocaleString()}
+                                        {badge.maxXP !== Infinity ? ` - ${badge.maxXP.toLocaleString()}` : '+'} XP
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+        </StatCard>
         <StatCard icon={FileText} label="Posts" value={user.postCount || 0} />
         <StatCard icon={MessageSquare} label="Comments" value={user.commentCount || 0} />
         <StatCard icon={Calendar} label="Joined" value={format(joinDate, "MMM d, yyyy")} />
