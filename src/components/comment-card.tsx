@@ -32,7 +32,7 @@ export function CommentCard({ comment, onStartReply, userVote }: CommentCardProp
   }
 
   const isOwnComment = currentUser?.uid === comment.userId;
-  const displayAvatarUrl = isOwnComment && currentUser?.avatarUrl ? currentUser.avatarUrl : comment.avatarUrl;
+  const displayAvatarUrl = isOwnComment ? currentUser?.avatarUrl : comment.avatarUrl;
 
   return (
     <motion.div

@@ -214,6 +214,9 @@ export async function handleVote(
 
       const itemData = itemSnap.data()
       const postAuthorId = itemData.userId
+      if (!postAuthorId) {
+        throw new Error("Item is missing an author ID.");
+      }
       const postAuthorRef = doc(db, "users", postAuthorId)
       
       let upvoteChange = 0
@@ -270,8 +273,8 @@ export async function handleVote(
         if (authorSnap.exists()) {
             transaction.update(postAuthorRef, { 
                 xp: increment(xpChange),
-                totalUpvotes: increment(upvoteChange > 0 ? upvoteChange : 0),
-                totalDownvotes: increment(downvoteChange > 0 ? downvoteChange : 0)
+                totalUpvotes: increment(upvoteChange),
+                totalDownvotes: increment(downvoteChange)
             })
         }
       }

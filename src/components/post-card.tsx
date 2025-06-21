@@ -59,7 +59,7 @@ export function PostCard({ post, isPreview = false, userVote }: PostCardProps) {
   }
 
   const isOwnPost = currentUser?.uid === post.userId;
-  const displayAvatarUrl = isOwnPost && currentUser?.avatarUrl ? currentUser.avatarUrl : post.avatarUrl;
+  const displayAvatarUrl = isOwnPost ? currentUser?.avatarUrl : post.avatarUrl;
 
 
   return (
