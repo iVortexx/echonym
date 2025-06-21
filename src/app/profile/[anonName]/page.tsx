@@ -1,7 +1,7 @@
 
 "use client"
 
-import { getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing, toggleFollowUser } from "@/lib/actions"
+import { getUserByAnonName, getPostsByUserId, getUserVotes, isFollowing as checkIsFollowing, toggleFollowUser } from "@/lib/actions"
 import { notFound, useRouter, useParams } from "next/navigation"
 import type { Post as PostType, User, VoteType } from "@/lib/types"
 import { PostCard } from "@/components/post-card"
@@ -86,7 +86,7 @@ export default function ProfilePage() {
 
       if (currentUser && fetchedUser && currentUser.uid !== fetchedUser.uid) {
         setIsFollowLoading(true);
-        const followingStatus = await isFollowing(currentUser.uid, fetchedUser.uid);
+        const followingStatus = await checkIsFollowing(currentUser.uid, fetchedUser.uid);
         setIsFollowing(followingStatus);
         setIsFollowLoading(false);
       } else {
