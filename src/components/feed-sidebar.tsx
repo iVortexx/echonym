@@ -62,7 +62,7 @@ function Leaderboard() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-mono text-sm text-primary break-words">{user.anonName}</p>
+                                    <p className="font-mono text-sm text-primary break-all">{user.anonName}</p>
                                     <p className="text-xs text-slate-500">{user.xp.toLocaleString()} XP</p>
                                 </div>
                             </Link>
@@ -86,11 +86,23 @@ export function FeedSidebar() {
 
     return (
         <aside className={cn(
-            "sticky top-20 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ease-in-out border-r border-border",
+            "sticky top-0 h-screen flex flex-col transition-all duration-300 ease-in-out border-r border-border",
             isCollapsed ? "w-20" : "w-64"
         )}>
              <div className="flex-1 flex flex-col min-h-0">
-                <nav className="mt-8 px-2">
+                <div className="h-14 flex items-center justify-center border-b border-border">
+                     {isCollapsed ? (
+                        <Image src="/logo.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm"/>
+                    ) : (
+                        <Link href="/" className="flex items-center space-x-2">
+                             <Image src="/logo.png" width={36} height={36} alt="Echonym Logo" className="rounded-sm" />
+                             <span className="font-bold font-sans text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                                Echonym
+                            </span>
+                        </Link>
+                    )}
+                </div>
+                <nav className="mt-4 px-2">
                     <ul className="space-y-2">
                         {menuItems.map((item) => (
                             <li key={item.href}>
@@ -134,10 +146,10 @@ export function FeedSidebar() {
                 <Button
                     variant="ghost"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="w-full justify-center"
+                    className="w-full"
                 >
-                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                    {!isCollapsed && <span>Collapse</span>}
+                    {isCollapsed ? <ChevronRight /> : <ChevronLeft/>}
+                    <span className="sr-only">{isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}</span>
                 </Button>
             </div>
         </aside>
