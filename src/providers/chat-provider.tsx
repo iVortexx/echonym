@@ -118,8 +118,22 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
 
   const toggleLauncher = useCallback((isOpen?: boolean) => {
-    setIsLauncherOpen(prev => isOpen === undefined ? !prev : isOpen);
-  }, []);
+    const willBeOpen = isOpen === undefined ? !isLauncherOpen : isOpen;
+    if (willBeOpen) {
+      // If the launcher is being opened, find and close any currently 'open' chat window.
+      // Minimized chats will remain.
+      setOpenChats(prev => {
+        const currentlyOpenChatId = Object.keys(prev).find(id => prev[id].state === 'open');
+        if (currentlyOpenChatId) {
+          const newChats = { ...prev };
+          delete newChats[currentlyOpenChatId];
+          return newChats;
+        }
+        return prev;
+      });
+    }
+    setIsLauncherOpen(willBeOpen);
+  }, [isLauncherOpen]);
 
   return (
     <ChatContext.Provider value={{ openChats, recentChats, isLauncherOpen, openChat, closeChat, minimizeChat, restoreChat, toggleLauncher }}>
