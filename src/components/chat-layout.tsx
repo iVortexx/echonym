@@ -1,22 +1,27 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useChat, type OpenChat } from "@/hooks/use-chat";
 import { ChatBox } from "./chat-box";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { MessageSquarePlus, X, UserIcon } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import type { User as UserType, UserChat } from "@/lib/types";
-import { getFollowers, getFollowing } from "@/lib/actions";
+import { MessageSquarePlus, UserIcon, X } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import type { User as UserType, UserChat } from "@/lib/types";
+import { getFollowers, getFollowing } from "@/lib/actions";
 import { UserSearchSidebar } from "./user-search-sidebar";
 import { UserRow } from "./user-row";
 import { useAuth } from "@/hooks/use-auth";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 function ChatHub() {
@@ -155,7 +160,7 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                             </Avatar>
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
+                    <TooltipContent side="left">
                         <p>Chat with {chat.user.anonName}</p>
                     </TooltipContent>
                 </Tooltip>
@@ -177,8 +182,12 @@ export function ChatLayout() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-row-reverse items-end gap-4">
+      {/* Container for launcher and minimized chats */}
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col-reverse items-end gap-2">
+        {/* The launcher button is the base of the vertical stack */}
         <ChatLauncher />
+
+        {/* Minimized chats appear above the launcher */}
         <AnimatePresence>
             {minimized.map((chat) => (
                 <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
@@ -186,7 +195,8 @@ export function ChatLayout() {
         </AnimatePresence>
       </div>
       
-      <div className="fixed bottom-4 right-24 z-[100] sm:bottom-0 sm:right-[calc(4rem+2rem)]">
+      {/* Container for the open chat window, positioned to the left of the launcher stack */}
+      <div className="fixed bottom-4 right-20 z-[100] left-4 sm:left-auto sm:w-80">
         <AnimatePresence>
             {openChat && <ChatBox key={openChat.chatId} chat={openChat} />}
         </AnimatePresence>
