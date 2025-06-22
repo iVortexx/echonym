@@ -400,14 +400,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const isOnlyEmoji = isEmojiOnly(msg.text);
 
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm relative",
+                          "p-2 px-3 text-sm relative rounded-2xl",
                           isOwnMessage ? "bg-cyan-900 text-slate-100" : "bg-muted text-foreground",
-                          'rounded-2xl',
                           {
-                            'rounded-br-md': isLastInGroup && isOwnMessage,
-                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
-                            'rounded-bl-md': isLastInGroup && !isOwnMessage,
-                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
+                            'rounded-tr-md': !isFirstInGroup && isOwnMessage,
+                            'rounded-tl-md': !isFirstInGroup && !isOwnMessage,
+                            'rounded-br-md': !isLastInGroup && isOwnMessage,
+                            'rounded-bl-md': !isLastInGroup && !isOwnMessage,
                           }
                         );
 
@@ -463,7 +462,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses, 'min-w-0')}>
-                                                <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className={cn("break-all", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -574,3 +573,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
+
+    
