@@ -81,7 +81,7 @@ export function FeedSidebar() {
     ]
 
     return (
-        <aside className="sticky top-20 h-[calc(100vh-6rem)] w-full max-w-xs space-y-6">
+        <aside className="sticky top-20 h-[calc(100vh-6rem)] w-full max-w-xs space-y-6 overflow-y-auto">
             <nav>
                 <ul className="space-y-2">
                     {menuItems.map((item) => (
