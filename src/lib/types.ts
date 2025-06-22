@@ -60,14 +60,36 @@ export interface Vote {
   type: VoteType
 }
 
+export interface Chat {
+  id: string; // Composite ID: sorted user UIDs
+  users: string[]; // [userId1, userId2]
+  userNames: { [key: string]: string };
+  userAvatars: { [key: string]: string | undefined };
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: Timestamp | string;
+  };
+  updatedAt: Timestamp | string;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  text: string;
+  createdAt: Timestamp | string;
+}
+
 export interface Notification {
   id: string;
-  type: 'new_comment' | 'new_reply' | 'new_follower' | 'welcome';
+  type: 'new_comment' | 'new_reply' | 'new_follower' | 'welcome' | 'new_message';
   fromUserId?: string;
   fromUserName?: string;
   fromUserAvatar?: string;
   targetPostId?: string;
   targetCommentId?: string;
+  chatId?: string;
   commentSnippet?: string;
   message?: string;
   read: boolean;

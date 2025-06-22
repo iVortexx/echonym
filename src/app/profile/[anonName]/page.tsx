@@ -31,6 +31,7 @@ import { db, auth } from '@/lib/firebase'
 import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useChat } from "@/hooks/use-chat"
 
 function StatCard({ icon: Icon, label, value, children, isClickable }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode, isClickable?: boolean }) {
   return (
@@ -66,7 +67,7 @@ function BackupAndRestore({ user }: { user: User }) {
     const result = await findUserByRecoveryId(recoveryInput.trim());
 
     if (result) {
-      localStorage.setItem('echonym_recovery_id', result.recoveryId);
+      localStorage.setItem('echonym_recovery_id', result.user.recoveryId);
       await auth.signOut();
       toast({ title: "✅ Account Found!", description: "Restoring your session..." });
       // The reload will trigger the AuthProvider to handle the new session
@@ -121,6 +122,7 @@ export default function ProfilePage() {
   const { toast } = useToast()
   const { user: currentUser, loading: authLoading } = useAuth()
   const router = useRouter()
+  const { openChat } = useChat();
 
   const rawAnonName = Array.isArray(params.anonName) ? params.anonName[0] : params.anonName
   const anonName = rawAnonName ? decodeURIComponent(rawAnonName) : ""
@@ -322,9 +324,15 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4 justify-center sm:justify-start">
               <h1 className="text-4xl font-bold font-sans text-primary">{displayUser.anonName}</h1>
               {!isOwnProfile && (
-                <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
-                  {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
+                      {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
+                    </Button>
+                    <Button onClick={() => openChat(displayUser)} variant="outline" size="sm" className="font-mono">
+                        <MessageSquare className="h-4 w-4 mr-2"/>
+                        Chat
+                    </Button>
+                </div>
               )}
             </div>
 

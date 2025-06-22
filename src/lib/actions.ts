@@ -23,8 +23,12 @@ import {
   writeBatch
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
-import type { Post, VoteType, User, Vote } from "./types"
+import type { Post, VoteType, User, Vote, Chat, ChatMessage } from "./types"
 import { buildAvatarUrl } from "./utils"
+import { scorePost as scorePostFlow } from '@/ai/flows/score-post-flow';
+import { suggestTags as suggestTagsFlow } from '@/ai/flows/suggest-tags';
+import { summarizePost as summarizePostFlow } from '@/ai/flows/summarize-post-flow';
+
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -57,8 +61,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   let summary: string | undefined;
   if (content.length > 300) { // Only summarize longer posts
     try {
-      const { summarizePost } = await import('@/ai/flows/summarize-post-flow');
-      const summaryResult = await summarizePost({ content });
+      const summaryResult = await summarizePostFlow({ content });
       summary = summaryResult.summary;
     } catch (e) {
       console.error("Failed to generate summary:", e);
@@ -69,8 +72,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   
   if (!tags || tags.length === 0) {
     try {
-      const { suggestTags } = await import('@/ai/flows/suggest-tags');
-      const suggested = await suggestTags({ content });
+      const suggested = await suggestTagsFlow({ content });
       tags = suggested.tags;
       if (!tags || tags.length === 0) {
         tags = ['discussion'];
@@ -160,8 +162,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
 
         if (!tags || tags.length === 0) {
             try {
-                const { suggestTags } = await import('@/ai/flows/suggest-tags');
-                const suggested = await suggestTags({ content });
+                const suggested = await suggestTagsFlow({ content });
                 tags = suggested.tags;
                 if (!tags || tags.length === 0) {
                     tags = ['discussion'];
@@ -478,8 +479,7 @@ export async function getTagSuggestions(content: string) {
     return { tags: [] }
   }
   try {
-    const { suggestTags } = await import('@/ai/flows/suggest-tags');
-    const result = await suggestTags({ content })
+    const result = await suggestTagsFlow({ content })
     return { tags: result.tags || [] }
   } catch (error: any) {
     console.error("Error fetching tag suggestions:", error)
@@ -494,7 +494,6 @@ export async function scorePost(input: { title: string; content: string; }) {
     return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
   }
   try {
-    const { scorePost: scorePostFlow } = await import('@/ai/flows/score-post-flow');
     const result = await scorePostFlow(input)
     return result
   } catch (error: any) {
@@ -552,7 +551,7 @@ export async function getUserByAnonName(anonName: string): Promise<User | null> 
   }
 }
 
-export async function findUserByRecoveryId(recoveryId: string): Promise<User | null> {
+export async function findUserByRecoveryId(recoveryId: string): Promise<{user: User, isNewLink: boolean} | null> {
   if (!recoveryId) return null;
   try {
     const usersRef = collection(db, "users");
@@ -564,10 +563,13 @@ export async function findUserByRecoveryId(recoveryId: string): Promise<User | n
     const userDoc = querySnapshot.docs[0];
     const user = { uid: userDoc.id, ...userDoc.data() } as User;
      return {
-      ...user,
-      createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
-        ? (user.createdAt as Timestamp).toDate().toISOString()
-        : (user.createdAt as string),
+      user: {
+        ...user,
+        createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+            ? (user.createdAt as Timestamp).toDate().toISOString()
+            : (user.createdAt as string),
+      },
+      isNewLink: true, // This logic is now handled in linkNewAuthSession
     };
   } catch (error) {
     console.error("Error finding user by recovery ID:", error);
@@ -932,34 +934,26 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid:string):
             return { success: false, error: "No user found with that recovery ID." };
         }
         
-        const userDocRef = userSnapshot.docs[0].ref;
-        const oldUserData = userSnapshot.docs[0].data();
+        const persistentUserDocRef = userSnapshot.docs[0].ref;
+        const persistentUserData = { uid: persistentUserDocRef.id, ...userSnapshot.docs[0].data() } as User;
 
         // If the user document is already linked to this auth UID, we don't need to do anything.
-        if (oldUserData.uid === newAuthUid) {
-            const user = { uid: userDocRef.id, ...oldUserData } as User;
-             return { success: true, user };
+        if (persistentUserData.activeAuthUid === newAuthUid) {
+             return { success: true, user: persistentUserData };
         }
 
         const batch = writeBatch(db);
         
-        // Unlink any other user document that might currently be using the newAuthUid.
-        // This prevents a single auth UID from being linked to two different user profiles.
-        const oldLinkQuery = query(usersRef, where("uid", "==", newAuthUid), limit(1));
-        const oldLinkSnapshot = await getDocs(oldLinkQuery);
-        if (!oldLinkSnapshot.empty) {
-            oldLinkSnapshot.forEach(doc => {
-                // Set the old link to null to break the connection, freeing up the auth UID.
-                batch.update(doc.ref, { uid: null });
-            });
-        }
+        // Find and delete the temporary user profile that was created for the new auth session.
+        const tempUserDocRef = doc(db, 'users', newAuthUid);
+        batch.delete(tempUserDocRef);
         
         // Link the new auth session to the restored user document
-        batch.update(userDocRef, { uid: newAuthUid });
+        batch.update(persistentUserDocRef, { activeAuthUid: newAuthUid });
         
         await batch.commit();
 
-        const updatedUserDoc = await getDoc(userDocRef);
+        const updatedUserDoc = await getDoc(persistentUserDocRef);
         const user = { uid: updatedUserDoc.id, ...updatedUserDoc.data() } as User;
 
         return { success: true, user };
@@ -987,4 +981,120 @@ export async function getTopUsers(): Promise<User[]> {
     console.error("Error fetching top users:", error);
     return [];
   }
+}
+
+// CHAT ACTIONS
+
+export async function getOrCreateChat(currentUserId: string, targetUserId: string): Promise<{ chatId: string; error?: undefined } | { error: string; chatId?: undefined }> {
+    if (currentUserId === targetUserId) {
+        return { error: "Cannot create chat with yourself." };
+    }
+
+    const chatId = [currentUserId, targetUserId].sort().join('_');
+    const chatRef = doc(db, "chats", chatId);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const chatDoc = await transaction.get(chatRef);
+            if (!chatDoc.exists()) {
+                const [currentUserSnap, targetUserSnap] = await Promise.all([
+                    getDoc(doc(db, "users", currentUserId)),
+                    getDoc(doc(db, "users", targetUserId)),
+                ]);
+
+                if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
+                    throw new Error("One or both users not found.");
+                }
+                
+                const currentUser = currentUserSnap.data() as User;
+                const targetUser = targetUserSnap.data() as User;
+
+                const newChat: Chat = {
+                    id: chatId,
+                    users: [currentUserId, targetUserId],
+                    userNames: {
+                        [currentUserId]: currentUser.anonName,
+                        [targetUserId]: targetUser.anonName
+                    },
+                    userAvatars: {
+                         [currentUserId]: currentUser.avatarUrl,
+                         [targetUserId]: targetUser.avatarUrl
+                    },
+                    updatedAt: serverTimestamp(),
+                };
+                transaction.set(chatRef, newChat);
+            }
+        });
+        return { chatId };
+    } catch (e: any) {
+        console.error("Error getting or creating chat:", e);
+        return { error: e.message || "Failed to start chat." };
+    }
+}
+
+export async function sendMessage(chatId: string, senderId: string, text: string): Promise<{ success: boolean; error?: string }> {
+    if (!text.trim()) {
+        return { success: false, error: "Message cannot be empty." };
+    }
+
+    const chatRef = doc(db, "chats", chatId);
+    const messagesRef = collection(chatRef, "messages");
+    const newMessageRef = doc(messagesRef);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const chatSnap = await transaction.get(chatRef);
+            if (!chatSnap.exists()) {
+                throw new Error("Chat not found.");
+            }
+            const chatData = chatSnap.data() as Chat;
+            const senderSnap = await transaction.get(doc(db, "users", senderId));
+            if (!senderSnap.exists()) {
+                throw new Error("Sender not found.");
+            }
+            const senderData = senderSnap.data() as User;
+
+            const receiverId = chatData.users.find(uid => uid !== senderId);
+            if (!receiverId) {
+                throw new Error("Could not determine receiver.");
+            }
+            
+            const message: Omit<ChatMessage, 'id' | 'createdAt'> = {
+                chatId,
+                senderId,
+                text,
+            };
+            
+            transaction.set(newMessageRef, {
+                ...message,
+                createdAt: serverTimestamp()
+            });
+            
+            transaction.update(chatRef, {
+                lastMessage: {
+                    text,
+                    senderId,
+                    timestamp: serverTimestamp()
+                },
+                updatedAt: serverTimestamp()
+            });
+
+            // Create notification for receiver
+            const notificationRef = doc(collection(db, `users/${receiverId}/notifications`));
+            transaction.set(notificationRef, {
+                type: 'new_message',
+                fromUserId: senderId,
+                fromUserName: senderData.anonName,
+                fromUserAvatar: senderData.avatarUrl,
+                chatId,
+                read: false,
+                createdAt: serverTimestamp(),
+            });
+        });
+
+        return { success: true };
+    } catch (e: any) {
+        console.error("Error sending message:", e);
+        return { success: false, error: e.message || "Failed to send message." };
+    }
 }

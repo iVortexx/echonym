@@ -6,6 +6,8 @@ import "./globals.css"
 import { Header } from "@/components/layout/header"
 import { AuthProvider } from "@/providers/auth-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { ChatProvider } from "@/providers/chat-provider"
+import { ChatLayout } from "@/components/chat-layout"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,9 +36,12 @@ export default function RootLayout({
     >
       <body className="font-sans bg-background">
         <AuthProvider>
-          <Header />
-          <main className="container mx-auto py-8 px-4">{children}</main>
-          <Toaster />
+          <ChatProvider>
+            <Header />
+            <main className="container mx-auto py-8 px-4">{children}</main>
+            <Toaster />
+            <ChatLayout />
+          </ChatProvider>
         </AuthProvider>
       </body>
     </html>

@@ -8,16 +8,18 @@ import { Bell, User, MessageCircle, GitBranch, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { markAllNotificationsAsRead, markNotificationAsRead } from '@/lib/actions';
-import type { Notification } from '@/lib/types';
+import type { Notification, User as UserType } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
+import { useChat } from '@/hooks/use-chat';
 
 function NotificationItem({ notification, onOpen }: { notification: Notification; onOpen: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useAuth();
+  const { openChat } = useChat();
 
   const getIcon = () => {
     switch (notification.type) {
@@ -29,6 +31,8 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
         return <GitBranch className="h-4 w-4 text-green-400" />;
       case 'welcome':
         return <Sparkles className="h-4 w-4 text-yellow-400" />;
+      case 'new_message':
+          return <MessageCircle className="h-4 w-4 text-primary" />;
       default:
         return <Bell className="h-4 w-4 text-slate-400" />;
     }
@@ -45,6 +49,7 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
         {notification.type === 'new_follower' && 'started following you.'}
         {notification.type === 'new_comment' && 'commented on your echo:'}
         {notification.type === 'new_reply' && 'replied to your comment.'}
+        {notification.type === 'new_message' && 'sent you a message.'}
         {notification.type === 'new_comment' && notification.commentSnippet && (
           <span className="block text-slate-400 italic mt-1">"{notification.commentSnippet}..."</span>
         )}
@@ -62,6 +67,8 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
             return `/post/${notification.targetPostId}#comment-${notification.targetCommentId}`;
         case 'welcome':
             return '/profile';
+        case 'new_message':
+            return '#'; // Handled by openChat
         default:
             return '#';
     }
@@ -70,26 +77,35 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Mark as read before navigating
+    // Mark as read before navigating or opening chat
     if (user && !notification.read) {
       await markNotificationAsRead(user.uid, notification.id);
     }
     
+    onOpen(); // Close the notification popover
+
+    if (notification.type === 'new_message') {
+        if (notification.fromUserId && notification.fromUserName) {
+            const partialUser: Partial<UserType> = {
+                uid: notification.fromUserId,
+                anonName: notification.fromUserName,
+                avatarUrl: notification.fromUserAvatar
+            };
+            openChat(partialUser as UserType); // openChat handles partial user
+        }
+        return;
+    }
+
     const link = getLink();
     if (link === '#') return;
 
     const targetPathname = link.split('#')[0];
 
-    // If we're already on the page the notification is for, refresh it to get new data
     if (pathname === targetPathname) {
       router.refresh();
     } else {
-      // Otherwise, navigate to the new page
       router.push(link);
     }
-    
-    // Close the notification popover
-    onOpen();
   };
 
   return (
