@@ -359,14 +359,16 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
                         
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm text-foreground relative",
+                          "p-2 px-3 text-sm text-foreground relative break-all",
                           isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
-                          'rounded-2xl', 
+                          'rounded-2xl',
                           {
+                            // Own messages (right side)
+                            'rounded-tr-md': !isFirstInGroup && isOwnMessage,
                             'rounded-br-md': !isLastInGroup && isOwnMessage,
+                            // Other's messages (left side)
+                            'rounded-tl-md': !isFirstInGroup && !isOwnMessage,
                             'rounded-bl-md': !isLastInGroup && !isOwnMessage,
-                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
-                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
                           }
                         );
 
@@ -408,13 +410,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
-                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 -mb-px cursor-pointer hover:bg-muted transition-colors",
+                                                  "flex items-start gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 -mb-px cursor-pointer hover:bg-muted transition-colors",
                                                   "w-full"
                                               )}
                                             >
-                                              <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
+                                              <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
                                               <div className="italic text-slate-400 line-clamp-2">
-                                                {`"${(msg.replyTo.text.length > 70 ? `${msg.replyTo.text.substring(0, 70)}...` : msg.replyTo.text)}"`}
+                                                {`"${msg.replyTo.text}"`}
                                               </div>
                                             </a>
                                         )}
@@ -533,5 +535,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
-    
