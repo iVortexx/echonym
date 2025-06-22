@@ -239,10 +239,10 @@ export function ChatBox({ chat }: ChatBoxProps) {
   return (
     <motion.div
       layoutId={`chatbox-${chatId}`}
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      initial={{ opacity: 0, scale: 0.8, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 10 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      transition={{ type: "spring", duration: 0.3 }}
       className="w-80 h-[400px] flex flex-col bg-card border-2 border-primary/50 rounded-xl shadow-2xl shadow-primary/20"
     >
       <header className="flex items-center justify-between p-2 pl-3 border-b border-primary/20 cursor-pointer">
@@ -289,6 +289,23 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const showAvatar = !isOwnMessage && isLastInGroup;
                     
                     const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
+                    
+                    const bubbleClasses = cn(
+                      "p-2 px-3 text-sm text-foreground",
+                      isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
+                      {
+                        "rounded-2xl": true,
+                        // Outgoing messages (on the right)
+                        "rounded-br-md": isOwnMessage && isFirstInGroup && !isLastInGroup,
+                        "rounded-tr-md rounded-br-md": isOwnMessage && !isFirstInGroup && !isLastInGroup,
+                        "rounded-tr-md": isOwnMessage && !isFirstInGroup && isLastInGroup,
+                        // Incoming messages (on the left)
+                        "rounded-bl-md": !isOwnMessage && isFirstInGroup && !isLastInGroup,
+                        "rounded-tl-md rounded-bl-md": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
+                        "rounded-tl-md": !isOwnMessage && !isFirstInGroup && isLastInGroup,
+                      }
+                    );
+
 
                     return (
                         <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
@@ -342,30 +359,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                        <div
-                                            className={cn(
-                                                "p-2 px-3 text-sm text-foreground",
-                                                isOwnMessage
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "bg-muted",
-                                                {
-                                                    // Case 1: Single message in a group
-                                                    "rounded-2xl": isFirstInGroup && isLastInGroup,
-
-                                                    // Case 2: First message in a multi-message group
-                                                    "rounded-2xl rounded-tr-md": isOwnMessage && isFirstInGroup && !isLastInGroup,
-                                                    "rounded-2xl rounded-tl-md": !isOwnMessage && isFirstInGroup && !isLastInGroup,
-
-                                                    // Case 3: Middle message in a multi-message group
-                                                    "rounded-l-2xl rounded-r-md": isOwnMessage && !isFirstInGroup && !isLastInGroup,
-                                                    "rounded-r-2xl rounded-l-md": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
-
-                                                    // Case 4: Last message in a multi-message group
-                                                    "rounded-2xl rounded-br-md": isOwnMessage && isLastInGroup && !isFirstInGroup,
-                                                    "rounded-2xl rounded-bl-md": !isOwnMessage && isLastInGroup && !isFirstInGroup,
-                                                }
-                                            )}
-                                        >
+                                        <div className={bubbleClasses}>
                                             <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                         </div>
                                         </TooltipTrigger>
@@ -477,4 +471,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
   );
 }
 
-    
