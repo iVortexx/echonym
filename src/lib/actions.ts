@@ -60,7 +60,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   let aiWarning: string | undefined;
 
   let summary: string | undefined;
-  if (content.length > 300) { // Only summarize longer posts
+  if (process.env.GEMINI_API_KEY && content.length > 300) { // Only summarize longer posts
     try {
       const summaryResult = await summarizePostFlow({ content });
       summary = summaryResult.summary;
@@ -72,16 +72,18 @@ export async function createPost(rawInput: unknown, userId: string) {
   }
   
   if (!tags || tags.length === 0) {
-    try {
-      const suggested = await suggestTagsFlow({ content });
-      tags = suggested.tags;
-      if (!tags || tags.length === 0) {
+    if (process.env.GEMINI_API_KEY) {
+        try {
+          const suggested = await suggestTagsFlow({ content });
+          tags = suggested.tags;
+        } catch (e) {
+          console.error("Failed to generate tags:", e);
+          aiWarning = "Echo created, but AI tag suggestion failed. Please add tags manually.";
+        }
+    }
+    // If tags are still empty (either AI failed or no key), set a default.
+    if (!tags || tags.length === 0) {
         tags = ['discussion'];
-      }
-    } catch (e) {
-      console.error("Failed to generate tags:", e);
-      aiWarning = "Echo created, but AI tag suggestion failed. Please add tags manually.";
-      tags = ['discussion'];
     }
   }
 
@@ -162,15 +164,16 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
         }
 
         if (!tags || tags.length === 0) {
-            try {
-                const suggested = await suggestTagsFlow({ content });
-                tags = suggested.tags;
-                if (!tags || tags.length === 0) {
-                    tags = ['discussion'];
+            if (process.env.GEMINI_API_KEY) {
+                try {
+                    const suggested = await suggestTagsFlow({ content });
+                    tags = suggested.tags;
+                } catch (e) {
+                    console.error("Failed to generate tags for update:", e);
+                    aiWarning = "Echo updated, but AI tag suggestion failed. Please add tags manually.";
                 }
-            } catch (e) {
-                console.error("Failed to generate tags for update:", e);
-                aiWarning = "Echo updated, but AI tag suggestion failed. Please add tags manually.";
+            }
+            if (!tags || tags.length === 0) {
                 tags = ['discussion'];
             }
         }
@@ -476,7 +479,7 @@ export async function getUserVotes(
 }
 
 export async function getTagSuggestions(content: string) {
-  if (!content.trim()) {
+  if (!content.trim() || !process.env.GEMINI_API_KEY) {
     return { tags: [] }
   }
   try {
@@ -485,14 +488,13 @@ export async function getTagSuggestions(content: string) {
   } catch (error: any) {
     console.error("Error fetching tag suggestions:", error)
     // Don't show an error to the user, just return no tags.
-    // This can happen if the GEMINI_API_KEY is not set.
     return { tags: [] }
   }
 }
 
 export async function scorePost(input: { title: string; content: string; }) {
-  if (!input.title.trim() || !input.content.trim()) {
-    return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
+  if (!input.title.trim() || !input.content.trim() || !process.env.GEMINI_API_KEY) {
+    return { score: 0, clarity: "AI analysis unavailable.", safety: "AI analysis unavailable." }
   }
   try {
     const result = await scorePostFlow(input)
@@ -1087,7 +1089,7 @@ export async function sendMessage(chatId: string, senderId: string, text: string
             createdAt: serverTimestamp()
         });
         
-        const messageData = { text, senderId };
+        const messageData = { text, senderId, createdAt: serverTimestamp() };
         batch.set(chatRef, { lastMessage: messageData, updatedAt: serverTimestamp() }, { merge: true });
 
         const senderChatRef = doc(db, `users/${senderId}/chats/${chatId}`);

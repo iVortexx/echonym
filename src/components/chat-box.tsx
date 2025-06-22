@@ -16,7 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
-import TextareaAutosize from 'react-textarea-autosize';
+import { Textarea } from '@/components/ui/textarea';
 import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
@@ -119,7 +119,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
   }, [handleManualScroll]);
 
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
     
@@ -237,7 +237,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 />
               </PopoverContent>
             </Popover>
-          <TextareaAutosize
+          <Textarea
             value={newMessage}
             onChange={(e) => handleTyping(e.target.value)}
             onKeyDown={(e) => {
@@ -248,8 +248,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
             }}
             placeholder="Send a message..."
             rows={1}
-            maxRows={5}
-            className="flex-1 bg-input border-border rounded-lg resize-none p-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+            className="flex-1 bg-input border-border rounded-lg resize-none p-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all max-h-[120px]"
           />
           <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0 bg-primary hover:bg-primary/90 disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
             <Send className="h-4 w-4" />
