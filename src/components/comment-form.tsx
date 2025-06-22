@@ -40,7 +40,7 @@ export function CommentForm({
     setIsSubmitting(true)
     const result = await createComment(
       { content, postId, parentId },
-      firebaseUser.uid
+      user.uid
     )
 
     if (result?.error) {

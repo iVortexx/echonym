@@ -43,7 +43,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
   }, [userVote, comment.upvotes, comment.downvotes])
 
   const handleVoteClick = async (newVoteType: "up" | "down") => {
-    if (!firebaseUser || isVoting) return
+    if (!currentUser || !firebaseUser || isVoting) return
 
     setIsVoting(true)
     const previousVote = optimisticVote
@@ -71,7 +71,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
     setOptimisticDownvotes(prev => prev + downvoteChange)
 
     try {
-      const result = await handleVote(firebaseUser.uid, comment.id, "comment", newVoteType, comment.postId)
+      const result = await handleVote(currentUser.uid, comment.id, "comment", newVoteType, comment.postId)
       if (result?.error) {
         setOptimisticVote(previousVote)
         setOptimisticUpvotes(previousUpvotes)

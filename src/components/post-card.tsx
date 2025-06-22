@@ -81,7 +81,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
 
 
   const handleVoteClick = async (newVoteType: "up" | "down") => {
-    if (!firebaseUser || isVoting || isPreview) return
+    if (!currentUser || !firebaseUser || isVoting || isPreview) return
     
     setIsVoting(true)
     const previousVote = optimisticVote
@@ -110,7 +110,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
     setOptimisticDownvotes(prev => prev + downvoteChange);
 
     try {
-      const result = await handleVote(firebaseUser.uid, post.id, "post", newVoteType);
+      const result = await handleVote(currentUser.uid, post.id, "post", newVoteType);
 
       if (result?.error) {
           // On error, revert the optimistic update
@@ -196,9 +196,9 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
   };
 
   const handleDelete = async () => {
-    if (!firebaseUser || !isOwnPost) return;
+    if (!currentUser || !isOwnPost) return;
     setIsDeleting(true);
-    const result = await deletePost(post.id, firebaseUser.uid);
+    const result = await deletePost(post.id, currentUser.uid);
     if (result.success) {
       toast({ title: "Echo deleted successfully" });
       router.push('/'); // Or refresh current page if that's better

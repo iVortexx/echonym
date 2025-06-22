@@ -119,7 +119,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!firebaseUser) {
+    if (!user || !firebaseUser) {
       toast({
         variant: "destructive",
         title: "Not Authenticated",
@@ -130,8 +130,8 @@ export function PostForm({ postToEdit }: PostFormProps) {
     setIsSubmitting(true)
 
     const result = isEditing 
-        ? await updatePost(postToEdit.id, { title, content, tags }, firebaseUser.uid)
-        : await createPost({ title, content, tags }, firebaseUser.uid);
+        ? await updatePost(postToEdit.id, { title, content, tags }, user.uid)
+        : await createPost({ title, content, tags }, user.uid);
 
 
     if (result?.error) {
