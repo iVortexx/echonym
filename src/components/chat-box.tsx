@@ -83,48 +83,44 @@ export function ChatBox({ chat }: ChatBoxProps) {
     return () => unsubscribe();
   }, [chatId]);
 
+  // This effect now correctly handles scrolling to the bottom
   useEffect(() => {
     const scrollDiv = scrollAreaRef.current;
-    if (!scrollDiv) return;
-
-    // A small tolerance for floating point numbers and borders
-    const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 1;
-
-    if (!userHasScrolled || isAtBottom) {
+    // Only scroll if the user hasn't manually scrolled up
+    if (scrollDiv && !userHasScrolled) {
       setTimeout(() => {
         scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
-      }, 100);
-       setUserHasScrolled(false); // Reset after auto-scroll
+      }, 100); // Timeout to allow DOM to update
     }
-  }, [messages]);
+  }, [messages]); // Rerun whenever new messages arrive
 
-  const handleManualScroll = () => {
-    const scrollDiv = scrollAreaRef.current;
-    if (!scrollDiv) return;
-
-    const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 1;
-    if (!isAtBottom) {
-        setUserHasScrolled(true);
-    } else {
-        setUserHasScrolled(false);
-    }
-  }
-  
+  // This effect attaches the listener to detect when a user scrolls
   useEffect(() => {
-      const scrollDiv = scrollAreaRef.current;
-      if (scrollDiv) {
-          scrollDiv.addEventListener('scroll', handleManualScroll);
-          return () => scrollDiv.removeEventListener('scroll', handleManualScroll);
-      }
-  }, []);
+    const scrollDiv = scrollAreaRef.current;
+
+    const handleManualScroll = () => {
+      if (!scrollDiv) return;
+      // Check if user is at the bottom with a small tolerance
+      const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5;
+      // If they are not at the bottom, we set userHasScrolled to true
+      setUserHasScrolled(!isAtBottom);
+    };
+
+    if (scrollDiv) {
+      scrollDiv.addEventListener('scroll', handleManualScroll);
+      // Clean up the event listener
+      return () => scrollDiv.removeEventListener('scroll', handleManualScroll);
+    }
+  }, []); // Empty array means this runs once on mount
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
     
-    setUserHasScrolled(false); // Allow auto-scroll for own message
-
+    // Before sending, reset the scroll lock so we auto-scroll to our own new message
+    setUserHasScrolled(false);
+    
     const textToSend = newMessage;
     setNewMessage("");
 
