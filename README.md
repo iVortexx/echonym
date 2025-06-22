@@ -1,6 +1,6 @@
 # Echonym: Whispers from the Digital Underground
 
-![Echonym Logo](./public/logo.png)
+![Echonym Logo](https://media.discordapp.net/attachments/806888233422028800/1386138662739247225/raw.png?ex=6859467a&is=6857f4fa&hm=b32e245aaa3e551610c1ff1aad9008d1c753575dce84dbc1cd6e8776c528686a&=&format=webp&quality=lossless&width=788&height=788)
 
 **Echonym** is a modern, anonymous social platform designed for security researchers, ethical hackers, and tech enthusiasts. It provides a secure space to share discoveries, discuss vulnerabilities, and engage with a community of peers without revealing personal identities.
 
