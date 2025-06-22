@@ -91,7 +91,14 @@ export interface ChatMessage {
   senderId: string;
   text: string;
   createdAt: Timestamp | string;
+  reactions?: { [emoji: string]: string[] }; // emoji: [userId1, userId2]
+  replyTo?: {
+    messageId: string;
+    senderName: string;
+    text: string;
+  };
 }
+
 
 export interface TypingStatus {
   isTyping: boolean;
@@ -116,3 +123,5 @@ export interface Notification {
 
 // Mock Timestamp type for demo
 export type { Timestamp }
+
+    

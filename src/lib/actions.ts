@@ -1056,7 +1056,7 @@ export async function getOrCreateChat(currentUserId: string, targetUserId: strin
     }
 }
 
-export async function sendMessage(chatId: string, senderId: string, text: string): Promise<{ success: boolean; error?: string }> {
+export async function sendMessage(chatId: string, senderId: string, text: string, replyTo?: ChatMessage['replyTo']): Promise<{ success: boolean; error?: string }> {
     if (!text.trim()) {
         return { success: false, error: "Message cannot be empty." };
     }
@@ -1079,12 +1079,16 @@ export async function sendMessage(chatId: string, senderId: string, text: string
         const receiverId = chatData.users.find(uid => uid !== senderId);
         if (!receiverId) throw new Error("Could not determine receiver.");
 
-        const message: Omit<ChatMessage, 'id' | 'createdAt'> = {
+        const message: Partial<ChatMessage> = {
             chatId,
             senderId,
             text,
         };
         
+        if (replyTo) {
+            message.replyTo = replyTo;
+        }
+
         batch.set(newMessageRef, {
             ...message,
             createdAt: serverTimestamp()
@@ -1145,3 +1149,49 @@ export async function clearChatUnread(userId: string, chatId: string) {
         console.error("Error clearing chat unread count:", e);
     }
 }
+
+export async function toggleMessageReaction(chatId: string, messageId: string, emoji: string, userId: string) {
+  if (!chatId || !messageId || !emoji || !userId) {
+    return { error: 'Missing required fields.' };
+  }
+
+  const messageRef = doc(db, `chats/${chatId}/messages`, messageId);
+
+  try {
+    await runTransaction(db, async (transaction) => {
+      const messageDoc = await transaction.get(messageRef);
+      if (!messageDoc.exists()) {
+        throw new Error('Message not found.');
+      }
+
+      const messageData = messageDoc.data() as ChatMessage;
+      const reactions = messageData.reactions || {};
+      const emojiReactors = reactions[emoji] || [];
+
+      const userIndex = emojiReactors.indexOf(userId);
+
+      if (userIndex > -1) {
+        // User has already reacted with this emoji, so remove them
+        emojiReactors.splice(userIndex, 1);
+      } else {
+        // User has not reacted, so add them
+        emojiReactors.push(userId);
+      }
+
+      if (emojiReactors.length === 0) {
+        // If no one is reacting with this emoji anymore, remove the emoji key
+        delete reactions[emoji];
+      } else {
+        reactions[emoji] = emojiReactors;
+      }
+
+      transaction.update(messageRef, { reactions });
+    });
+    return { success: true };
+  } catch (e: any) {
+    console.error('Error toggling reaction:', e);
+    return { error: 'Failed to update reaction.' };
+  }
+}
+
+    

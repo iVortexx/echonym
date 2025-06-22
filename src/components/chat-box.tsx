@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Minus, Send, UserIcon, Loader2, Smile } from 'lucide-react';
+import { X, Minus, Send, UserIcon, Loader2, Smile, Reply } from 'lucide-react';
 import { useChat, type OpenChat } from '@/hooks/use-chat';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -11,7 +11,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, type Timestamp } from 'firebase/firestore';
-import { sendMessage, setTypingStatus, clearChatUnread } from '@/lib/actions';
+import { sendMessage, setTypingStatus, clearChatUnread, toggleMessageReaction } from '@/lib/actions';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
@@ -40,6 +40,36 @@ const getDateFromTimestamp = (timestamp: Timestamp | string | undefined): Date |
     }
 };
 
+const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emoji: {emoji: string}) => void, onReply: () => void }) => {
+    return (
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-card border border-border shadow-md">
+             <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-primary">
+                        <Smile className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-auto bg-popover border-border rounded-lg" side="top" align="center">
+                    <EmojiPicker 
+                        onEmojiClick={onEmojiSelect}
+                        emojiStyle={EmojiStyle.NATIVE}
+                        theme="dark"
+                        searchDisabled
+                        skinTonesDisabled
+                        lazyLoadEmojis
+                        height={300}
+                        categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
+                        previewConfig={{ showPreview: false }}
+                    />
+                </PopoverContent>
+            </Popover>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-primary" onClick={onReply}>
+                <Reply className="h-4 w-4" />
+            </Button>
+        </div>
+    )
+}
+
 export function ChatBox({ chat }: ChatBoxProps) {
   const { closeChat, minimizeChat } = useChat();
   const { user: currentUser } = useAuth();
@@ -49,6 +79,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
   const { user, chatId } = chat;
 
@@ -146,13 +177,28 @@ export function ChatBox({ chat }: ChatBoxProps) {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
     
-    // Always scroll to bottom after sending a message
     setUserHasScrolled(false);
     
     const textToSend = newMessage;
     setNewMessage("");
 
-    await sendMessage(chatId, currentUser.uid, textToSend);
+    let senderName = '';
+    if (replyingTo) {
+      if (replyingTo.senderId === currentUser.uid) {
+        senderName = currentUser.anonName;
+      } else {
+        senderName = user.anonName;
+      }
+    }
+
+    const replyPayload = replyingTo ? {
+      messageId: replyingTo.id,
+      senderName: senderName,
+      text: replyingTo.text,
+    } : undefined;
+
+    await sendMessage(chatId, currentUser.uid, textToSend, replyPayload);
+    setReplyingTo(null);
     debouncedSetTypingFalse.cancel();
     if (currentUser) {
       setTypingStatus(chatId, currentUser.uid, false);
@@ -160,10 +206,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
     setTimeout(() => scrollToBottom(), 0);
   };
 
-  const handleEmojiSelect = (emoji: { emoji: string }) => {
+  const handleMainEmojiSelect = (emoji: { emoji: string }) => {
     setNewMessage(prev => prev + emoji.emoji);
     setEmojiPickerOpen(false);
   };
+
+  const handleReaction = async (messageId: string, emoji: string) => {
+      if (!currentUser) return;
+      await toggleMessageReaction(chatId, messageId, emoji, currentUser.uid);
+  }
 
   return (
     <motion.div
@@ -206,67 +257,102 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const nextMessage = messages[i + 1];
 
                     const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
-                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
-
+                    
                     const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
-                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
 
                     const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId;
                     
                     const showAvatar = !isOwnMessage && isLastInGroup;
 
+                    const handleSelectReaction = (emoji: {emoji: string}) => {
+                        handleReaction(msg.id, emoji.emoji);
+                    }
+
                     return (
-                        <div
-                            key={msg.id}
-                            className={cn(
-                                "flex w-full gap-2 items-end",
-                                isOwnMessage ? "justify-end" : "justify-start",
-                                isFirstInGroup ? "mt-4" : "mt-0.5"
-                            )}
-                        >
-                            {!isOwnMessage && (
-                                <div className="w-8 flex-shrink-0 self-end">
-                                    {showAvatar && (
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarImage src={user.avatarUrl} />
-                                            <AvatarFallback>
-                                                <UserIcon className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </Avatar>
+                        <div key={msg.id} className="group/row">
+                            <div
+                                className={cn(
+                                    "flex w-full gap-2 items-end",
+                                    isOwnMessage ? "justify-end" : "justify-start",
+                                    isFirstInGroup ? "mt-4" : "mt-0.5"
+                                )}
+                            >
+                                <div className={cn("flex items-center gap-2", isOwnMessage ? "flex-row-reverse" : "flex-row")}>
+                                    <div className="flex-shrink-0 self-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                        <MessageActions onEmojiSelect={handleSelectReaction} onReply={() => setReplyingTo(msg)} />
+                                    </div>
+                                    {!isOwnMessage && (
+                                        <div className="w-8 flex-shrink-0 self-end">
+                                            {showAvatar && (
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={user.avatarUrl} />
+                                                    <AvatarFallback>
+                                                        <UserIcon className="h-4 w-4" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                        </div>
                                     )}
+                                
+                                    <div className={cn("max-w-[75%]")}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                            <div
+                                                className={cn(
+                                                    "p-2 px-3 text-sm text-foreground break-words",
+                                                    isOwnMessage
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "bg-muted",
+                                                    isOwnMessage ? 
+                                                        (isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl' : 'rounded-l-2xl') :
+                                                        (isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl' : 'rounded-r-2xl'),
+                                                    !isLastInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
+                                                )}
+                                            >
+                                                {msg.replyTo && (
+                                                    <a href={`#message-${msg.replyTo.messageId}`} className="block p-2 rounded-md bg-black/20 mb-2 border-l-2 border-primary/50 cursor-pointer hover:bg-black/30 transition-colors">
+                                                        <p className="font-bold text-xs">{msg.replyTo.senderName}</p>
+                                                        <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
+                                                    </a>
+                                                )}
+                                                <p>{msg.text}</p>
+                                            </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
+                                                <p>{format(currentDate, "PPpp")}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </div>
+                            </div>
+                            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end" : "ml-10")}>
+                                    {Object.entries(msg.reactions).map(([emoji, userIds]) => (
+                                        <TooltipProvider key={emoji} delayDuration={0}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => handleReaction(msg.id, emoji)}
+                                                    className={cn(
+                                                        "px-1.5 py-0.5 rounded-full border text-xs flex items-center gap-1 transition-colors",
+                                                        userIds.includes(currentUser?.uid || '')
+                                                        ? 'bg-accent/20 border-accent text-accent-foreground'
+                                                        : 'bg-card border-border hover:border-accent'
+                                                    )}
+                                                    >
+                                                    <span>{emoji}</span>
+                                                    <span>{userIds.length}</span>
+                                                </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Click to react</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                        </TooltipProvider>
+                                    ))}
                                 </div>
                             )}
-                            
-                            <div className={cn("max-w-[75%]")}>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div
-                                          className={cn(
-                                              "p-2 px-3 text-sm text-foreground break-words",
-                                              isOwnMessage
-                                                  ? "bg-primary text-primary-foreground"
-                                                  : "bg-muted",
-                                              
-                                              // --- For RECEIVED messages (left) ---
-                                              !isOwnMessage && "rounded-r-2xl",
-                                              !isOwnMessage && isFirstInGroup && "rounded-tl-2xl",
-                                              !isOwnMessage && isLastInGroup && "rounded-bl-2xl",
-                                              
-                                              // --- For SENT messages (right) ---
-                                              isOwnMessage && "rounded-l-2xl",
-                                              isOwnMessage && isFirstInGroup && "rounded-tr-2xl",
-                                              isOwnMessage && isLastInGroup && "rounded-br-2xl"
-                                          )}
-                                      >
-                                          <p>{msg.text}</p>
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
-                                        <p>{format(currentDate, "PPpp")}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </div>
                         </div>
                     );
                 })}
@@ -281,6 +367,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
             </motion.div>
         )}
       </div>
+      {replyingTo && (
+        <div className="relative p-2 bg-muted border-t border-b border-border text-xs text-slate-300">
+            <button onClick={() => setReplyingTo(null)} className="absolute top-1 right-1 p-1 rounded-full hover:bg-slate-700">
+                <X className="h-3 w-3"/>
+            </button>
+            <p>Replying to <span className="font-bold text-accent">{replyingTo.senderId === currentUser?.uid ? currentUser.anonName : user.anonName}</span></p>
+            <p className="italic text-slate-400 truncate">"{replyingTo.text}"</p>
+        </div>
+      )}
       <div className="p-2 border-t border-primary/20">
         <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-1.5 bg-input rounded-xl border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
@@ -291,7 +386,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
               </PopoverTrigger>
               <PopoverContent className="p-0 mb-2 w-auto bg-popover border-border rounded-lg" side="top" align="start">
                 <EmojiPicker 
-                    onEmojiClick={handleEmojiSelect}
+                    onEmojiClick={handleMainEmojiSelect}
                     emojiStyle={EmojiStyle.NATIVE}
                     theme="dark"
                     searchDisabled
@@ -324,3 +419,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
+
+    
