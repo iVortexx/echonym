@@ -342,17 +342,25 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                           href={`#message-${msg.replyTo.messageId}`}
                                           onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                           className={cn(
-                                              "max-w-[85%] text-sm text-slate-400 bg-background rounded-2xl px-3 py-1.5 cursor-pointer hover:bg-muted/80 transition-colors z-0",
+                                              "flex items-center gap-2 max-w-[85%] text-xs text-slate-400 bg-muted/50 rounded-full px-3 py-1 cursor-pointer hover:bg-muted transition-colors mb-0.5",
                                               isOwnMessage ? "self-end" : "self-start"
                                           )}
                                         >
-                                            <p className="truncate">{msg.replyTo.text}</p>
+                                          <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
+                                          <div className="flex-1 truncate">
+                                            <span className="font-semibold text-slate-300 mr-1">
+                                              {msg.replyTo.senderName}
+                                            </span>
+                                            <span className="italic text-slate-400">
+                                              {msg.replyTo.text}
+                                            </span>
+                                          </div>
                                         </a>
                                     )}
 
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                        <div className={cn(bubbleClasses, msg.replyTo && "-mt-3")}>
+                                        <div className={cn(bubbleClasses)}>
                                             <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                         </div>
                                         </TooltipTrigger>
@@ -464,3 +472,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
   );
 }
 
+
+    
