@@ -3,7 +3,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection, query, where, limit, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, onSnapshot, writeBatch, collection, query, where, limit, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { type User } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
