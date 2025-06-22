@@ -75,18 +75,14 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const openChat = useCallback(async (targetUser: User) => {
     if (!currentUser) return;
     
-    const chatId = [currentUser.uid, targetUser.uid].sort().join('_');
-    
-    if (openChats[chatId]) {
-      restoreChat(chatId);
-      return;
-    }
-
-    const openCount = Object.values(openChats).filter(c => c.state === 'open').length;
-    if (openCount >= 3) {
-      // Optional: Maybe show a toast that chat limit is reached
-      return;
-    }
+    // Minimize any currently open chat
+    setOpenChats(prev => {
+        const newChats: Record<string, OpenChat> = {};
+        for (const key in prev) {
+            newChats[key] = { ...prev[key], state: 'minimized' };
+        }
+        return newChats;
+    });
 
     const result = await getOrCreateChat(currentUser.uid, targetUser.uid);
 
@@ -98,7 +94,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     } else {
       console.error("Failed to open chat:", result.error);
     }
-  }, [currentUser, openChats]);
+  }, [currentUser]);
 
   const closeChat = useCallback((chatId: string) => {
     setOpenChats(prev => {
@@ -116,11 +112,11 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const restoreChat = useCallback((chatId: string) => {
-    setOpenChats(prev => ({
-        ...prev,
-        [chatId]: { ...prev[chatId], state: 'open' }
-    }));
-  }, []);
+    const chatToRestore = openChats[chatId];
+    if (chatToRestore) {
+        openChat(chatToRestore.user);
+    }
+  }, [openChats, openChat]);
 
   const toggleLauncher = useCallback((isOpen?: boolean) => {
     setIsLauncherOpen(prev => isOpen === undefined ? !prev : isOpen);

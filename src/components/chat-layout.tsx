@@ -7,7 +7,7 @@ import { useChat, type OpenChat } from "@/hooks/use-chat";
 import { ChatBox } from "./chat-box";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { MessageSquarePlus, X } from "lucide-react";
+import { MessageSquarePlus, X, UserIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import type { User as UserType } from "@/lib/types";
 import { getFollowers, getFollowing } from "@/lib/actions";
@@ -16,6 +16,7 @@ import { Skeleton } from "./ui/skeleton";
 import { UserSearchSidebar, UserRow } from "./user-search-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 function ChatHub() {
     const { recentChats, openChat, toggleLauncher } = useChat();
@@ -135,23 +136,23 @@ export function ChatLayout() {
   const { openChats, restoreChat } = useChat();
 
   const minimized = Object.values(openChats).filter(c => c.state === 'minimized');
-  const open = Object.values(openChats).filter(c => c.state === 'open');
+  const openChat = Object.values(openChats).find(c => c.state === 'open');
 
   return (
     <div className="fixed bottom-4 right-4 z-[100] flex items-end gap-4">
-        <AnimatePresence>
-            {minimized.map((chat) => (
-                <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
-            ))}
-        </AnimatePresence>
+        <div className="flex items-end gap-4">
+            <AnimatePresence>
+                {minimized.map((chat) => (
+                    <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
+                ))}
+            </AnimatePresence>
+        </div>
       
       <ChatLauncher />
       
       <div className="fixed bottom-0 right-24 z-[100] flex items-end gap-4">
         <AnimatePresence>
-        {open.map((chat) => (
-            <ChatBox key={chat.chatId} chat={chat} />
-        ))}
+            {openChat && <ChatBox key={openChat.chatId} chat={openChat} />}
         </AnimatePresence>
       </div>
     </div>

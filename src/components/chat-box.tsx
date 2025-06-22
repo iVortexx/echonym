@@ -39,7 +39,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
       if (currentUser) {
         setTypingStatus(chatId, currentUser.uid, false);
       }
-    }, 2000), [chatId, currentUser]
+    }, 2000), [chatId, currentUser?.uid]
   );
   
   const handleTyping = (text: string) => {
@@ -100,7 +100,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
     await sendMessage(chatId, currentUser.uid, textToSend);
     debouncedSetTypingFalse.cancel();
-    setTypingStatus(chatId, currentUser.uid, false);
+    if (currentUser) {
+      setTypingStatus(chatId, currentUser.uid, false);
+    }
   };
   
   const formatTimeAgo = (createdAt: any) => {
