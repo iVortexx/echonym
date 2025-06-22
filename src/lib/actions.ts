@@ -26,10 +26,6 @@ import {
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote, Chat, ChatMessage, UserChat } from "./types"
 import { buildAvatarUrl } from "./utils"
-import { scorePost as scorePostFlow } from '@/ai/flows/score-post-flow';
-import { suggestTags as suggestTagsFlow } from '@/ai/flows/suggest-tags';
-import { summarizePost as summarizePostFlow } from '@/ai/flows/summarize-post-flow';
-
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -62,6 +58,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   let summary: string | undefined;
   if (process.env.GEMINI_API_KEY && content.length > 300) { // Only summarize longer posts
     try {
+      const { summarizePost: summarizePostFlow } = await import('@/ai/flows/summarize-post-flow');
       const summaryResult = await summarizePostFlow({ content });
       summary = summaryResult.summary;
     } catch (e) {
@@ -74,6 +71,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   if (!tags || tags.length === 0) {
     if (process.env.GEMINI_API_KEY) {
         try {
+          const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
           const suggested = await suggestTagsFlow({ content });
           tags = suggested.tags;
         } catch (e) {
@@ -166,6 +164,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
         if (!tags || tags.length === 0) {
             if (process.env.GEMINI_API_KEY) {
                 try {
+                    const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
                     const suggested = await suggestTagsFlow({ content });
                     tags = suggested.tags;
                 } catch (e) {
@@ -483,6 +482,7 @@ export async function getTagSuggestions(content: string) {
     return { tags: [] }
   }
   try {
+    const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
     const result = await suggestTagsFlow({ content })
     return { tags: result.tags || [] }
   } catch (error: any) {
@@ -497,6 +497,7 @@ export async function scorePost(input: { title: string; content: string; }) {
     return { score: 0, clarity: "AI analysis unavailable.", safety: "AI analysis unavailable." }
   }
   try {
+    const { scorePost: scorePostFlow } = await import('@/ai/flows/score-post-flow');
     const result = await scorePostFlow(input)
     return result
   } catch (error: any) {
@@ -1132,5 +1133,15 @@ export async function setTypingStatus(chatId: string, userId: string, isTyping: 
         });
     } catch (e) {
         console.error("Error setting typing status:", e);
+    }
+}
+
+export async function clearChatUnread(userId: string, chatId: string) {
+    if (!userId || !chatId) return;
+    try {
+        const chatRef = doc(db, `users/${userId}/chats/${chatId}`);
+        await updateDoc(chatRef, { unreadCount: 0 });
+    } catch (e) {
+        console.error("Error clearing chat unread count:", e);
     }
 }
