@@ -17,7 +17,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import {
   hairStyles,
   hairColors,
@@ -91,37 +90,6 @@ const StyleSelector = ({
   )
 }
 
-const FeatureSelector = ({
-  options,
-  selected,
-  onChange,
-}: {
-  options: readonly string[]
-  selected: string[]
-  onChange: (feature: string, isSelected: boolean) => void
-}) => {
-  return (
-    <div className="space-y-2">
-      <Label className="font-mono text-sm text-slate-400">Features</Label>
-      <div className="space-y-2 rounded-md bg-slate-800/50 p-3">
-        {options.map((feature) => (
-          <div key={feature} className="flex items-center justify-between">
-            <Label htmlFor={`feature-${feature}`} className="text-sm font-normal text-slate-300 capitalize">
-              {feature.replace(/([A-Z0-9])/g, " $1").replace(/^./, (str) => str.toUpperCase()).trim()}
-            </Label>
-            <Switch
-              id={`feature-${feature}`}
-              checked={selected.includes(feature)}
-              onCheckedChange={(checked) => onChange(feature, checked)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-
 export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const [options, setOptions] = useState<Record<string, any>>(user.avatarOptions || { seed: user.anonName })
   const [isSaving, setIsSaving] = useState(false)
@@ -137,22 +105,6 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
       } else {
         newOptions[key] = value;
       }
-      return newOptions;
-    });
-  };
-
-  const handleFeatureChange = (feature: string, isSelected: boolean) => {
-    setOptions((prev) => {
-      const newOptions = { ...prev };
-      delete newOptions.seed;
-      const currentFeatures = (prev.features || []) as string[];
-      let newFeatures: string[];
-      if (isSelected) {
-        newFeatures = [...new Set([...currentFeatures, feature])];
-      } else {
-        newFeatures = currentFeatures.filter((f) => f !== feature);
-      }
-      newOptions.features = newFeatures;
       return newOptions;
     });
   };
@@ -174,15 +126,10 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const handleReroll = () => {
     const getRandomOption = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)]
     
-    // For features, pick a random number of random features
-    const numFeatures = Math.floor(Math.random() * (features.length + 1));
-    const shuffledFeatures = [...features].sort(() => 0.5 - Math.random());
-    const randomFeatures = shuffledFeatures.slice(0, numFeatures);
-
     const newOptions: Record<string, any> = {
         backgroundType: getRandomOption(backgroundTypes),
         backgroundColor: getRandomOption(backgroundColors).replace("#", ""),
-        features: randomFeatures,
+        features: Math.random() > 0.5 ? getRandomOption(features) : undefined,
         glasses: Math.random() > 0.7 ? getRandomOption(glassesStyles) : undefined, // optional, less frequent
         hair: getRandomOption(hairStyles),
         hairColor: getRandomOption(hairColors).replace("#", ""),
@@ -245,12 +192,8 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
                     <StyleSelector label="Eyebrows" value={options.eyebrows} options={eyebrows} onChange={(v) => handleOptionChange('eyebrows', v)} />
                     <StyleSelector label="Mouth" value={options.mouth} options={mouth} onChange={(v) => handleOptionChange('mouth', v)} />
                     <StyleSelector label="Glasses" value={options.glasses} options={glassesStyles} onChange={(v) => handleOptionChange('glasses', v)} isOptional={true}/>
+                    <StyleSelector label="Feature" value={options.features} options={features} onChange={(v) => handleOptionChange('features', v)} isOptional={true}/>
                     <StyleSelector label="Background" value={options.backgroundType} options={backgroundTypes} onChange={(v) => handleOptionChange('backgroundType', v)} />
-                    <FeatureSelector
-                      options={features}
-                      selected={(options.features || []) as string[]}
-                      onChange={handleFeatureChange}
-                    />
                 </div>
             </div>
           </TabsContent>

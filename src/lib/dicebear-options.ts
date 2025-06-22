@@ -1,6 +1,6 @@
 // Options for DiceBear "adventurer" style
 
-export const backgroundTypes = ["gradientLinear", "solid"] as const;
+export const backgroundTypes = ["solid"] as const;
 
 export const backgroundColors = [
   "#b6e3f4",
