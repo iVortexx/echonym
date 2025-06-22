@@ -86,39 +86,33 @@ export function ChatBox({ chat }: ChatBoxProps) {
   // This effect now correctly handles scrolling to the bottom
   useEffect(() => {
     const scrollDiv = scrollAreaRef.current;
-    // Only scroll if the user hasn't manually scrolled up
     if (scrollDiv && !userHasScrolled) {
       setTimeout(() => {
         scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
-      }, 100); // Timeout to allow DOM to update
+      }, 100);
     }
-  }, [messages]); // Rerun whenever new messages arrive
+  }, [messages, userHasScrolled]);
 
-  // This effect attaches the listener to detect when a user scrolls
+  const handleManualScroll = useCallback(() => {
+    const scrollDiv = scrollAreaRef.current;
+    if (!scrollDiv) return;
+    const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5;
+    setUserHasScrolled(!isAtBottom);
+  }, []);
+
   useEffect(() => {
     const scrollDiv = scrollAreaRef.current;
-
-    const handleManualScroll = () => {
-      if (!scrollDiv) return;
-      // Check if user is at the bottom with a small tolerance
-      const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5;
-      // If they are not at the bottom, we set userHasScrolled to true
-      setUserHasScrolled(!isAtBottom);
-    };
-
     if (scrollDiv) {
       scrollDiv.addEventListener('scroll', handleManualScroll);
-      // Clean up the event listener
       return () => scrollDiv.removeEventListener('scroll', handleManualScroll);
     }
-  }, []); // Empty array means this runs once on mount
+  }, [handleManualScroll]);
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
     
-    // Before sending, reset the scroll lock so we auto-scroll to our own new message
     setUserHasScrolled(false);
     
     const textToSend = newMessage;
@@ -151,9 +145,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 300, opacity: 0 }}
       transition={{ type: 'spring', stiffness: 400, damping: 40 }}
-      className="w-80 h-[400px] flex flex-col bg-card border-t-2 border-x-2 border-primary rounded-t-lg shadow-2xl"
+      className="w-80 h-[400px] flex flex-col bg-card border border-primary/30 rounded-t-xl shadow-2xl shadow-black/30"
     >
-      <header className="flex items-center justify-between p-2 bg-primary/10 rounded-t-lg cursor-pointer">
+      <header className="flex items-center justify-between p-2 pl-3 border-b border-primary/20 cursor-pointer">
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatarUrl} alt={user.anonName} />
@@ -164,30 +158,33 @@ export function ChatBox({ chat }: ChatBoxProps) {
           <span className="font-bold text-sm text-slate-100">{user.anonName}</span>
         </div>
         <div className="flex items-center">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => minimizeChat(chatId)}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => minimizeChat(chatId)}>
                 <Minus className="h-4 w-4" />
             </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => closeChat(chatId)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => closeChat(chatId)}>
             <X className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      <ScrollArea className="flex-1 p-2 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="space-y-4 p-2">
+      <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
+        <div className="p-3 space-y-4">
             {messages.map((msg) => {
                 const isOwnMessage = msg.senderId === currentUser?.uid;
                 return (
                     <div key={msg.id} className={cn("flex items-end gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
                         {!isOwnMessage && (
-                             <Avatar className="h-6 w-6">
+                             <Avatar className="h-6 w-6 self-start">
                                 <AvatarImage src={user.avatarUrl} />
                                 <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
                             </Avatar>
                         )}
-                        <div className={cn("max-w-[75%] rounded-lg px-3 py-2 text-sm break-words", isOwnMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-secondary text-secondary-foreground rounded-bl-none")}>
+                        <div className={cn(
+                          "max-w-[75%] rounded-lg px-3 py-2 text-sm break-words", 
+                          isOwnMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-secondary text-secondary-foreground rounded-bl-none"
+                        )}>
                             <p>{msg.text}</p>
-                             <p className={cn("text-xs opacity-60 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
+                             <p className={cn("text-xs opacity-70 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
                         </div>
                     </div>
                 );
@@ -202,7 +199,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
             </motion.div>
         )}
       </div>
-      <div className="p-2 border-t border-border">
+      <div className="p-2 border-t border-primary/20">
         <form onSubmit={handleSendMessage} className="relative">
           <Textarea
             value={newMessage}
@@ -215,9 +212,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
             }}
             placeholder="Send a message..."
             rows={1}
-            className="bg-input border-border resize-none pr-10 min-h-[40px]"
+            className="bg-input border-border resize-none pr-10 min-h-[40px] focus:min-h-[60px] transition-all"
           />
-          <Button type="submit" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7">
+          <Button type="submit" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-primary hover:bg-primary/90">
             <Send className="h-4 w-4" />
           </Button>
         </form>
