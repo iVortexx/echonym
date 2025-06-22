@@ -25,6 +25,9 @@ import {
   features,
   backgroundTypes,
   backgroundColors,
+  eyebrows,
+  eyes,
+  mouth,
 } from "@/lib/dicebear-options"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -176,6 +179,9 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
         glasses: Math.random() > 0.7 ? getRandomOption(glassesStyles) : undefined, // optional, less frequent
         hair: getRandomOption(hairStyles),
         hairColor: getRandomOption(hairColors).replace("#", ""),
+        eyebrows: getRandomOption(eyebrows),
+        eyes: getRandomOption(eyes),
+        mouth: getRandomOption(mouth),
     }
 
     setOptions(newOptions)
@@ -228,6 +234,9 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
              <div className="space-y-4 max-h-[400px] overflow-y-auto p-1 pr-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <StyleSelector label="Hair" value={options.hair} options={hairStyles} onChange={(v) => handleOptionChange('hair', v)} />
+                    <StyleSelector label="Eyes" value={options.eyes} options={eyes} onChange={(v) => handleOptionChange('eyes', v)} />
+                    <StyleSelector label="Eyebrows" value={options.eyebrows} options={eyebrows} onChange={(v) => handleOptionChange('eyebrows', v)} />
+                    <StyleSelector label="Mouth" value={options.mouth} options={mouth} onChange={(v) => handleOptionChange('mouth', v)} />
                     <StyleSelector label="Glasses" value={options.glasses} options={glassesStyles} onChange={(v) => handleOptionChange('glasses', v)} isOptional={true}/>
                     <StyleSelector label="Background" value={options.backgroundType} options={backgroundTypes} onChange={(v) => handleOptionChange('backgroundType', v)} />
                     <FeatureSelector
