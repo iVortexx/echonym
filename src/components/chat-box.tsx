@@ -359,17 +359,14 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
                         
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm text-foreground relative z-10",
+                          "p-2 px-3 text-sm text-foreground relative",
                           isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
-                          'rounded-2xl', // Start with all corners rounded
+                          'rounded-2xl', 
                           {
-                            // For own messages (on the right), flatten corners that connect to other messages.
-                            'rounded-tr-md': !isFirstInGroup && isOwnMessage,
                             'rounded-br-md': !isLastInGroup && isOwnMessage,
-                            
-                            // For received messages (on the left), flatten corners that connect.
-                            'rounded-tl-md': !isFirstInGroup && !isOwnMessage,
                             'rounded-bl-md': !isLastInGroup && !isOwnMessage,
+                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
+                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
                           }
                         );
 
@@ -411,8 +408,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
-                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-md px-2 py-1 mb-0.5 cursor-pointer hover:bg-muted transition-colors",
-                                                  "relative z-0"
+                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 -mb-px cursor-pointer hover:bg-muted transition-colors",
+                                                  "w-full"
                                               )}
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
@@ -425,7 +422,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses)}>
-                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className="break-all" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -536,3 +533,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
+
+    
