@@ -199,22 +199,22 @@ export function ChatBox({ chat }: ChatBoxProps) {
             <div className="p-3">
                 {messages.map((msg, i) => {
                     const isOwnMessage = msg.senderId === currentUser?.uid;
-
                     const currentDate = getDateFromTimestamp(msg.createdAt);
-                    
+                    if (!currentDate) return null;
+
                     const prevMessage = messages[i - 1];
                     const nextMessage = messages[i + 1];
 
                     const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
-                    
+                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
+
                     const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
-                    
+                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
+
                     const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
                     
                     const showAvatar = !isOwnMessage && isLastInGroup;
-
-                    if (!currentDate) return null;
 
                     return (
                         <div
@@ -243,12 +243,20 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                     <TooltipTrigger asChild>
                                       <div
                                           className={cn(
-                                              "p-2 px-3 rounded-2xl text-sm text-foreground break-words",
+                                              "p-2 px-3 text-sm text-foreground break-words",
                                               isOwnMessage
                                                   ? "bg-primary text-primary-foreground"
                                                   : "bg-muted",
-                                              isLastInGroup && isOwnMessage ? "rounded-br-sm" : "",
-                                              isLastInGroup && !isOwnMessage ? "rounded-bl-sm" : ""
+                                              
+                                              // --- For RECEIVED messages (left) ---
+                                              !isOwnMessage && "rounded-r-2xl",
+                                              !isOwnMessage && isFirstInGroup && "rounded-tl-2xl",
+                                              !isOwnMessage && isLastInGroup && "rounded-bl-2xl",
+                                              
+                                              // --- For SENT messages (right) ---
+                                              isOwnMessage && "rounded-l-2xl",
+                                              isOwnMessage && isFirstInGroup && "rounded-tr-2xl",
+                                              isOwnMessage && isLastInGroup && "rounded-br-2xl"
                                           )}
                                       >
                                           <p>{msg.text}</p>
