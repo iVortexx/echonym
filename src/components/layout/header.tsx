@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserIcon, PlusCircle, Home, Terminal } from "lucide-react"
+import { UserIcon, PlusCircle, Home, Fingerprint } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { NotificationBell } from "../notification-bell"
 import { MobileSidebar } from "./mobile-sidebar"
@@ -29,8 +29,8 @@ export function Header() {
             <MobileSidebar />
           </div>
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Terminal className="h-6 w-6 text-accent" />
-            <span className="hidden sm:inline-block font-bold font-mono text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <Fingerprint className="h-6 w-6 text-primary" />
+            <span className="hidden sm:inline-block font-bold font-sans text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Echonym
             </span>
           </Link>

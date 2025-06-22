@@ -1,7 +1,7 @@
 
 "use client"
 import { motion } from "framer-motion"
-import { MessageCircle, Link as LinkIcon, MoreHorizontal, Terminal, Hash, Text, UserIcon, EyeOff, Bookmark, Edit, Trash2 } from "lucide-react"
+import { MessageCircle, Link as LinkIcon, MoreHorizontal, Hash, Text, UserIcon, EyeOff, Bookmark, Edit, Trash2, Shield } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -41,7 +41,7 @@ import { useState, useEffect, useMemo } from "react"
 import { handleVote, deletePost, toggleUserPostList } from "@/lib/actions"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { buildAvatarUrl } from "@/lib/utils"
+import { buildAvatarUrl, getSecurityTagline } from "@/lib/utils"
 
 interface PostCardProps {
   post: Post
@@ -239,6 +239,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
 
   const isOwnPost = currentUser?.uid === post.userId;
   const score = optimisticUpvotes - optimisticDownvotes;
+  const securityTagline = getSecurityTagline(post.xp);
 
   const displayAvatarUrl = useMemo(() => {
     let url = post.avatarUrl;
@@ -259,8 +260,14 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
       transition={{ duration: 0.3 }}
       layout
     >
-      <Card className="bg-card border-border rounded-lg hover:border-primary/40 transition-all duration-300">
+      <Card className="bg-card border-border rounded-lg hover:border-primary/40 transition-all duration-300 relative overflow-hidden">
         <CardLinkWrapper>
+          {securityTagline && (
+            <div className="absolute top-0 right-0 bg-accent text-accent-foreground px-2 py-0.5 text-xs font-bold rounded-bl-lg z-10">
+              <Shield className="inline-block h-3 w-3 mr-1" />
+              {securityTagline}
+            </div>
+          )}
           <div className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1">
@@ -274,9 +281,8 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
                 </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
-                    <Terminal className="h-3 w-3 text-accent flex-shrink-0" />
-                    <Link href={`/profile/${encodeURIComponent(post.anonName)}`} onClick={(e) => e.stopPropagation()}>
-                      <p className="font-mono text-sm text-accent truncate hover:underline">{post.anonName || 'Anonymous'}</p>
+                    <Link href={`/profile/${encodeURIComponent(post.anonName)}`} onClick={(e) => e.stopPropagation()} className="group/user">
+                      <p className="font-mono text-sm text-primary truncate transition-all group-hover/user:text-primary/80">{post.anonName || 'Anonymous'}</p>
                     </Link>
                     <UserBadge xp={(isOwnPost && currentUser) ? currentUser.xp : post.xp || 0} />
                   </div>
@@ -362,7 +368,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
               {post.summary && !isPreview && (
                 <Accordion type="single" collapsible className="w-full mt-2" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
                   <AccordionItem value="item-1" className="border-b-0">
-                    <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-accent no-underline hover:no-underline [&>svg]:hidden">
+                    <AccordionTrigger className="flex items-center justify-start p-0 text-xs font-mono text-primary no-underline hover:no-underline [&>svg]:hidden">
                       <div className="flex items-center">
                         <Text className="h-3 w-3 mr-1.5" />
                         <span>View TL;DR</span>

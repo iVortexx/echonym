@@ -36,7 +36,7 @@ function StatCard({ icon: Icon, label, value, children, isClickable }: { icon: R
   return (
     <Card className={`bg-card border-border p-4 relative h-full ${isClickable ? 'hover:bg-primary/5 transition-colors' : ''}`}>
       <div className="flex items-center gap-3">
-        <Icon className="h-6 w-6 text-accent" />
+        <Icon className="h-6 w-6 text-primary" />
         <div>
           <p className="text-slate-400 text-sm">{label}</p>
           <p className="text-xl font-bold font-mono text-slate-100">{value}</p>
@@ -308,9 +308,9 @@ export default function ProfilePage() {
           {isOwnProfile ? (
             <Dialog>
               <DialogTrigger asChild>{AvatarComponent}</DialogTrigger>
-              <DialogContent className="max-w-3xl bg-background border-border">
+              <DialogContent className="max-w-3xl bg-card/80 backdrop-blur-sm border-border">
                 <DialogHeader>
-                  <DialogTitle className="font-mono text-xl text-primary">Avatar Editor</DialogTitle>
+                  <DialogTitle className="font-sans text-xl text-primary">Avatar Editor</DialogTitle>
                 </DialogHeader>
                 <AvatarEditor user={displayUser} onSave={handleAvatarSave} />
               </DialogContent>
@@ -320,7 +320,7 @@ export default function ProfilePage() {
           )}
           <div className="flex-1 text-center sm:text-left">
             <div className="flex items-center gap-4 justify-center sm:justify-start">
-              <h1 className="text-4xl font-bold font-mono text-primary">{displayUser.anonName}</h1>
+              <h1 className="text-4xl font-bold font-sans text-primary">{displayUser.anonName}</h1>
               {!isOwnProfile && (
                 <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
                   {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
@@ -330,7 +330,7 @@ export default function ProfilePage() {
 
             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
               <UserBadge xp={displayUser.xp} />
-              <span className="text-slate-400 text-sm">Joined {isJoinDateInvalid ? 'recently' : formatDistanceToNow(joinDate, { addSuffix: true })}</span>
+              <span className="text-slate-400 text-sm font-mono">Joined {isJoinDateInvalid ? 'recently' : formatDistanceToNow(joinDate, { addSuffix: true })}</span>
             </div>
             {isOwnProfile && (
                 <Dialog>
@@ -339,7 +339,7 @@ export default function ProfilePage() {
                             <KeyRound className="mr-2 h-4 w-4" /> Backup & Restore
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-background border-border">
+                    <DialogContent className="bg-card/80 backdrop-blur-sm border-border">
                         <BackupAndRestore user={displayUser} />
                     </DialogContent>
                 </Dialog>
@@ -349,7 +349,7 @@ export default function ProfilePage() {
         <CardContent className="p-0">
           <XPBar xp={displayUser.xp} />
           {nextBadge && (
-            <p className="text-center text-sm text-slate-400 mt-2">
+            <p className="text-center text-sm text-slate-400 mt-2 font-mono">
               {nextBadge.minXP - displayUser.xp} XP to reach <span className={getBadgeForXP(nextBadge.minXP).color}>{nextBadge.name}</span>
             </p>
           )}
@@ -367,7 +367,7 @@ export default function ProfilePage() {
             <PopoverContent className="w-80 bg-background border-border text-foreground">
                 <div className="space-y-4 p-2">
                 <div>
-                    <h4 className="font-semibold text-accent mb-2 font-mono">Ranks</h4>
+                    <h4 className="font-semibold text-primary mb-2 font-sans">Ranks</h4>
                     <ul className="space-y-2 text-sm">
                         {BADGES.map((badge) => (
                             <li key={badge.name} className="flex items-center justify-between">
@@ -409,7 +409,7 @@ export default function ProfilePage() {
       </Dialog>
       
       <div>
-        <h2 className="text-2xl font-bold mb-4 font-mono text-slate-200">Echoes by {displayUser.anonName}</h2>
+        <h2 className="text-2xl font-bold mb-4 font-sans text-slate-200">Echoes by {displayUser.anonName}</h2>
         {posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map((post) => (

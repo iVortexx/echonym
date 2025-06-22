@@ -62,3 +62,11 @@ export function buildAvatarUrl(options: Record<string, string | string[]>) {
   }
   return `${baseUrl}?${params.toString()}`;
 }
+
+
+export function getSecurityTagline(xp: number): string | null {
+  if (xp > 15000) return 'Elite Drop';
+  if (xp > 4000) return 'Guardian Insight';
+  if (xp > 1000) return 'Underground Discovery';
+  return null;
+}

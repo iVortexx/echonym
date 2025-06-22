@@ -143,8 +143,8 @@ export function PostForm({ postToEdit }: PostFormProps) {
       setIsSubmitting(false)
     } else {
       toast({
-        title: isEditing ? "Echo Updated!" : "Echo Published!",
-        description: "Your echo is now live.",
+        title: isEditing ? "Echo Updated!" : "Echo Deployed Securely",
+        description: "Your message is now live.",
       })
       
       if (result?.warning) {
@@ -259,10 +259,10 @@ export function PostForm({ postToEdit }: PostFormProps) {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {isEditing ? "Saving..." : "Publishing..."}
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {isEditing ? "Updating Echo..." : "Encrypting Echo..."}
                 </>
               ) : (
-                isEditing ? "Save Changes" : "Publish Echo"
+                isEditing ? "Save Changes" : "Deploy Echo Securely"
               )}
             </Button>
           </form>
@@ -273,13 +273,13 @@ export function PostForm({ postToEdit }: PostFormProps) {
   const previewAndAiPanel = (
      <div className="space-y-8">
         <div>
-          <h3 className="text-lg font-bold font-mono text-slate-300 mb-2">Live Preview</h3>
+          <h3 className="text-lg font-bold font-sans text-slate-300 mb-2">Live Preview</h3>
           <PostCard post={previewPost} isPreview />
         </div>
         <div>
-           <h3 className="text-lg font-bold font-mono text-slate-300 mb-2 flex items-center">
+           <h3 className="text-lg font-bold font-sans text-slate-300 mb-2 flex items-center">
              AI Analysis
-             {isScoring && <Loader2 className="ml-2 h-4 w-4 animate-spin text-accent" />}
+             {isScoring && <Loader2 className="ml-2 h-4 w-4 animate-spin text-primary" />}
            </h3>
            <Card className="bg-card border-border p-6">
              {aiScore ? (
@@ -296,7 +296,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                         strokeWidth="3"
                       />
                       <path
-                        className="text-accent"
+                        className="text-primary"
                         stroke="currentColor"
                         strokeWidth="3"
                         strokeDasharray={`${aiScore.score}, 100`}
@@ -314,7 +314,7 @@ export function PostForm({ postToEdit }: PostFormProps) {
                   <div className="space-y-3">
                     <div>
                       <h4 className="flex items-center text-sm font-semibold text-slate-300">
-                        <Sparkles className="h-4 w-4 mr-2 text-accent"/>
+                        <Sparkles className="h-4 w-4 mr-2 text-primary"/>
                         Clarity
                       </h4>
                       <p className="text-xs text-slate-400">{aiScore.clarity}</p>

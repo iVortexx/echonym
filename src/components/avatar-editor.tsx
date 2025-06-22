@@ -199,7 +199,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
                           className="h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center"
                           style={{
                             backgroundColor: color,
-                            borderColor: options[cat.key] === color.replace("#", "") ? "hsl(var(--accent))" : "transparent"
+                            borderColor: options[cat.key] === color.replace("#", "") ? "hsl(var(--primary))" : "transparent"
                           }}
                         >
                         {options[cat.key] === color.replace("#", "") && <Check className="h-5 w-5 text-white stroke-2" />}
