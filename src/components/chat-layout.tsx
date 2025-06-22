@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 function ChatHub() {
-    const { recentChats, openChat, toggleLauncher } = useChat();
+    const { recentChats, openChat } = useChat();
     const { user: currentUser } = useAuth();
     const [followers, setFollowers] = useState<UserType[]>([]);
     const [following, setFollowing] = useState<UserType[]>([]);
@@ -41,7 +41,6 @@ function ChatHub() {
 
     const handleUserClick = (user: UserType) => {
         openChat(user);
-        toggleLauncher(false);
     };
 
     const FollowUserList = ({ users, isLoading }: { users: UserType[], isLoading: boolean }) => (

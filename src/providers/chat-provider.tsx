@@ -63,6 +63,8 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const openChat = useCallback(async (targetUser: User) => {
     if (!currentUser) return;
 
+    setIsLauncherOpen(false); // Close the drawer when a chat is opened
+
     const result = await getOrCreateChat(currentUser.uid, targetUser.uid);
 
     if (result.chatId) {
@@ -70,10 +72,12 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
           const newChats: Record<string, OpenChat> = {};
           // Minimize all previous chats
           for (const key in prev) {
-              newChats[key] = { ...prev[key], state: 'minimized' };
+              if (prev[key]) {
+                newChats[key] = { ...prev[key], state: 'minimized' };
+              }
           }
           // Set the new chat as open
-          newChats[result.chatId!] = { user: targetUser, chatId: result.chatId!, state: 'open' };
+          newChats[result.chatId] = { user: targetUser, chatId: result.chatId, state: 'open' };
           return newChats;
       });
     } else {
@@ -103,7 +107,9 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
         const newChats: Record<string, OpenChat> = {};
         for (const key in prev) {
-            newChats[key] = { ...prev[key], state: 'minimized' };
+            if (prev[key]) {
+                newChats[key] = { ...prev[key], state: 'minimized' };
+            }
         }
         newChats[chatId] = { ...chatToRestore, state: 'open' };
         return newChats;
