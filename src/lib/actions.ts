@@ -25,6 +25,9 @@ import {
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote } from "./types"
 import { buildAvatarUrl } from "./utils"
+import { summarizePost } from "@/ai/flows/summarize-post-flow"
+import { suggestTags } from "@/ai/flows/suggest-tags"
+import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -57,7 +60,6 @@ export async function createPost(rawInput: unknown, userId: string) {
   let summary: string | undefined;
   if (content.length > 300) { // Only summarize longer posts
     try {
-      const { summarizePost } = await import("@/ai/flows/summarize-post-flow");
       const summaryResult = await summarizePost({ content });
       summary = summaryResult.summary;
     } catch (e) {
@@ -69,7 +71,6 @@ export async function createPost(rawInput: unknown, userId: string) {
   
   if (!tags || tags.length === 0) {
     try {
-      const { suggestTags } = await import("@/ai/flows/suggest-tags");
       const suggested = await suggestTags({ content });
       tags = suggested.tags;
     } catch (e) {
@@ -157,7 +158,6 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
 
         if (!tags || tags.length === 0) {
             try {
-                const { suggestTags } = await import("@/ai/flows/suggest-tags");
                 const suggested = await suggestTags({ content });
                 tags = suggested.tags;
             } catch (e) {
@@ -472,7 +472,6 @@ export async function getTagSuggestions(content: string) {
     return { tags: [] }
   }
   try {
-    const { suggestTags } = await import("@/ai/flows/suggest-tags");
     const result = await suggestTags({ content })
     return { tags: result.tags || [] }
   } catch (error: any) {
@@ -488,7 +487,6 @@ export async function scorePost(input: { title: string; content: string; }) {
     return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
   }
   try {
-    const { scorePost: scorePostFlow } = await import("@/ai/flows/score-post-flow");
     const result = await scorePostFlow(input)
     return result
   } catch (error: any) {
