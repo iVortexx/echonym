@@ -53,8 +53,8 @@ function Leaderboard() {
                         ))
                     ) : (
                         topUsers.map((user, index) => (
-                           <Link href={`/profile/${encodeURIComponent(user.anonName)}`} key={user.uid} className="flex items-start gap-3 p-1 -mx-1 rounded-md hover:bg-primary/10 transition-colors">
-                                <span className="font-mono text-sm text-slate-400 w-6 text-center pt-1">{index + 1}</span>
+                           <Link href={`/profile/${encodeURIComponent(user.anonName)}`} key={user.uid} className="flex items-center gap-2 p-1 -mx-1 rounded-md hover:bg-primary/10 transition-colors">
+                                <span className="font-mono text-sm text-slate-400 w-5 text-center">{index + 1}</span>
                                 <Avatar className="h-8 w-8 flex-shrink-0">
                                     <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
                                     <AvatarFallback className="bg-secondary text-primary">
@@ -62,7 +62,7 @@ function Leaderboard() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-mono text-sm text-primary break-all">{user.anonName}</p>
+                                    <p className="font-mono text-sm text-primary truncate">{user.anonName}</p>
                                     <p className="text-xs text-slate-500">{user.xp.toLocaleString()} XP</p>
                                 </div>
                             </Link>
