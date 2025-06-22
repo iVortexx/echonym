@@ -3,11 +3,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, Minus, Send, UserIcon, Loader2 } from 'lucide-react';
+import { X, Minus, Send, UserIcon, Loader2, Smile } from 'lucide-react';
 import { useChat, type OpenChat } from '@/hooks/use-chat';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -17,6 +16,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
+import TextareaAutosize from 'react-textarea-autosize';
+import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
 
 interface ChatBoxProps {
@@ -84,18 +86,26 @@ export function ChatBox({ chat }: ChatBoxProps) {
   }, [chatId]);
 
   // This effect now correctly handles scrolling to the bottom
+  const scrollToBottom = useCallback(() => {
+     const scrollDiv = scrollAreaRef.current;
+     if (scrollDiv) {
+        scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
+     }
+  }, []);
+
   useEffect(() => {
     const scrollDiv = scrollAreaRef.current;
     if (scrollDiv && !userHasScrolled) {
       setTimeout(() => {
-        scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
+        scrollToBottom();
       }, 100);
     }
-  }, [messages, userHasScrolled]);
+  }, [messages, userHasScrolled, scrollToBottom]);
 
   const handleManualScroll = useCallback(() => {
     const scrollDiv = scrollAreaRef.current;
     if (!scrollDiv) return;
+    // A little buffer is added to the check
     const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5;
     setUserHasScrolled(!isAtBottom);
   }, []);
@@ -113,6 +123,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
     
+    // Always scroll to bottom after sending a message
     setUserHasScrolled(false);
     
     const textToSend = newMessage;
@@ -123,6 +134,11 @@ export function ChatBox({ chat }: ChatBoxProps) {
     if (currentUser) {
       setTypingStatus(chatId, currentUser.uid, false);
     }
+    setTimeout(() => scrollToBottom(), 0);
+  };
+
+  const handleEmojiSelect = (emoji: { emoji: string }) => {
+    setNewMessage(prev => prev + emoji.emoji);
   };
   
   const formatTimeAgo = (createdAt: any) => {
@@ -168,7 +184,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
       </header>
 
       <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="p-3 space-y-4">
+        <div className="p-3 space-y-1">
             {messages.map((msg) => {
                 const isOwnMessage = msg.senderId === currentUser?.uid;
                 return (
@@ -179,12 +195,14 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                 <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
                             </Avatar>
                         )}
-                        <div className={cn(
-                          "max-w-[75%] rounded-lg px-3 py-2 text-sm break-words", 
-                          isOwnMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-secondary text-secondary-foreground rounded-bl-none"
-                        )}>
-                            <p>{msg.text}</p>
-                             <p className={cn("text-xs opacity-70 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
+                        <div className="group">
+                            <div className={cn(
+                              "max-w-[75%] rounded-lg px-3 py-2 text-sm break-words", 
+                              isOwnMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-secondary text-secondary-foreground rounded-bl-none"
+                            )}>
+                                <p>{msg.text}</p>
+                            </div>
+                             <p className={cn("text-xs opacity-0 group-hover:opacity-70 transition-opacity duration-300 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
                         </div>
                     </div>
                 );
@@ -199,9 +217,27 @@ export function ChatBox({ chat }: ChatBoxProps) {
             </motion.div>
         )}
       </div>
-      <div className="p-2 border-t border-primary/20">
-        <form onSubmit={handleSendMessage} className="relative">
-          <Textarea
+      <div className="p-1 border-t border-primary/20">
+        <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-1">
+           <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-slate-400 hover:text-primary">
+                  <Smile className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 border-none mb-2 bg-transparent shadow-none" side="top" align="start">
+                <EmojiPicker 
+                    onEmojiClick={handleEmojiSelect}
+                    emojiStyle={EmojiStyle.TWITTER}
+                    theme="dark"
+                    searchDisabled
+                    skinTonesDisabled
+                    lazyLoadEmojis
+                    categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
+                />
+              </PopoverContent>
+            </Popover>
+          <TextareaAutosize
             value={newMessage}
             onChange={(e) => handleTyping(e.target.value)}
             onKeyDown={(e) => {
@@ -212,9 +248,10 @@ export function ChatBox({ chat }: ChatBoxProps) {
             }}
             placeholder="Send a message..."
             rows={1}
-            className="bg-input border-border resize-none pr-10 min-h-[40px] focus:min-h-[60px] transition-all"
+            maxRows={5}
+            className="flex-1 bg-input border-border rounded-lg resize-none p-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all"
           />
-          <Button type="submit" size="icon" className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-primary hover:bg-primary/90">
+          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0 bg-primary hover:bg-primary/90 disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
