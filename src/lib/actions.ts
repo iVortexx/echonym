@@ -73,10 +73,13 @@ export async function createPost(rawInput: unknown, userId: string) {
     try {
       const suggested = await suggestTags({ content });
       tags = suggested.tags;
+      if (!tags || tags.length === 0) {
+        tags = ['discussion'];
+      }
     } catch (e) {
       console.error("Failed to generate tags:", e);
       aiWarning = "Echo created, but AI tag suggestion failed. Please add tags manually.";
-      tags = [];
+      tags = ['discussion'];
     }
   }
 
@@ -160,10 +163,13 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
             try {
                 const suggested = await suggestTags({ content });
                 tags = suggested.tags;
+                if (!tags || tags.length === 0) {
+                    tags = ['discussion'];
+                }
             } catch (e) {
                 console.error("Failed to generate tags for update:", e);
                 aiWarning = "Echo updated, but AI tag suggestion failed. Please add tags manually.";
-                tags = [];
+                tags = ['discussion'];
             }
         }
         

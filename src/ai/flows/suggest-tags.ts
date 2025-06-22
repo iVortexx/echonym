@@ -34,11 +34,12 @@ const prompt = ai.definePrompt({
 1.  Carefully read the content to understand its main topic.
 2.  Choose between 1 and 3 tags from the allowed list below.
 3.  **Prioritize specificity.** For example, if the post is about a specific CVE, choose \`cve\` instead of the more generic \`security\`. If it's about network packet analysis, choose \`networking\` and \`forensics\` over just \`security\`.
-4.  Only use the \`security\` tag if no other tag from the list is a better, more specific fit.
-5.  Do not invent new tags.
+4.  Use \`discussion\` for broader conversations, questions, or topics that don't fit into a specific technical category.
+5.  Only use the \`security\` tag if no other tag from the list is a better, more specific fit.
+6.  Do not invent new tags. If no tags seem appropriate, return an empty array.
 
 **Allowed Tags:**
-\`security\`, \`reverse-eng\`, \`web-security\`, \`malware\`, \`cve\`, \`networking\`, \`crypto\`, \`forensics\`
+\`security\`, \`reverse-eng\`, \`web-security\`, \`malware\`, \`cve\`, \`networking\`, \`crypto\`, \`forensics\`, \`discussion\`
 
 **Content to Analyze:**
 {{{content}}}
