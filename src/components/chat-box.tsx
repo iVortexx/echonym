@@ -20,6 +20,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import twemoji from 'twemoji';
 
 
 interface ChatBoxProps {
@@ -52,7 +53,7 @@ const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emoji: {em
                 <PopoverContent className="p-0 w-auto bg-popover border-border rounded-lg" side="top" align="center">
                     <EmojiPicker 
                         onEmojiClick={onEmojiSelect}
-                        emojiStyle={EmojiStyle.NATIVE}
+                        emojiStyle={EmojiStyle.TWITTER}
                         theme="dark"
                         searchDisabled
                         skinTonesDisabled
@@ -261,8 +262,11 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
 
                     const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId;
                     
+                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
+                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+
                     const showAvatar = !isOwnMessage && isLastInGroup;
 
                     const handleSelectReaction = (emoji: {emoji: string}) => {
@@ -300,14 +304,16 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                             <TooltipTrigger asChild>
                                             <div
                                                 className={cn(
-                                                    "p-2 px-3 text-sm text-foreground break-words",
+                                                    "p-2 px-3 text-sm text-foreground",
                                                     isOwnMessage
                                                         ? "bg-primary text-primary-foreground"
                                                         : "bg-muted",
                                                     isOwnMessage ? 
                                                         (isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl' : 'rounded-l-2xl') :
                                                         (isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl' : 'rounded-r-2xl'),
+                                                    !isFirstInGroup && (isOwnMessage ? 'rounded-l-2xl' : 'rounded-r-2xl'),
                                                     !isLastInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
+                                                    isLastInGroup && (isOwnMessage ? 'rounded-b-2xl' : 'rounded-b-2xl')
                                                 )}
                                             >
                                                 {msg.replyTo && (
@@ -316,7 +322,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                         <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
                                                     </a>
                                                 )}
-                                                <p>{msg.text}</p>
+                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, { folder: 'svg', ext: '.svg' }) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -341,7 +347,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                         : 'bg-card border-border hover:border-accent'
                                                     )}
                                                     >
-                                                    <span>{emoji}</span>
+                                                    <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, { folder: 'svg', ext: '.svg' }) }}/>
                                                     <span>{userIds.length}</span>
                                                 </button>
                                             </TooltipTrigger>
@@ -387,7 +393,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
               <PopoverContent className="p-0 mb-2 w-auto bg-popover border-border rounded-lg" side="top" align="start">
                 <EmojiPicker 
                     onEmojiClick={handleMainEmojiSelect}
-                    emojiStyle={EmojiStyle.NATIVE}
+                    emojiStyle={EmojiStyle.TWITTER}
                     theme="dark"
                     searchDisabled
                     skinTonesDisabled
@@ -419,5 +425,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
-    
