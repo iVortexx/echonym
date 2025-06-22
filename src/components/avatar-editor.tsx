@@ -17,13 +17,14 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   hairStyles,
-  eyeStyles,
-  eyebrowStyles,
-  mouthStyles,
   hairColors,
-  skinColors,
+  glassesStyles,
+  features,
+  backgroundTypes,
+  backgroundColors,
 } from "@/lib/dicebear-options"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -87,6 +88,36 @@ const StyleSelector = ({
   )
 }
 
+const FeatureSelector = ({
+  options,
+  selected,
+  onChange,
+}: {
+  options: readonly string[]
+  selected: string[]
+  onChange: (feature: string, isSelected: boolean) => void
+}) => {
+  return (
+    <div className="space-y-2">
+      <Label className="font-mono text-sm text-slate-400">Features</Label>
+      <div className="space-y-2 rounded-md bg-slate-800/50 p-3">
+        {options.map((feature) => (
+          <div key={feature} className="flex items-center justify-between">
+            <Label htmlFor={`feature-${feature}`} className="text-sm font-normal text-slate-300 capitalize">
+              {feature.replace(/([A-Z0-9])/g, " $1").replace(/^./, (str) => str.toUpperCase()).trim()}
+            </Label>
+            <Switch
+              id={`feature-${feature}`}
+              checked={selected.includes(feature)}
+              onCheckedChange={(checked) => onChange(feature, checked)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 
 export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const [options, setOptions] = useState<Record<string, any>>(user.avatarOptions || { seed: user.anonName })
@@ -106,6 +137,22 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
       return newOptions;
     });
   };
+
+  const handleFeatureChange = (feature: string, isSelected: boolean) => {
+    setOptions((prev) => {
+      const newOptions = { ...prev };
+      delete newOptions.seed;
+      const currentFeatures = (prev.features || []) as string[];
+      let newFeatures: string[];
+      if (isSelected) {
+        newFeatures = [...new Set([...currentFeatures, feature])];
+      } else {
+        newFeatures = currentFeatures.filter((f) => f !== feature);
+      }
+      newOptions.features = newFeatures;
+      return newOptions;
+    });
+  };
   
   const handleColorChange = (key: string, value: string) => {
      setOptions((prev) => ({
@@ -117,13 +164,18 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   const handleReroll = () => {
     const getRandomOption = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)]
     
+    // For features, pick a random number of random features
+    const numFeatures = Math.floor(Math.random() * (features.length + 1));
+    const shuffledFeatures = [...features].sort(() => 0.5 - Math.random());
+    const randomFeatures = shuffledFeatures.slice(0, numFeatures);
+
     const newOptions: Record<string, any> = {
+        backgroundType: getRandomOption(backgroundTypes),
+        backgroundColor: getRandomOption(backgroundColors).replace("#", ""),
+        features: randomFeatures,
+        glasses: Math.random() > 0.7 ? getRandomOption(glassesStyles) : undefined, // optional, less frequent
         hair: getRandomOption(hairStyles),
-        eyes: getRandomOption(eyeStyles),
-        eyebrows: getRandomOption(eyebrowStyles),
-        mouth: getRandomOption(mouthStyles),
         hairColor: getRandomOption(hairColors).replace("#", ""),
-        skinColor: getRandomOption(skinColors).replace("#", ""),
     }
 
     setOptions(newOptions)
@@ -176,9 +228,13 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
              <div className="space-y-4 max-h-[400px] overflow-y-auto p-1 pr-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <StyleSelector label="Hair" value={options.hair} options={hairStyles} onChange={(v) => handleOptionChange('hair', v)} />
-                    <StyleSelector label="Eyes" value={options.eyes} options={eyeStyles} onChange={(v) => handleOptionChange('eyes', v)} />
-                    <StyleSelector label="Eyebrows" value={options.eyebrows} options={eyebrowStyles} onChange={(v) => handleOptionChange('eyebrows', v)} />
-                    <StyleSelector label="Mouth" value={options.mouth} options={mouthStyles} onChange={(v) => handleOptionChange('mouth', v)} />
+                    <StyleSelector label="Glasses" value={options.glasses} options={glassesStyles} onChange={(v) => handleOptionChange('glasses', v)} isOptional={true}/>
+                    <StyleSelector label="Background" value={options.backgroundType} options={backgroundTypes} onChange={(v) => handleOptionChange('backgroundType', v)} />
+                    <FeatureSelector
+                      options={features}
+                      selected={(options.features || []) as string[]}
+                      onChange={handleFeatureChange}
+                    />
                 </div>
             </div>
           </TabsContent>
@@ -186,8 +242,8 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
           <TabsContent value="colors" className="mt-4">
             <div className="space-y-4 p-4 bg-card rounded-lg">
               {[
-                { name: "Skin Tone", key: "skinColor", options: skinColors },
                 { name: "Hair Color", key: "hairColor", options: hairColors },
+                { name: "Background Color", key: "backgroundColor", options: backgroundColors },
               ].map((cat) => (
                 <div key={cat.name}>
                   <h4 className="font-mono text-slate-300 mb-2">{cat.name}</h4>
