@@ -348,14 +348,22 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                 isOwnMessage
                                                     ? "bg-primary text-primary-foreground"
                                                     : "bg-muted",
-                                                // Default to fully rounded
-                                                "rounded-2xl",
-                                                // Adjust for group start/end
-                                                isFirstInGroup && !isLastInGroup ? (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md') : '',
-                                                isLastInGroup && !isFirstInGroup ? (isOwnMessage ? 'rounded-tr-md' : 'rounded-tl-md') : '',
-                                                !isFirstInGroup && !isLastInGroup ? (isOwnMessage ? 'rounded-r-md rounded-l-2xl' : 'rounded-l-md rounded-r-2xl') : '',
-                                                // Adjust for reply
-                                                 !!msg.replyTo && (isOwnMessage ? 'rounded-tr-md' : 'rounded-tl-md')
+                                                {
+                                                    // Case 1: Single message in a group
+                                                    "rounded-2xl": isFirstInGroup && isLastInGroup,
+
+                                                    // Case 2: First message in a multi-message group
+                                                    "rounded-2xl rounded-tr-md": isOwnMessage && isFirstInGroup && !isLastInGroup,
+                                                    "rounded-2xl rounded-tl-md": !isOwnMessage && isFirstInGroup && !isLastInGroup,
+
+                                                    // Case 3: Middle message in a multi-message group
+                                                    "rounded-l-2xl rounded-r-md": isOwnMessage && !isFirstInGroup && !isLastInGroup,
+                                                    "rounded-r-2xl rounded-l-md": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
+
+                                                    // Case 4: Last message in a multi-message group
+                                                    "rounded-2xl rounded-br-md": isOwnMessage && isLastInGroup && !isFirstInGroup,
+                                                    "rounded-2xl rounded-bl-md": !isOwnMessage && isLastInGroup && !isFirstInGroup,
+                                                }
                                             )}
                                         >
                                             <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
