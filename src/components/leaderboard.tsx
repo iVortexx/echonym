@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -51,7 +52,7 @@ export function Leaderboard() {
                            <Link href={`/profile/${encodeURIComponent(user.anonName)}`} key={user.uid} className="flex items-center gap-2 p-1 -mx-1 rounded-md hover:bg-primary/10 transition-colors">
                                 <span className="font-mono text-sm text-slate-400 w-5 text-center">{index + 1}</span>
                                 <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <AvatarImage src={user.avatarUrl} alt={user.anonName} className="object-cover" />
+                                    <AvatarImage src={user.avatarUrl} alt={user.anonName} />
                                     <AvatarFallback className="bg-secondary text-primary">
                                         <UserIcon className="h-4 w-4" />
                                     </AvatarFallback>

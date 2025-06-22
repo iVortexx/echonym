@@ -291,8 +291,8 @@ export default function ProfilePage() {
   const isJoinDateInvalid = isNaN(joinDate.getTime());
 
   const AvatarComponent = (
-    <Avatar className="h-24 w-24 ring-4 ring-primary/30 cursor-pointer group object-cover">
-      <AvatarImage src={displayUser.avatarUrl} alt={displayUser.anonName} className="object-cover" />
+    <Avatar className="h-24 w-24 ring-4 ring-primary/30 cursor-pointer group">
+      <AvatarImage src={displayUser.avatarUrl} alt={displayUser.anonName} />
       <AvatarFallback className="bg-secondary text-primary">
         <UserIcon className="h-12 w-12" />
       </AvatarFallback>

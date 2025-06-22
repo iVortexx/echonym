@@ -273,7 +273,7 @@ export function PostCard({ post, isPreview = false, isClickable = true, userVote
               <div className="flex items-start space-x-3 flex-1">
                 <Link href={`/profile/${encodeURIComponent(post.anonName)}`} className="relative" onClick={(e) => e.stopPropagation()}>
                   <Avatar className="h-10 w-10 ring-2 ring-primary/30">
-                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} className="object-cover" />
+                    <AvatarImage src={displayAvatarUrl} alt={post.anonName} />
                     <AvatarFallback className="bg-secondary text-primary">
                       <UserIcon className="h-5 w-5" />
                     </AvatarFallback>

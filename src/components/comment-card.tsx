@@ -130,7 +130,7 @@ export function CommentCard({ comment, postAuthorId, onStartReply, userVote }: C
     >
       <Link href={`/profile/${encodeURIComponent(comment.anonName)}`}>
         <Avatar className="h-8 w-8 mt-1 flex-shrink-0 cursor-pointer">
-          <AvatarImage src={displayAvatarUrl} alt={comment.anonName} className="object-cover" />
+          <AvatarImage src={displayAvatarUrl} alt={comment.anonName} />
           <AvatarFallback className="bg-secondary text-primary">
             <UserIcon className="h-4 w-4" />
           </AvatarFallback>
