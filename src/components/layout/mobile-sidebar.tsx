@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from 'react'
@@ -12,6 +11,8 @@ import { Menu, Home, Bookmark, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { Leaderboard } from '../leaderboard'
+import { Separator } from '../ui/separator'
 
 const menuItems = [
     { href: "/", label: "Home Feed", icon: Home },
@@ -30,7 +31,7 @@ export function MobileSidebar() {
           <Menu className="h-6 w-6" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="p-4 w-full max-w-sm bg-card border-r-border">
+      <SheetContent side="left" className="p-4 w-full max-w-sm bg-card border-r-border flex flex-col">
          <div className="space-y-6">
             <h2 className="text-lg font-bold font-mono text-primary">Menu</h2>
              <nav>
@@ -55,6 +56,10 @@ export function MobileSidebar() {
                     ))}
                 </ul>
             </nav>
+         </div>
+         <Separator className="my-4 bg-border/50" />
+         <div className="flex-1 flex flex-col min-h-0">
+            <Leaderboard />
          </div>
       </SheetContent>
     </Sheet>

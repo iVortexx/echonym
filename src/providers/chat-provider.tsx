@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
@@ -12,6 +11,7 @@ export interface OpenChat {
   user: User;
   chatId: string;
   state: 'open' | 'minimized';
+  openedAt: number; // For tracking the oldest chat to remove
 }
 
 interface ChatContextType {
@@ -69,15 +69,54 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
 
     if (result.chatId) {
       setOpenChats(prev => {
-          const newChats: Record<string, OpenChat> = {};
-          // Minimize all previous chats
-          for (const key in prev) {
-              if (prev[key]) {
-                newChats[key] = { ...prev[key], state: 'minimized' };
+          let currentChats = { ...prev };
+          
+          // If chat is already present, just bring it to front.
+          if (currentChats[result.chatId]) {
+              const newChats: Record<string, OpenChat> = {};
+              // Minimize all
+              for (const key in currentChats) {
+                   if (currentChats[key]) {
+                      newChats[key] = { ...currentChats[key], state: 'minimized' };
+                   }
+              }
+              // Re-open the target chat and update its timestamp
+              newChats[result.chatId] = { ...currentChats[result.chatId], state: 'open', openedAt: Date.now() };
+              return newChats;
+          }
+
+          // Enforce a limit of 5 chats
+          const CHAT_LIMIT = 5;
+          const chatKeys = Object.keys(currentChats);
+          if (chatKeys.length >= CHAT_LIMIT) {
+              // Find the oldest chat (one with the smallest `openedAt` timestamp)
+              const oldestChatId = chatKeys.reduce((oldest, key) => {
+                  if (!oldest || currentChats[key].openedAt < currentChats[oldest].openedAt) {
+                      return key;
+                  }
+                  return oldest;
+              }, null as string | null);
+
+              if (oldestChatId) {
+                  delete currentChats[oldestChatId];
               }
           }
-          // Set the new chat as open
-          newChats[result.chatId] = { user: targetUser, chatId: result.chatId, state: 'open' };
+
+          const newChats: Record<string, OpenChat> = {};
+          // Minimize all existing chats
+          for (const key in currentChats) {
+              if (currentChats[key]) {
+                newChats[key] = { ...currentChats[key], state: 'minimized' };
+              }
+          }
+
+          // Add and open the new chat
+          newChats[result.chatId] = { 
+              user: targetUser, 
+              chatId: result.chatId, 
+              state: 'open',
+              openedAt: Date.now() 
+          };
           return newChats;
       });
     } else {
@@ -111,7 +150,7 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
                 newChats[key] = { ...prev[key], state: 'minimized' };
             }
         }
-        newChats[chatId] = { ...chatToRestore, state: 'open' };
+        newChats[chatId] = { ...chatToRestore, state: 'open', openedAt: Date.now() };
         return newChats;
     });
   }, []);
