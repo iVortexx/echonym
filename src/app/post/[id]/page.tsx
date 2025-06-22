@@ -50,6 +50,8 @@ export default async function PostPage({ params }: PostPageProps) {
   }))
 
   return (
-    <PostDetail post={serializablePost} initialComments={serializableComments} />
+    <div className="container mx-auto py-8 px-4">
+      <PostDetail post={serializablePost} initialComments={serializableComments} />
+    </div>
   )
 }

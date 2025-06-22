@@ -17,10 +17,12 @@ export default function ProfileRedirectPage() {
   }, [user?.anonName, loading, router])
 
   return (
-    <div className="flex items-center justify-center h-full min-h-[300px]">
-      <div className="flex flex-col items-center space-y-2 text-slate-400 font-mono">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p>Loading your profile...</p>
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center justify-center h-full min-h-[300px]">
+        <div className="flex flex-col items-center space-y-2 text-slate-400 font-mono">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p>Loading your profile...</p>
+        </div>
       </div>
     </div>
   )

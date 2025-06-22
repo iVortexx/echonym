@@ -38,7 +38,7 @@ export default function RootLayout({
         <AuthProvider>
           <ChatProvider>
             <Header />
-            <main className="container mx-auto py-8 px-4">{children}</main>
+            <main>{children}</main>
             <Toaster />
             <ChatLayout />
           </ChatProvider>
