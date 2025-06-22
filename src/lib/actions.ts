@@ -24,7 +24,6 @@ import {
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote } from "./types"
-import type { ScorePostInput, ScorePostOutput } from "@/ai/flows/score-post-flow"
 import { buildAvatarUrl } from "./utils"
 
 const PostSchema = z.object({
@@ -484,7 +483,7 @@ export async function getTagSuggestions(content: string) {
   }
 }
 
-export async function scorePost(input: ScorePostInput): Promise<ScorePostOutput> {
+export async function scorePost(input: { title: string; content: string; }) {
   if (!input.title.trim() || !input.content.trim()) {
     return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
   }
@@ -912,9 +911,9 @@ export async function markNotificationAsRead(userId: string, notificationId: str
   }
 }
 
-export async function linkNewAuthSession(recoveryId: string, newAuthUid: string) {
+export async function linkNewAuthSession(recoveryId: string, newAuthUid:string): Promise<{ success: boolean; user?: User; error?: string }> {
     if (!recoveryId || !newAuthUid) {
-        return { error: "Missing recovery ID or new Auth UID." };
+        return { success: false, error: "Missing recovery ID or new Auth UID." };
     }
 
     try {
@@ -924,20 +923,27 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid: string)
         const userSnapshot = await getDocs(userQuery);
 
         if (userSnapshot.empty) {
-            return { error: "No user found with that recovery ID." };
+            return { success: false, error: "No user found with that recovery ID." };
         }
         
         const userDocRef = userSnapshot.docs[0].ref;
+        const oldUserData = userSnapshot.docs[0].data();
 
-        // Unlink any old auth session to prevent conflicts
-        const oldLinkQuery = query(usersRef, where("activeAuthUid", "==", newAuthUid), limit(1));
-        const oldLinkSnapshot = await getDocs(oldLinkQuery);
+        // If the user document is already linked to this auth UID, we don't need to do anything.
+        if (oldUserData.activeAuthUid === newAuthUid) {
+            const user = { uid: userDocRef.id, ...oldUserData } as User;
+             return { success: true, user };
+        }
 
         const batch = writeBatch(db);
-
+        
+        // Unlink any other user document that might currently be using the newAuthUid.
+        // This prevents a single auth UID from being linked to two different user profiles.
+        const oldLinkQuery = query(usersRef, where("activeAuthUid", "==", newAuthUid), limit(1));
+        const oldLinkSnapshot = await getDocs(oldLinkQuery);
         if (!oldLinkSnapshot.empty) {
             oldLinkSnapshot.forEach(doc => {
-                 // Set old link to null to break the connection
+                // Set the old link to null to break the connection, freeing up the auth UID.
                 batch.update(doc.ref, { activeAuthUid: null });
             });
         }
@@ -947,11 +953,12 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid: string)
         
         await batch.commit();
 
-        return { success: true };
+        const updatedUserDoc = await getDoc(userDocRef);
+        const user = { uid: updatedUserDoc.id, ...updatedUserDoc.data() } as User;
+
+        return { success: true, user };
     } catch (e: any) {
         console.error("Error linking new auth session:", e);
-        return { error: "Failed to link new session." };
+        return { success: false, error: "Failed to link new session." };
     }
 }
-
-    

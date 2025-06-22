@@ -72,37 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let unsubscribeUser: () => void = () => {};
 
-    const handleUserSession = async (fbUser: FirebaseUser | null) => {
-        if (!fbUser) {
-            try {
-                await signInAnonymously(auth);
-            } catch (e: any) {
-                console.error("Firebase Anonymous Sign-in Error:", e);
-                setError(`Authentication failed: ${e.message}`);
-                setLoading(false);
-            }
-            return;
-        }
-
-        setFirebaseUser(fbUser);
-
-        // This is the main logic for handling a new session.
-        // It could be a brand new user, a returning user, or a restored user.
-        
-        // Step 1: Handle account restoration if a recovery key is present.
-        const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
-        if (savedRecoveryId) {
-            const linkResult = await linkNewAuthSession(savedRecoveryId, fbUser.uid);
-            if (linkResult.success) {
-                localStorage.removeItem(RECOVERY_ID_KEY); // Clean up after successful link
-            } else {
-                console.error("Failed to link restored account:", linkResult.error);
-                setError("Could not restore account session. The recovery ID might be invalid.");
-                localStorage.removeItem(RECOVERY_ID_KEY);
-            }
-        }
-
-        // Step 2: Find the user document linked to the current auth session.
+    const setupListenerForActiveAuthUid = (fbUser: FirebaseUser) => {
         const userQuery = query(collection(db, 'users'), where('activeAuthUid', '==', fbUser.uid), limit(1));
 
         unsubscribeUser = onSnapshot(userQuery, async (snapshot) => {
@@ -158,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         });
 
                         await batch.commit();
-                        // The user will be set by the new snapshot listener we are about to create.
+                        // The onSnapshot listener will pick up the newly created user.
                     } catch (e: any) {
                         console.error("Error creating user document:", e);
                         setError("Failed to initialize user profile.");
@@ -173,11 +143,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
     };
 
+    const handleUserSession = async (fbUser: FirebaseUser | null) => {
+        if (!fbUser) {
+            try {
+                await signInAnonymously(auth);
+            } catch (e: any) {
+                console.error("Firebase Anonymous Sign-in Error:", e);
+                setError(`Authentication failed: ${e.message}`);
+                setLoading(false);
+            }
+            return;
+        }
+
+        setFirebaseUser(fbUser);
+        
+        const savedRecoveryId = localStorage.getItem(RECOVERY_ID_KEY);
+
+        if (savedRecoveryId) {
+            const linkResult = await linkNewAuthSession(savedRecoveryId, fbUser.uid);
+            if (linkResult.success && linkResult.user) {
+                localStorage.removeItem(RECOVERY_ID_KEY);
+                
+                // Successfully restored! Set the user and attach a direct listener.
+                setUser(linkResult.user);
+                const userDocRef = doc(db, 'users', linkResult.user.uid);
+                unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setUser({ ...docSnap.data(), uid: docSnap.id } as User);
+                    } else {
+                        setError("Restored user profile disappeared unexpectedly.");
+                    }
+                });
+                setLoading(false);
+            } else {
+                // Failed to restore, maybe bad recovery ID. Fallback to normal flow.
+                console.error("Failed to link restored account:", linkResult.error);
+                setError("Could not restore account session. The recovery ID might be invalid.");
+                localStorage.removeItem(RECOVERY_ID_KEY);
+                // Proceed to the normal "find or create" logic below.
+                setupListenerForActiveAuthUid(fbUser);
+            }
+        } else {
+            // Normal flow: not restoring an account.
+            setupListenerForActiveAuthUid(fbUser);
+        }
+    };
+
     const unsubscribeAuth = onAuthStateChanged(auth, handleUserSession);
 
     return () => {
       unsubscribeAuth();
-      unsubscribeUser();
+      if (unsubscribeUser) unsubscribeUser();
     };
   }, []);
 
