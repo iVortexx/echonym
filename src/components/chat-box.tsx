@@ -199,34 +199,41 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   // Real-time listener for new messages & modifications
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !currentUser?.uid) return;
+    
     const messagesRef = collection(db, `chats/${chatId}/messages`);
     const q = query(messagesRef, where('createdAt', '>', componentMountedTime.current));
 
-    const unsubscribe = onSnapshot(q, snapshot => {
-        let newMessages: ChatMessage[] = [];
-        snapshot.docChanges().forEach(change => {
-            if (change.type === 'added') {
-                const newMessage = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
-                // Double check it's not already in state
-                if (!messages.some(m => m.id === newMessage.id)) {
-                    newMessages.push(newMessage);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (snapshot.docChanges().length === 0) {
+            return;
+        }
+
+        setMessages((prevMessages) => {
+            const messagesMap = new Map(prevMessages.map((msg) => [msg.id, msg]));
+
+            for (const change of snapshot.docChanges()) {
+                if (change.type === 'added' || change.type === 'modified') {
+                    const messageData = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
+                    messagesMap.set(change.doc.id, messageData);
                 }
             }
-            if (change.type === 'modified') {
-                const updatedMessage = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
-                setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
-            }
-        });
 
-        if (newMessages.length > 0) {
-            newMessages.sort((a, b) => getDateFromTimestamp(a.createdAt)!.getTime() - getDateFromTimestamp(b.createdAt)!.getTime());
-            setMessages(prev => [...prev, ...newMessages]);
-            if (currentUser) {
-              clearChatUnread(currentUser.uid, chatId);
-            }
-            setUserHasScrolled(false); // New message arrived, reset scroll lock
-        }
+            const newMessages = Array.from(messagesMap.values());
+            
+            newMessages.sort((a, b) => {
+                const dateA = getDateFromTimestamp(a.createdAt);
+                const dateB = getDateFromTimestamp(b.createdAt);
+                if (!dateA) return -1;
+                if (!dateB) return 1;
+                return dateA.getTime() - dateB.getTime();
+            });
+
+            return newMessages;
+        });
+        
+        clearChatUnread(currentUser.uid, chatId);
+        setUserHasScrolled(false);
     });
 
     return () => unsubscribe();
@@ -431,7 +438,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
                                               <div className="italic text-slate-400 line-clamp-2 break-all">
-                                                {`"${msg.replyTo.text}"`}
+                                                {`"${msg.replyTo.text.substring(0, 70)}${msg.replyTo.text.length > 70 ? "..." : ""}"`}
                                               </div>
                                             </a>
                                         )}
@@ -550,4 +557,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
