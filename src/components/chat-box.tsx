@@ -271,8 +271,12 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
                     const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
                     const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+                    
+                    const isMiddleOfGroup = !isFirstInGroup && !isLastInGroup;
 
                     const showAvatar = !isOwnMessage && isLastInGroup;
+                    
+                    const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
 
                     return (
                         <div key={msg.id} className="group/row">
@@ -310,16 +314,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <TooltipTrigger asChild>
                                         <div
                                             className={cn(
-                                                "p-2 px-3 text-sm text-foreground",
+                                                "p-2 px-3 text-sm text-foreground rounded-2xl",
                                                 isOwnMessage
                                                     ? "bg-primary text-primary-foreground"
                                                     : "bg-muted",
-                                                isOwnMessage ? 
-                                                    (isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl' : 'rounded-l-2xl') :
-                                                    (isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl' : 'rounded-r-2xl'),
-                                                !isFirstInGroup && (isOwnMessage ? 'rounded-l-2xl' : 'rounded-r-2xl'),
-                                                !isLastInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
-                                                isLastInGroup && (isOwnMessage ? 'rounded-b-2xl' : 'rounded-b-2xl')
+                                                isFirstInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
+                                                isLastInGroup && (isOwnMessage ? 'rounded-tl-md' : 'rounded-tr-md'),
+                                                isMiddleOfGroup && (isOwnMessage ? 'rounded-r-md rounded-l-2xl' : 'rounded-l-md rounded-r-2xl'),
                                             )}
                                         >
                                             {msg.replyTo && (
@@ -328,7 +329,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                     <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
                                                 </a>
                                             )}
-                                            <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, { folder: 'svg', ext: '.svg' }) }} />
+                                            <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                         </div>
                                         </TooltipTrigger>
                                         <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -336,7 +337,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         </TooltipContent>
                                     </Tooltip>
                                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                                        <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end" : "justify-start")}>
+                                        <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end pl-8" : "justify-start pr-8")}>
                                             {Object.entries(msg.reactions).map(([emoji, userIds]) => (
                                                 <TooltipProvider key={emoji} delayDuration={0}>
                                                 <Tooltip>
@@ -350,7 +351,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                                 : 'bg-card border-border hover:border-accent'
                                                             )}
                                                             >
-                                                            <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, { folder: 'svg', ext: '.svg' }) }}/>
+                                                            <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, twemojiConfig) }}/>
                                                             <span>{userIds.length}</span>
                                                         </button>
                                                     </TooltipTrigger>
@@ -438,3 +439,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
+
+    
