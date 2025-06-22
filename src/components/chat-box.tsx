@@ -166,11 +166,11 @@ export function ChatBox({ chat }: ChatBoxProps) {
   return (
     <motion.div
       layoutId={`chatbox-${chatId}`}
-      initial={{ y: 300, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 300, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 40 }}
-      className="w-80 h-[400px] flex flex-col bg-card border border-primary/30 rounded-t-xl shadow-2xl shadow-black/30"
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: 10 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="w-80 h-[400px] flex flex-col bg-card border border-primary rounded-xl shadow-2xl shadow-primary/20"
     >
       <header className="flex items-center justify-between p-2 pl-3 border-b border-primary/20 cursor-pointer">
         <div className="flex items-center gap-2">
@@ -193,25 +193,25 @@ export function ChatBox({ chat }: ChatBoxProps) {
       </header>
 
       <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-4">
             {messages.map((msg) => {
                 const isOwnMessage = msg.senderId === currentUser?.uid;
                 return (
-                    <div key={msg.id} className={cn("flex items-end gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
+                    <div key={msg.id} className={cn("flex items-start gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
                         {!isOwnMessage && (
-                             <Avatar className="h-6 w-6 self-start">
+                             <Avatar className="h-6 w-6">
                                 <AvatarImage src={user.avatarUrl} />
                                 <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
                             </Avatar>
                         )}
-                        <div className="group">
+                        <div className={cn("flex flex-col gap-1", isOwnMessage ? "items-end" : "items-start")}>
                             <div className={cn(
-                              "max-w-[75%] rounded-lg px-3 py-2 text-sm break-words", 
-                              isOwnMessage ? "bg-primary text-primary-foreground rounded-br-none" : "bg-secondary text-secondary-foreground rounded-bl-none"
+                              "max-w-[75%] rounded-xl px-3 py-2 text-sm break-words", 
+                              isOwnMessage ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
                             )}>
                                 <p>{msg.text}</p>
                             </div>
-                             <p className={cn("text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
+                             <p className="text-xs text-slate-500 px-1">{formatTimeAgo(msg.createdAt)}</p>
                         </div>
                     </div>
                 );
