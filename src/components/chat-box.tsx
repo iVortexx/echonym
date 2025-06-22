@@ -19,11 +19,26 @@ import { debounce } from 'lodash';
 import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 
 interface ChatBoxProps {
   chat: OpenChat;
 }
+
+const getDateFromTimestamp = (timestamp: Timestamp | string | undefined): Date | null => {
+    if (!timestamp) return null;
+    try {
+        if (typeof (timestamp as any).toDate === 'function') {
+            return (timestamp as any).toDate();
+        }
+        const date = new Date(timestamp as string);
+        if (isNaN(date.getTime())) return null;
+        return date;
+    } catch {
+        return null;
+    }
+};
 
 export function ChatBox({ chat }: ChatBoxProps) {
   const { closeChat, minimizeChat } = useChat();
@@ -180,98 +195,75 @@ export function ChatBox({ chat }: ChatBoxProps) {
       </header>
 
       <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="p-3 space-y-0.5">
-            {messages.map((msg, i) => {
-                const isOwnMessage = msg.senderId === currentUser?.uid;
+        <TooltipProvider delayDuration={300}>
+            <div className="p-3">
+                {messages.map((msg, i) => {
+                    const isOwnMessage = msg.senderId === currentUser?.uid;
 
-                // --- Grouping Logic ---
-                const prevMessage = messages[i - 1];
-                let messageDate: Date;
-                try {
-                    const ts = msg.createdAt;
-                    if (ts && typeof (ts as any).toDate === 'function') {
-                        messageDate = (ts as any).toDate();
-                    } else {
-                        messageDate = new Date(ts as string);
-                    }
-                    if (isNaN(messageDate.getTime())) throw new Error('Invalid date');
-                } catch (e) {
-                    messageDate = new Date(); // Fallback
-                }
+                    const currentDate = getDateFromTimestamp(msg.createdAt);
+                    
+                    const prevMessage = messages[i - 1];
+                    const nextMessage = messages[i + 1];
 
-                let prevMessageDate: Date | null = null;
-                if (prevMessage) {
-                    try {
-                        const prevTs = prevMessage.createdAt;
-                        if (prevTs && typeof (prevTs as any).toDate === 'function') {
-                           prevMessageDate = (prevTs as any).toDate();
-                        } else {
-                           prevMessageDate = new Date(prevTs as string);
-                        }
-                        if (isNaN(prevMessageDate.getTime())) prevMessageDate = null;
-                    } catch {
-                        prevMessageDate = null;
-                    }
-                }
-                
-                const showHeader = !prevMessage || 
-                                   msg.senderId !== prevMessage.senderId || 
-                                   (prevMessageDate && (messageDate.getTime() - prevMessageDate.getTime() > 5 * 60 * 1000));
-                // --- End Grouping Logic ---
+                    const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
+                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
 
-                return (
-                    <div
-                        key={msg.id}
-                        className={cn(
-                            "flex w-full gap-2",
-                            isOwnMessage ? "justify-end" : "justify-start",
-                            showHeader ? "mt-4" : "mt-1"
-                        )}
-                    >
-                        {/* Avatar for received messages */}
-                        {!isOwnMessage && (
-                            <div className="w-8 flex-shrink-0 self-end">
-                                {showHeader && (
-                                    <Avatar className="h-8 w-8">
-                                        <AvatarImage src={user.avatarUrl} />
-                                        <AvatarFallback>
-                                            <UserIcon className="h-4 w-4" />
-                                        </AvatarFallback>
-                                    </Avatar>
-                                )}
-                            </div>
-                        )}
-                        
-                        {/* Message Content */}
-                        <div className={cn("max-w-[75%]")}>
-                            {showHeader && (
-                                <div className={cn(
-                                    "flex items-baseline gap-2 mb-1",
-                                    isOwnMessage && "justify-end"
-                                )}>
-                                    <span className="font-bold text-slate-100 text-sm">
-                                        {isOwnMessage ? "You" : user.anonName}
-                                    </span>
-                                    <span className="text-xs text-slate-500">
-                                        {format(messageDate, "p")}
-                                    </span>
+                    const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
+                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
+                    
+                    const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+                    
+                    const showAvatar = !isOwnMessage && isLastInGroup;
+
+                    if (!currentDate) return null;
+
+                    return (
+                        <div
+                            key={msg.id}
+                            className={cn(
+                                "flex w-full gap-2 items-end",
+                                isOwnMessage ? "justify-end" : "justify-start",
+                                isFirstInGroup ? "mt-4" : "mt-0.5"
+                            )}
+                        >
+                            {!isOwnMessage && (
+                                <div className="w-8 flex-shrink-0 self-end">
+                                    {showAvatar && (
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.avatarUrl} />
+                                            <AvatarFallback>
+                                                <UserIcon className="h-4 w-4" />
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    )}
                                 </div>
                             )}
-                            <div
-                                className={cn(
-                                    "p-2 px-3 rounded-2xl text-sm text-foreground break-words",
-                                    isOwnMessage
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted"
-                                )}
-                            >
-                                <p>{msg.text}</p>
+                            
+                            <div className={cn("max-w-[75%]")}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div
+                                          className={cn(
+                                              "p-2 px-3 rounded-2xl text-sm text-foreground break-words",
+                                              isOwnMessage
+                                                  ? "bg-primary text-primary-foreground"
+                                                  : "bg-muted"
+                                          )}
+                                      >
+                                          <p>{msg.text}</p>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
+                                        <p>{format(currentDate, "PPpp")}</p>
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
-                    </div>
-                );
-            })}
-        </div>
+                    );
+                })}
+            </div>
+        </TooltipProvider>
       </ScrollArea>
        <div className="h-5 px-4 text-xs text-slate-400 flex items-center">
         {isOtherUserTyping && (
