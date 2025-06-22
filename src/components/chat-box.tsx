@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
 import TextareaAutosize from 'react-textarea-autosize';
-import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
+import EmojiPicker, { EmojiStyle, type EmojiClickData } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import twemoji from 'twemoji';
@@ -41,7 +41,7 @@ const getDateFromTimestamp = (timestamp: Timestamp | string | undefined): Date |
     }
 };
 
-const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emoji: {emoji: string}) => void, onReply: () => void }) => {
+const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emojiData: EmojiClickData) => void, onReply: () => void }) => {
     return (
         <div className="flex items-center gap-1 p-1 rounded-lg bg-card border border-border shadow-md">
              <Popover>
@@ -207,8 +207,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
     setTimeout(() => scrollToBottom(), 0);
   };
 
-  const handleMainEmojiSelect = (emoji: { emoji: string }) => {
-    setNewMessage(prev => prev + emoji.emoji);
+  const handleMainEmojiSelect = (emojiData: EmojiClickData) => {
+    setNewMessage(prev => prev + emojiData.emoji);
     setEmojiPickerOpen(false);
   };
 
@@ -216,6 +216,11 @@ export function ChatBox({ chat }: ChatBoxProps) {
       if (!currentUser) return;
       await toggleMessageReaction(chatId, messageId, emoji, currentUser.uid);
   }
+
+  const handleSelectReaction = (messageId: string, emojiData: EmojiClickData) => {
+      handleReaction(messageId, emojiData.emoji);
+  };
+
 
   return (
     <motion.div
@@ -269,96 +274,104 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
                     const showAvatar = !isOwnMessage && isLastInGroup;
 
-                    const handleSelectReaction = (emoji: {emoji: string}) => {
-                        handleReaction(msg.id, emoji.emoji);
-                    }
-
                     return (
                         <div key={msg.id} className="group/row">
                             <div
                                 className={cn(
-                                    "flex w-full gap-2 items-end",
+                                    "flex w-full items-end gap-2",
                                     isOwnMessage ? "justify-end" : "justify-start",
                                     isFirstInGroup ? "mt-4" : "mt-0.5"
                                 )}
                             >
-                                <div className={cn("flex items-center gap-2", isOwnMessage ? "flex-row-reverse" : "flex-row")}>
-                                    <div className="flex-shrink-0 self-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                        <MessageActions onEmojiSelect={handleSelectReaction} onReply={() => setReplyingTo(msg)} />
+                                {isOwnMessage && (
+                                    <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
+                                        <MessageActions
+                                            onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
+                                            onReply={() => setReplyingTo(msg)}
+                                        />
                                     </div>
-                                    {!isOwnMessage && (
-                                        <div className="w-8 flex-shrink-0 self-end">
-                                            {showAvatar && (
-                                                <Avatar className="h-8 w-8">
-                                                    <AvatarImage src={user.avatarUrl} />
-                                                    <AvatarFallback>
-                                                        <UserIcon className="h-4 w-4" />
-                                                    </AvatarFallback>
-                                                </Avatar>
+                                )}
+
+                                {!isOwnMessage && (
+                                    <div className="w-8 flex-shrink-0 self-end">
+                                        {showAvatar && (
+                                            <Avatar className="h-8 w-8">
+                                                <AvatarImage src={user.avatarUrl} />
+                                                <AvatarFallback>
+                                                    <UserIcon className="h-4 w-4" />
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        )}
+                                    </div>
+                                )}
+                            
+                                <div className={cn("max-w-[75%]")}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                        <div
+                                            className={cn(
+                                                "p-2 px-3 text-sm text-foreground",
+                                                isOwnMessage
+                                                    ? "bg-primary text-primary-foreground"
+                                                    : "bg-muted",
+                                                isOwnMessage ? 
+                                                    (isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl' : 'rounded-l-2xl') :
+                                                    (isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl' : 'rounded-r-2xl'),
+                                                !isFirstInGroup && (isOwnMessage ? 'rounded-l-2xl' : 'rounded-r-2xl'),
+                                                !isLastInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
+                                                isLastInGroup && (isOwnMessage ? 'rounded-b-2xl' : 'rounded-b-2xl')
                                             )}
+                                        >
+                                            {msg.replyTo && (
+                                                <a href={`#message-${msg.replyTo.messageId}`} className="block p-2 rounded-md bg-black/20 mb-2 border-l-2 border-primary/50 cursor-pointer hover:bg-black/30 transition-colors">
+                                                    <p className="font-bold text-xs">{msg.replyTo.senderName}</p>
+                                                    <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
+                                                </a>
+                                            )}
+                                            <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, { folder: 'svg', ext: '.svg' }) }} />
+                                        </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
+                                            <p>{format(currentDate, "PPpp")}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                        <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end" : "justify-start")}>
+                                            {Object.entries(msg.reactions).map(([emoji, userIds]) => (
+                                                <TooltipProvider key={emoji} delayDuration={0}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <button
+                                                            onClick={() => handleReaction(msg.id, emoji)}
+                                                            className={cn(
+                                                                "px-1.5 py-0.5 rounded-full border text-xs flex items-center gap-1 transition-colors",
+                                                                userIds.includes(currentUser?.uid || '')
+                                                                ? 'bg-accent/20 border-accent text-accent-foreground'
+                                                                : 'bg-card border-border hover:border-accent'
+                                                            )}
+                                                            >
+                                                            <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, { folder: 'svg', ext: '.svg' }) }}/>
+                                                            <span>{userIds.length}</span>
+                                                        </button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Click to react</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                                </TooltipProvider>
+                                            ))}
                                         </div>
                                     )}
-                                
-                                    <div className={cn("max-w-[75%]")}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                            <div
-                                                className={cn(
-                                                    "p-2 px-3 text-sm text-foreground",
-                                                    isOwnMessage
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : "bg-muted",
-                                                    isOwnMessage ? 
-                                                        (isFirstInGroup ? 'rounded-t-2xl rounded-bl-2xl' : 'rounded-l-2xl') :
-                                                        (isFirstInGroup ? 'rounded-t-2xl rounded-br-2xl' : 'rounded-r-2xl'),
-                                                    !isFirstInGroup && (isOwnMessage ? 'rounded-l-2xl' : 'rounded-r-2xl'),
-                                                    !isLastInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
-                                                    isLastInGroup && (isOwnMessage ? 'rounded-b-2xl' : 'rounded-b-2xl')
-                                                )}
-                                            >
-                                                {msg.replyTo && (
-                                                    <a href={`#message-${msg.replyTo.messageId}`} className="block p-2 rounded-md bg-black/20 mb-2 border-l-2 border-primary/50 cursor-pointer hover:bg-black/30 transition-colors">
-                                                        <p className="font-bold text-xs">{msg.replyTo.senderName}</p>
-                                                        <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
-                                                    </a>
-                                                )}
-                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, { folder: 'svg', ext: '.svg' }) }} />
-                                            </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
-                                                <p>{format(currentDate, "PPpp")}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                </div>
+                                {!isOwnMessage && (
+                                    <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
+                                        <MessageActions
+                                            onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
+                                            onReply={() => setReplyingTo(msg)}
+                                        />
                                     </div>
-                                </div>
+                                )}
                             </div>
-                            {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                                <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end" : "ml-10")}>
-                                    {Object.entries(msg.reactions).map(([emoji, userIds]) => (
-                                        <TooltipProvider key={emoji} delayDuration={0}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    onClick={() => handleReaction(msg.id, emoji)}
-                                                    className={cn(
-                                                        "px-1.5 py-0.5 rounded-full border text-xs flex items-center gap-1 transition-colors",
-                                                        userIds.includes(currentUser?.uid || '')
-                                                        ? 'bg-accent/20 border-accent text-accent-foreground'
-                                                        : 'bg-card border-border hover:border-accent'
-                                                    )}
-                                                    >
-                                                    <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, { folder: 'svg', ext: '.svg' }) }}/>
-                                                    <span>{userIds.length}</span>
-                                                </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Click to react</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                        </TooltipProvider>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     );
                 })}
