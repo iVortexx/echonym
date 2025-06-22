@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, type Timestamp } from 'firebase/firestore';
 import { sendMessage, setTypingStatus, clearChatUnread } from '@/lib/actions';
-import { formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
@@ -149,19 +149,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
     setNewMessage(prev => prev + emoji.emoji);
     setEmojiPickerOpen(false);
   };
-  
-  const formatTimeAgo = (createdAt: any) => {
-    if (!createdAt) return "";
-    let date: Date;
-    if (typeof createdAt === 'string') {
-      date = new Date(createdAt);
-    } else if (createdAt?.toDate) {
-      date = createdAt.toDate();
-    } else {
-        return "";
-    }
-    return formatDistanceToNow(date, { addSuffix: true });
-  }
 
   return (
     <motion.div
@@ -170,7 +157,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 10 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="w-80 h-[400px] flex flex-col bg-card border border-primary rounded-xl shadow-2xl shadow-primary/20"
+      className="w-80 h-[400px] flex flex-col bg-card border-2 border-primary/50 rounded-xl shadow-2xl shadow-primary/20"
     >
       <header className="flex items-center justify-between p-2 pl-3 border-b border-primary/20 cursor-pointer">
         <div className="flex items-center gap-2">
@@ -193,25 +180,80 @@ export function ChatBox({ chat }: ChatBoxProps) {
       </header>
 
       <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="p-3 space-y-4">
-            {messages.map((msg) => {
+        <div className="p-3 space-y-0.5">
+            {messages.map((msg, i) => {
                 const isOwnMessage = msg.senderId === currentUser?.uid;
+
+                // --- Grouping Logic ---
+                const prevMessage = messages[i - 1];
+                let messageDate: Date;
+                try {
+                    const ts = msg.createdAt;
+                    if (ts && typeof (ts as any).toDate === 'function') {
+                        messageDate = (ts as any).toDate();
+                    } else {
+                        messageDate = new Date(ts as string);
+                    }
+                    if (isNaN(messageDate.getTime())) throw new Error('Invalid date');
+                } catch (e) {
+                    messageDate = new Date(); // Fallback
+                }
+
+                let prevMessageDate: Date | null = null;
+                if (prevMessage) {
+                    try {
+                        const prevTs = prevMessage.createdAt;
+                        if (prevTs && typeof (prevTs as any).toDate === 'function') {
+                           prevMessageDate = (prevTs as any).toDate();
+                        } else {
+                           prevMessageDate = new Date(prevTs as string);
+                        }
+                        if (isNaN(prevMessageDate.getTime())) prevMessageDate = null;
+                    } catch {
+                        prevMessageDate = null;
+                    }
+                }
+                
+                const showHeader = !prevMessage || 
+                                   msg.senderId !== prevMessage.senderId || 
+                                   (prevMessageDate && (messageDate.getTime() - prevMessageDate.getTime() > 5 * 60 * 1000));
+                // --- End Grouping Logic ---
+
                 return (
-                    <div key={msg.id} className={cn("flex items-start gap-2", isOwnMessage ? "justify-end" : "justify-start")}>
+                    <div key={msg.id} className={cn("flex w-full items-start gap-2", showHeader ? "mt-3" : "")}>
+                        {/* Avatar (only for received messages) */}
                         {!isOwnMessage && (
-                             <Avatar className="h-6 w-6">
-                                <AvatarImage src={user.avatarUrl} />
-                                <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
-                            </Avatar>
+                            <div className="w-6 h-6 flex-shrink-0 self-end">
+                                {showHeader && (
+                                    <Avatar className="h-6 w-6">
+                                        <AvatarImage src={user.avatarUrl} />
+                                        <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
+                                    </Avatar>
+                                )}
+                            </div>
                         )}
-                        <div className={cn("flex flex-col gap-1", isOwnMessage ? "items-end" : "items-start")}>
+                        
+                        {/* Spacer for own messages to push them right */}
+                        {isOwnMessage && <div className="flex-1"></div>}
+
+                        {/* Content Block */}
+                        <div className={cn(
+                            "flex flex-col max-w-[85%]", 
+                            isOwnMessage ? "items-end" : "items-start",
+                            !isOwnMessage && "flex-1"
+                        )}>
+                            {showHeader && (
+                                <div className="flex items-center gap-2 px-1 mb-0.5">
+                                   {!isOwnMessage && <span className="font-mono text-sm text-slate-300">{user.anonName}</span>}
+                                   <span className="text-xs text-slate-500">{format(messageDate, 'p')}</span>
+                                </div>
+                            )}
                             <div className={cn(
-                              "max-w-[75%] rounded-xl px-3 py-2 text-sm break-words", 
+                              "rounded-xl px-3 py-2 text-sm break-words", 
                               isOwnMessage ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
                             )}>
                                 <p>{msg.text}</p>
                             </div>
-                             <p className="text-xs text-slate-500 px-1">{formatTimeAgo(msg.createdAt)}</p>
                         </div>
                     </div>
                 );
