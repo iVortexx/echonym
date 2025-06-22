@@ -94,6 +94,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   const { user, chatId } = chat;
 
+  function isEmojiOnly(text: string): boolean {
+    const trimmed = text.trim();
+    // A simple heuristic: check for absence of letters/numbers and keep it for short messages.
+    if (!trimmed || trimmed.length === 0 || trimmed.length > 20) return false;
+    const hasLettersOrNumbers = /[a-zA-Z0-9]/.test(trimmed);
+    // If it has no letters or numbers, it's likely just emojis and symbols.
+    return !hasLettersOrNumbers;
+  }
+
   useEffect(() => {
     if (currentUser) {
       clearChatUnread(currentUser.uid, chatId);
@@ -358,17 +367,17 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         
                         const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
                         
+                        const isOnlyEmoji = isEmojiOnly(msg.text);
+
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm text-foreground relative",
-                          isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
+                          "p-2 px-3 text-sm relative min-w-0",
+                          isOwnMessage ? "bg-cyan-900 text-slate-100" : "bg-muted text-foreground",
                           'rounded-2xl',
                           {
-                            // Own messages (right side)
-                            'rounded-tr-md': !isFirstInGroup && isOwnMessage,
-                            'rounded-br-md': !isLastInGroup && isOwnMessage,
-                            // Other's messages (left side)
-                            'rounded-tl-md': !isFirstInGroup && !isOwnMessage,
-                            'rounded-bl-md': !isLastInGroup && !isOwnMessage,
+                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
+                            'rounded-br-md': isLastInGroup && isOwnMessage,
+                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
+                            'rounded-bl-md': isLastInGroup && !isOwnMessage,
                           }
                         );
 
@@ -410,12 +419,12 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
-                                                  "flex items-start gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 -mb-px cursor-pointer hover:bg-muted transition-colors",
-                                                  "w-full"
+                                                  "flex items-start gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 cursor-pointer hover:bg-muted transition-colors w-full",
+                                                  isFirstInGroup ? "-mb-px" : "-mb-px" // Kept for consistency
                                               )}
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
-                                              <div className="italic text-slate-400 line-clamp-2 break-all">
+                                              <div className="italic text-slate-400 line-clamp-2 break-words">
                                                 {`"${msg.replyTo.text}"`}
                                               </div>
                                             </a>
@@ -424,7 +433,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses)}>
-                                                <div className="break-all" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
