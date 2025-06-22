@@ -1,6 +1,7 @@
 
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { backgroundColors } from "./dicebear-options";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -56,16 +57,28 @@ export function buildAvatarUrl(options: Record<string, any>) {
   
   const finalOptions = { 
     ...options,
-    scale: 115,
-    translateY: 10,
+    scale: 110,
+    translateY: 5,
   };
 
   // This ensures glasses/features appear when selected by the user.
-  if (finalOptions.glasses && finalOptions.glasses !== 'none') {
+  if (finalOptions.glasses && finalOptions.glasses !== 'None') {
     finalOptions.glassesProbability = 100;
   }
-  if (finalOptions.features && finalOptions.features !== 'none') {
+  if (finalOptions.features && finalOptions.features !== 'None') {
     finalOptions.featuresProbability = 100;
+  }
+  
+  // Handle background
+  if (finalOptions.backgroundType === 'solid') {
+    if (!finalOptions.backgroundColor) {
+      // Default color if solid is selected but no color is set yet
+      finalOptions.backgroundColor = backgroundColors[0].replace('#','');
+    }
+  } else {
+    // If backgroundType is not 'solid' (i.e., it's 'None'/undefined), make it transparent.
+    finalOptions.backgroundColor = 'transparent';
+    delete finalOptions.backgroundType;
   }
 
   for (const [key, value] of Object.entries(finalOptions)) {
@@ -73,7 +86,7 @@ export function buildAvatarUrl(options: Record<string, any>) {
       if (value.length > 0) {
         params.set(key, value.join(','));
       }
-    } else if (value !== undefined && value !== null) {
+    } else if (value !== undefined && value !== null && value !== 'None') {
       params.set(key, String(value));
     }
   }
