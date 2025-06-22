@@ -28,15 +28,21 @@ const prompt = ai.definePrompt({
   name: 'suggestTagsPrompt',
   input: {schema: SuggestTagsInputSchema},
   output: {schema: SuggestTagsOutputSchema},
-  prompt: `You are an expert in cybersecurity and technology content. Your task is to suggest relevant tags for a given post.
+  prompt: `You are an expert in categorizing technical content within the cybersecurity domain. Your task is to analyze the provided post content and select the most specific and relevant tags from a predefined list.
 
-  The tags must be relevant to the content of the post.
-  The tags should be concise and commonly used in the security community.
-  You must only choose from the following list of allowed tags: security, reverse-eng, web-security, malware, cve, networking, crypto, forensics.
-  Suggest between 1 and 3 tags.
+**Instructions:**
+1.  Carefully read the content to understand its main topic.
+2.  Choose between 1 and 3 tags from the allowed list below.
+3.  **Prioritize specificity.** For example, if the post is about a specific CVE, choose \`cve\` instead of the more generic \`security\`. If it's about network packet analysis, choose \`networking\` and \`forensics\` over just \`security\`.
+4.  Only use the \`security\` tag if no other tag from the list is a better, more specific fit.
+5.  Do not invent new tags.
 
-  Content: {{{content}}}
-  `,
+**Allowed Tags:**
+\`security\`, \`reverse-eng\`, \`web-security\`, \`malware\`, \`cve\`, \`networking\`, \`crypto\`, \`forensics\`
+
+**Content to Analyze:**
+{{{content}}}
+`,
 });
 
 const suggestTagsFlow = ai.defineFlow(
