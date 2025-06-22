@@ -1,8 +1,8 @@
+
 "use client"
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "./ui/button"
 import { Home, Bookmark, EyeOff, Trophy, UserIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -89,20 +89,8 @@ export function FeedSidebar() {
             "sticky top-0 h-screen flex flex-col transition-all duration-300 ease-in-out border-r border-border",
             isCollapsed ? "w-20" : "w-64"
         )}>
-             <div className="flex-1 flex flex-col min-h-0">
-                <div className="h-14 flex items-center justify-center border-b border-border">
-                     {isCollapsed ? (
-                        <Image src="/logo.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm"/>
-                    ) : (
-                        <Link href="/" className="flex items-center space-x-2">
-                             <Image src="/logo.png" width={36} height={36} alt="Echonym Logo" className="rounded-sm" />
-                             <span className="font-bold font-sans text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                                Echonym
-                            </span>
-                        </Link>
-                    )}
-                </div>
-                <nav className="mt-4 px-2">
+             <div className="flex-1 flex flex-col min-h-0 pt-4">
+                <nav className="px-2">
                     <ul className="space-y-2">
                         {menuItems.map((item) => (
                             <li key={item.href}>
