@@ -220,37 +220,37 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 // --- End Grouping Logic ---
 
                 return (
-                    <div key={msg.id} className={cn("flex w-full items-start gap-2", showHeader ? "mt-3" : "")}>
-                        {/* Avatar (only for received messages) */}
-                        {!isOwnMessage && (
-                            <div className="w-6 h-6 flex-shrink-0 self-end">
-                                {showHeader && (
-                                    <Avatar className="h-6 w-6">
-                                        <AvatarImage src={user.avatarUrl} />
-                                        <AvatarFallback><UserIcon className="h-3 w-3"/></AvatarFallback>
-                                    </Avatar>
-                                )}
-                            </div>
-                        )}
-                        
-                        {/* Spacer for own messages to push them right */}
-                        {isOwnMessage && <div className="flex-1"></div>}
+                    <div
+                        key={msg.id}
+                        className={cn("flex items-start gap-3", showHeader ? "mt-4" : "mt-1")}
+                    >
+                        {/* Avatar or Placeholder */}
+                        <div className="w-8 flex-shrink-0">
+                            {showHeader && !isOwnMessage && (
+                                <Avatar className="h-8 w-8">
+                                    <AvatarImage src={user.avatarUrl} />
+                                    <AvatarFallback>
+                                        <UserIcon className="h-4 w-4" />
+                                    </AvatarFallback>
+                                </Avatar>
+                            )}
+                        </div>
 
-                        {/* Content Block */}
-                        <div className={cn(
-                            "flex flex-col max-w-[85%]", 
-                            isOwnMessage ? "items-end" : "items-start",
-                            !isOwnMessage && "flex-1"
-                        )}>
+                        {/* Message Content */}
+                        <div className="w-full min-w-0">
                             {showHeader && (
-                                <div className="flex items-center gap-2 px-1 mb-0.5">
-                                   {!isOwnMessage && <span className="font-mono text-sm text-slate-300">{user.anonName}</span>}
-                                   <span className="text-xs text-slate-500">{format(messageDate, 'p')}</span>
+                                <div className="flex items-baseline gap-2 mb-1">
+                                    <span className="font-bold text-slate-100 text-sm">
+                                        {isOwnMessage ? currentUser?.anonName : user.anonName}
+                                    </span>
+                                    <span className="text-xs text-slate-500">
+                                        {format(messageDate, "p")}
+                                    </span>
                                 </div>
                             )}
                             <div className={cn(
-                              "rounded-xl px-3 py-2 text-sm break-words", 
-                              isOwnMessage ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                                "text-sm text-slate-200 break-words",
+                                isOwnMessage ? "text-right" : ""
                             )}>
                                 <p>{msg.text}</p>
                             </div>
