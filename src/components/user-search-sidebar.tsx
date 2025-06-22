@@ -12,11 +12,45 @@ import Link from "next/link"
 import { Skeleton } from "./ui/skeleton"
 
 interface UserSearchSidebarProps {
-  isMobile?: boolean;
-  onSelectUser?: () => void;
+  onSelectUser?: (user: User) => void;
 }
 
-export function UserSearchSidebar({ isMobile = false, onSelectUser }: UserSearchSidebarProps) {
+const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (user: User) => void }) => {
+  const content = (
+    <>
+      <Avatar className="h-10 w-10">
+        {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.anonName} />}
+        <AvatarFallback className="bg-secondary text-primary">
+          <UserIcon className="h-5 w-5" />
+        </AvatarFallback>
+      </Avatar>
+      <span className="font-mono text-primary">{user.anonName}</span>
+    </>
+  );
+
+  if (onSelectUser) {
+    return (
+      <button
+        onClick={() => onSelectUser(user)}
+        className="flex w-full items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors text-left"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      href={`/profile/${encodeURIComponent(user.anonName)}`}
+      className="flex items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors"
+    >
+      {content}
+    </Link>
+  );
+};
+
+
+export function UserSearchSidebar({ onSelectUser }: UserSearchSidebarProps) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
@@ -39,9 +73,9 @@ export function UserSearchSidebar({ isMobile = false, onSelectUser }: UserSearch
     debouncedSearch(query)
   }, [query, debouncedSearch])
 
-  const content = (
+  const mainContent = (
     <>
-      <h3 className="font-mono text-lg text-slate-200">Find User</h3>
+      {!onSelectUser && <h3 className="font-mono text-lg text-slate-200">Find User</h3>}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <Input
@@ -66,32 +100,19 @@ export function UserSearchSidebar({ isMobile = false, onSelectUser }: UserSearch
           <p className="text-slate-500 text-sm text-center pt-4">No users found.</p>
         )}
         {results.map((user) => (
-          <Link
-            href={`/profile/${encodeURIComponent(user.anonName)}`}
-            key={user.uid}
-            onClick={onSelectUser}
-            className="flex items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors"
-          >
-            <Avatar className="h-10 w-10">
-              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.anonName} />}
-              <AvatarFallback className="bg-secondary text-primary">
-                <UserIcon className="h-5 w-5" />
-              </AvatarFallback>
-            </Avatar>
-            <span className="font-mono text-primary">{user.anonName}</span>
-          </Link>
+          <UserRow key={user.uid} user={user} onSelectUser={onSelectUser} />
         ))}
       </div>
     </>
   );
 
-  if (isMobile) {
-    return <div className="space-y-4">{content}</div>
+  if (onSelectUser) {
+    return <div className="space-y-4 h-full flex flex-col">{mainContent}</div>
   }
 
   return (
     <div className="bg-card border-border rounded-lg p-4 space-y-4 sticky top-20">
-      {content}
+      {mainContent}
     </div>
   )
 }

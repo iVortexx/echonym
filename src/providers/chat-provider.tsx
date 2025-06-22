@@ -3,8 +3,10 @@
 
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import type { User, Chat } from '@/lib/types';
-import { getOrCreateChat, getRecentChats, getUsersByIds } from '@/lib/actions';
+import { getOrCreateChat, getUsersByIds } from '@/lib/actions';
 import { useAuth } from '@/hooks/use-auth';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export interface OpenChat {
   user: User;
@@ -36,28 +38,37 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
         setRecentChats([]);
         return;
     }
-    
-    let isMounted = true;
-    async function fetchRecentData() {
-        const chats = await getRecentChats(currentUser!.uid);
-        const otherUserIds = chats.map(c => c.users.find(uid => uid !== currentUser!.uid)).filter(Boolean) as string[];
-        const otherUsers = await getUsersByIds(otherUserIds);
-        const usersMap = new Map(otherUsers.map(u => [u.uid, u]));
 
-        const chatsWithUsers = chats.map(chat => {
-            const otherUserId = chat.users.find(uid => uid !== currentUser!.uid);
-            return {
-                ...chat,
-                otherUser: otherUserId ? usersMap.get(otherUserId) : undefined,
-            };
-        });
+    const chatsRef = collection(db, "chats");
+    const q = query(
+        chatsRef,
+        where("users", "array-contains", currentUser.uid),
+        orderBy("updatedAt", "desc"),
+        limit(20)
+    );
 
-        if (isMounted) {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+        const chats = snapshot.docs.map(doc => doc.data() as Chat);
+        const otherUserIds = chats.map(c => c.users.find(uid => uid !== currentUser.uid)).filter(Boolean) as string[];
+        
+        if (otherUserIds.length > 0) {
+            const otherUsers = await getUsersByIds(otherUserIds);
+            const usersMap = new Map(otherUsers.map(u => [u.uid, u]));
+
+            const chatsWithUsers = chats.map(chat => {
+                const otherUserId = chat.users.find(uid => uid !== currentUser.uid);
+                return {
+                    ...chat,
+                    otherUser: otherUserId ? usersMap.get(otherUserId) : undefined,
+                };
+            });
             setRecentChats(chatsWithUsers);
+        } else {
+            setRecentChats([]);
         }
-    }
-    fetchRecentData();
-    return () => { isMounted = false; }
+    });
+
+    return () => unsubscribe();
   }, [currentUser]);
 
 

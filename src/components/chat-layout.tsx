@@ -7,7 +7,7 @@ import { useChat, type OpenChat } from "@/hooks/use-chat";
 import { ChatBox } from "./chat-box";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
-import { MessageSquare, MessageSquarePlus, Search, Users, User, X } from "lucide-react";
+import { MessageSquarePlus, X } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import type { User as UserType } from "@/lib/types";
 import { getFollowers, getFollowing } from "@/lib/actions";
@@ -17,6 +17,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 import { UserSearchSidebar } from "./user-search-sidebar";
 import { useAuth } from "@/hooks/use-auth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 function ChatHub() {
     const { recentChats, openChat, toggleLauncher } = useChat();
@@ -86,7 +87,7 @@ function ChatHub() {
                     <UserList users={following} isLoading={loadingFollow} />
                 </TabsContent>
                 <TabsContent value="search" className="mt-2">
-                    <UserSearchSidebar isMobile onSelectUser={() => toggleLauncher(false)} />
+                    <UserSearchSidebar onSelectUser={handleUserClick} />
                 </TabsContent>
             </Tabs>
         </div>
@@ -164,5 +165,3 @@ export function ChatLayout() {
     </div>
   );
 }
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
