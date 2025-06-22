@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { createContext, useState, ReactNode, useCallback } from 'react';
 import type { User } from '@/lib/types';
 import { getOrCreateChat } from '@/lib/actions';
-import { useAuth } from './use-auth';
+import { useAuth } from '@/hooks/use-auth';
 
 interface OpenChat {
   user: User;
