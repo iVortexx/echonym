@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Minus, Send, UserIcon, Loader2, Smile, Reply } from 'lucide-react';
 import { useChat, type OpenChat } from '@/hooks/use-chat';
@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { collection, query, orderBy, onSnapshot, doc, type Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, type Timestamp, limit, getDocs, where, startAfter, type DocumentSnapshot } from 'firebase/firestore';
 import { sendMessage, setTypingStatus, clearChatUnread, toggleMessageReaction } from '@/lib/actions';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -71,16 +71,26 @@ const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emojiData:
     )
 }
 
+const MESSAGE_LIMIT = 25;
+
 export function ChatBox({ chat }: ChatBoxProps) {
   const { closeChat, minimizeChat } = useChat();
   const { user: currentUser } = useAuth();
+  
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
+
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const componentMountedTime = useRef(new Date());
 
   const { user, chatId } = chat;
 
@@ -91,7 +101,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
   }, [chatId, currentUser]);
 
 
-  // --- Typing Indicator Logic ---
   const debouncedSetTypingFalse = useCallback(
     debounce(() => {
       if (currentUser) {
@@ -122,55 +131,115 @@ export function ChatBox({ chat }: ChatBoxProps) {
     });
     return () => unsubscribe();
   }, [chatId, currentUser, user.uid]);
-  // --- End Typing Indicator Logic ---
+  
+  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'auto') => {
+     const scrollDiv = viewportRef.current;
+     if (scrollDiv) {
+        scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior });
+     }
+  }, []);
+  
+  const loadMoreMessages = useCallback(async () => {
+    if (!hasMore || isLoadingMore || !lastDoc) return;
+    setIsLoadingMore(true);
 
+    const scrollDiv = viewportRef.current;
+    const oldScrollHeight = scrollDiv?.scrollHeight || 0;
 
-  useEffect(() => {
     const messagesRef = collection(db, `chats/${chatId}/messages`);
-    const q = query(messagesRef, orderBy('createdAt', 'asc'));
+    const q = query(messagesRef, orderBy('createdAt', 'desc'), startAfter(lastDoc), limit(MESSAGE_LIMIT));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ChatMessage));
-      setMessages(newMessages);
+    const snapshot = await getDocs(q);
+    const newMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as ChatMessage).reverse();
+
+    if (newMessages.length > 0) {
+        setMessages(prev => [...newMessages, ...prev]);
+    }
+    
+    setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+    setHasMore(snapshot.docs.length === MESSAGE_LIMIT);
+    
+    if (scrollDiv) {
+        requestAnimationFrame(() => {
+            scrollDiv.scrollTop = scrollDiv.scrollHeight - oldScrollHeight;
+        });
+    }
+    
+    setIsLoadingMore(false);
+  }, [chatId, hasMore, isLoadingMore, lastDoc]);
+
+  // Initial data load
+  useEffect(() => {
+    if (!chatId) return;
+    setIsLoading(true);
+    const messagesRef = collection(db, `chats/${chatId}/messages`);
+    const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(MESSAGE_LIMIT));
+
+    getDocs(q).then(snapshot => {
+        const initialMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as ChatMessage).reverse();
+        setMessages(initialMessages);
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1] || null);
+        setHasMore(snapshot.docs.length === MESSAGE_LIMIT);
+        setIsLoading(false);
+        setTimeout(() => scrollToBottom('auto'), 100);
+    });
+  }, [chatId, scrollToBottom]);
+
+  // Real-time listener for new messages & modifications
+  useEffect(() => {
+    if (!chatId) return;
+    const messagesRef = collection(db, `chats/${chatId}/messages`);
+    const q = query(messagesRef, where('createdAt', '>', componentMountedTime.current));
+
+    const unsubscribe = onSnapshot(q, snapshot => {
+        let newMessages: ChatMessage[] = [];
+        snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+                const newMessage = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
+                // Double check it's not already in state
+                if (!messages.some(m => m.id === newMessage.id)) {
+                    newMessages.push(newMessage);
+                }
+            }
+            if (change.type === 'modified') {
+                const updatedMessage = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
+                setMessages(prev => prev.map(m => m.id === updatedMessage.id ? updatedMessage : m));
+            }
+        });
+
+        if (newMessages.length > 0) {
+            newMessages.sort((a, b) => getDateFromTimestamp(a.createdAt)!.getTime() - getDateFromTimestamp(b.createdAt)!.getTime());
+            setMessages(prev => [...prev, ...newMessages]);
+            setUserHasScrolled(false);
+        }
     });
 
     return () => unsubscribe();
-  }, [chatId]);
+  }, [chatId]); // Note: `messages` is removed from deps to prevent re-subscribing on every new message
 
-  // This effect now correctly handles scrolling to the bottom
-  const scrollToBottom = useCallback(() => {
-     const scrollDiv = scrollAreaRef.current;
-     if (scrollDiv) {
-        scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
-     }
-  }, []);
-
-  useEffect(() => {
-    const scrollDiv = scrollAreaRef.current;
+  useLayoutEffect(() => {
+    const scrollDiv = viewportRef.current;
     if (scrollDiv && !userHasScrolled) {
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
+        scrollToBottom('smooth');
     }
   }, [messages, userHasScrolled, scrollToBottom]);
 
   const handleManualScroll = useCallback(() => {
-    const scrollDiv = scrollAreaRef.current;
+    const scrollDiv = viewportRef.current;
     if (!scrollDiv) return;
-    // A little buffer is added to the check
+    
+    if (scrollDiv.scrollTop === 0 && hasMore && !isLoadingMore) {
+        loadMoreMessages();
+    }
+    
     const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5;
     setUserHasScrolled(!isAtBottom);
-  }, []);
+  }, [hasMore, isLoadingMore, loadMoreMessages]);
 
   useEffect(() => {
-    const scrollDiv = scrollAreaRef.current;
-    if (scrollDiv) {
-      scrollDiv.addEventListener('scroll', handleManualScroll);
-      return () => scrollDiv.removeEventListener('scroll', handleManualScroll);
-    }
+    const scrollDiv = viewportRef.current;
+    scrollDiv?.addEventListener('scroll', handleManualScroll);
+    return () => scrollDiv?.removeEventListener('scroll', handleManualScroll);
   }, [handleManualScroll]);
 
 
@@ -204,7 +273,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
     if (currentUser) {
       setTypingStatus(chatId, currentUser.uid, false);
     }
-    setTimeout(() => scrollToBottom(), 0);
+    setTimeout(() => scrollToBottom('smooth'), 0);
   };
 
   const handleMainEmojiSelect = (emojiData: EmojiClickData) => {
@@ -227,7 +296,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
     if (targetElement) {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        // Highlight effect
         targetElement.classList.add('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
         setTimeout(() => {
             targetElement.classList.remove('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
@@ -265,144 +333,158 @@ export function ChatBox({ chat }: ChatBoxProps) {
         </div>
       </header>
 
-      <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
+      <ScrollArea className="flex-1 bg-card/50" viewportRef={viewportRef}>
         <TooltipProvider delayDuration={300}>
             <div className="p-3">
-                {messages.map((msg, i) => {
-                    const isOwnMessage = msg.senderId === currentUser?.uid;
-                    const currentDate = getDateFromTimestamp(msg.createdAt);
-                    if (!currentDate) return null;
+                {isLoadingMore && (
+                    <div className="flex justify-center py-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                )}
+                {isLoading && messages.length === 0 ? (
+                     <div className="flex justify-center py-10">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                ) : (
+                    messages.map((msg, i) => {
+                        const isOwnMessage = msg.senderId === currentUser?.uid;
+                        const currentDate = getDateFromTimestamp(msg.createdAt);
+                        if (!currentDate) return null;
 
-                    const prevMessage = messages[i - 1];
-                    const nextMessage = messages[i + 1];
+                        const prevMessage = messages[i - 1];
+                        const nextMessage = messages[i + 1];
 
-                    const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
-                    
-                    const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
+                        const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
+                        
+                        const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
 
-                    const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5 || !!msg.replyTo;
-                    
-                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
-                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5 || !!nextMessage.replyTo;
-                    
-                    const showAvatar = !isOwnMessage && isLastInGroup;
-                    
-                    const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
-                    
-                    const bubbleClasses = cn(
-                      "p-2 px-3 text-sm text-foreground relative z-10",
-                      isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
-                      {
-                        "rounded-2xl": isFirstInGroup && isLastInGroup,
-                        "rounded-tr-2xl rounded-tl-2xl rounded-br-md rounded-bl-2xl": isOwnMessage && isFirstInGroup && !isLastInGroup,
-                        "rounded-tr-md rounded-tl-2xl rounded-br-md rounded-bl-2xl": isOwnMessage && !isFirstInGroup && !isLastInGroup,
-                        "rounded-tr-md rounded-tl-2xl rounded-br-2xl rounded-bl-2xl": isOwnMessage && !isFirstInGroup && isLastInGroup,
-                        "rounded-tl-2xl rounded-tr-2xl rounded-bl-md rounded-br-2xl": !isOwnMessage && isFirstInGroup && !isLastInGroup,
-                        "rounded-tl-md rounded-tr-2xl rounded-bl-md rounded-br-2xl": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
-                        "rounded-tl-md rounded-tr-2xl rounded-bl-2xl rounded-br-2xl": !isOwnMessage && !isFirstInGroup && isLastInGroup,
-                      }
-                    );
+                        const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5 || !!msg.replyTo;
+                        
+                        const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
+                        const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
+                        const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5 || !!nextMessage.replyTo;
+                        
+                        const showAvatar = !isOwnMessage && isLastInGroup;
+                        
+                        const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
+                        
+                        const bubbleClasses = cn(
+                          "p-2 px-3 text-sm text-foreground relative z-10",
+                          isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
+                          // Default all corners, then selectively sharpen them
+                          isOwnMessage ? "rounded-tl-2xl rounded-bl-2xl" : "rounded-tr-2xl rounded-br-2xl",
+                          {
+                            "rounded-tr-2xl": isOwnMessage && isFirstInGroup,
+                            "rounded-br-2xl": isOwnMessage && isLastInGroup,
+                            "rounded-tr-md": isOwnMessage && !isFirstInGroup,
+                            "rounded-br-md": isOwnMessage && !isLastInGroup,
+
+                            "rounded-tl-2xl": !isOwnMessage && isFirstInGroup,
+                            "rounded-bl-2xl": !isOwnMessage && isLastInGroup,
+                            "rounded-tl-md": !isOwnMessage && !isFirstInGroup,
+                            "rounded-bl-md": !isOwnMessage && !isLastInGroup,
+                          }
+                        );
 
 
-                    return (
-                        <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
-                            <div
-                                className={cn(
-                                    "flex w-full items-end gap-2",
-                                    isOwnMessage ? "justify-end" : "justify-start",
-                                    isFirstInGroup ? "mt-4" : "mt-0.5"
-                                )}
-                            >
-                                {isOwnMessage && (
-                                    <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
-                                        <MessageActions
-                                            onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
-                                            onReply={() => setReplyingTo(msg)}
-                                        />
-                                    </div>
-                                )}
-
-                                {!isOwnMessage && (
-                                    <div className="w-8 flex-shrink-0 self-end">
-                                        {showAvatar && (
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarImage src={user.avatarUrl} />
-                                                <AvatarFallback>
-                                                    <UserIcon className="h-4 w-4" />
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                    </div>
-                                )}
-                            
-                                <div className={cn("max-w-[75%] flex flex-col", isOwnMessage ? "items-end" : "items-start")}>
-                                    {msg.replyTo && (
-                                        <a 
-                                          href={`#message-${msg.replyTo.messageId}`}
-                                          onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
-                                          className={cn(
-                                              "flex items-center gap-2 max-w-[85%] text-xs text-slate-400 bg-muted/50 rounded-full px-3 py-1 cursor-pointer hover:bg-muted transition-colors mb-0.5",
-                                              isOwnMessage ? "self-end" : "self-start"
-                                          )}
-                                        >
-                                          <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
-                                          <div className="flex-1 truncate italic text-slate-400">
-                                            {`"${(msg.replyTo.text.length > 70 ? `${msg.replyTo.text.substring(0, 70)}...` : msg.replyTo.text)}"`}
-                                          </div>
-                                        </a>
+                        return (
+                            <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
+                                <div
+                                    className={cn(
+                                        "flex w-full items-end gap-2",
+                                        isOwnMessage ? "justify-end" : "justify-start",
+                                        isFirstInGroup ? "mt-4" : "mt-0.5"
+                                    )}
+                                >
+                                    {isOwnMessage && (
+                                        <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
+                                            <MessageActions
+                                                onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
+                                                onReply={() => setReplyingTo(msg)}
+                                            />
+                                        </div>
                                     )}
 
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                        <div className={cn(bubbleClasses)}>
-                                            <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                    {!isOwnMessage && (
+                                        <div className="w-8 flex-shrink-0 self-end">
+                                            {showAvatar && (
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src={user.avatarUrl} />
+                                                    <AvatarFallback>
+                                                        <UserIcon className="h-4 w-4" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
                                         </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
-                                            <p>{format(currentDate, "PPpp")}</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                                        <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end pl-8" : "justify-start pr-8")}>
-                                            {Object.entries(msg.reactions).map(([emoji, userIds]) => (
-                                                <TooltipProvider key={emoji} delayDuration={0}>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <button
-                                                            onClick={() => handleReaction(msg.id, emoji)}
-                                                            className={cn(
-                                                                "px-1.5 py-0.5 rounded-full border text-xs flex items-center gap-1 transition-colors",
-                                                                userIds.includes(currentUser?.uid || '')
-                                                                ? 'bg-accent/20 border-accent text-accent-foreground'
-                                                                : 'bg-card border-border hover:border-accent'
-                                                            )}
-                                                            >
-                                                            <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, twemojiConfig) }}/>
-                                                            <span>{userIds.length}</span>
-                                                        </button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Click to react</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                                </TooltipProvider>
-                                            ))}
+                                    )}
+                                
+                                    <div className={cn("max-w-[75%] flex flex-col", isOwnMessage ? "items-end" : "items-start")}>
+                                        {msg.replyTo && (
+                                            <a 
+                                              href={`#message-${msg.replyTo.messageId}`}
+                                              onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
+                                              className={cn(
+                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-md px-2 py-1 cursor-pointer hover:bg-muted transition-colors",
+                                              )}
+                                            >
+                                              <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
+                                              <div className="italic text-slate-400">
+                                                {`"${(msg.replyTo.text.length > 70 ? `${msg.replyTo.text.substring(0, 70)}...` : msg.replyTo.text)}"`}
+                                              </div>
+                                            </a>
+                                        )}
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                            <div className={cn(bubbleClasses)}>
+                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                            </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
+                                                <p>{format(currentDate, "PPpp")}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                        {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                                            <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end pl-8" : "justify-start pr-8")}>
+                                                {Object.entries(msg.reactions).map(([emoji, userIds]) => (
+                                                    <TooltipProvider key={emoji} delayDuration={0}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <button
+                                                                onClick={() => handleReaction(msg.id, emoji)}
+                                                                className={cn(
+                                                                    "px-1.5 py-0.5 rounded-full border text-xs flex items-center gap-1 transition-colors",
+                                                                    userIds.includes(currentUser?.uid || '')
+                                                                    ? 'bg-accent/20 border-accent text-accent-foreground'
+                                                                    : 'bg-card border-border hover:border-accent'
+                                                                )}
+                                                                >
+                                                                <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, twemojiConfig) }}/>
+                                                                <span>{userIds.length}</span>
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Click to react</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                    </TooltipProvider>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {!isOwnMessage && (
+                                        <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
+                                            <MessageActions
+                                                onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
+                                                onReply={() => setReplyingTo(msg)}
+                                            />
                                         </div>
                                     )}
                                 </div>
-                                {!isOwnMessage && (
-                                    <div className="flex-shrink-0 self-center opacity-0 transition-opacity group-hover/row:opacity-100">
-                                        <MessageActions
-                                            onEmojiSelect={(emojiData) => handleSelectReaction(msg.id, emojiData)}
-                                            onReply={() => setReplyingTo(msg)}
-                                        />
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
         </TooltipProvider>
       </ScrollArea>
@@ -466,6 +548,5 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
 
     
