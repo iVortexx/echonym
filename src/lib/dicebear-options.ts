@@ -10,13 +10,13 @@ export const backgroundColors = [
 export const features = ['birthmark', 'blush', 'freckles'] as const;
 
 export const glassesStyles = [
-  'round', 'square', 'small'
+  'standard', 'round', 'square', 'small'
 ] as const;
 
 export const hairStyles = [
-  'normal', 'thick', 'mohawk', 'mohawkThin', 'bun', 'afro', 'balding', 'buzz', 'female1', 'female2', 'long', 'longAfro', 'short', 'shavedSides'
+  'long', 'longAfro', 'longHairStraight', 'mohawk', 'shavedSides', 'short', 'straight', 'wavy', 'afro', 'balding', 'beanie', 'bob', 'bun', 'buzz', 'cap', 'curly', 'curlyShort', 'dreads', 'dreadsShort', 'emo', 'extraLong', 'extraLongStraight', 'female1', 'female2'
 ] as const;
 
 export const hairColors = [
-  '#703b26', '#c93305', '#e8e1e1', '#f59797', '#b55239', '#dba07a', '#724133', '#4b3b2b', '#fffaf5', '#000000'
+  '#6a4e35', '#cb6820', '#e5d7a3', '#a55728', '#924424', '#703b26', '#4b3b2b', '#2e1b12', '#ffffff', '#000000'
 ] as const;
