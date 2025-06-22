@@ -221,6 +221,20 @@ export function ChatBox({ chat }: ChatBoxProps) {
       handleReaction(messageId, emojiData.emoji);
   };
 
+  const handleScrollToReply = (e: React.MouseEvent, messageId: string) => {
+    e.preventDefault();
+    const targetElement = document.getElementById(`message-${messageId}`);
+    if (targetElement) {
+        targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Highlight effect
+        targetElement.classList.add('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
+        setTimeout(() => {
+            targetElement.classList.remove('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
+        }, 1500);
+    }
+  };
+
 
   return (
     <motion.div
@@ -266,20 +280,18 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     
                     const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
 
-                    const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
+                    const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5 || !!msg.replyTo;
                     
                     const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
                     const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5 || !!nextMessage.replyTo;
                     
-                    const isMiddleOfGroup = !isFirstInGroup && !isLastInGroup;
-
                     const showAvatar = !isOwnMessage && isLastInGroup;
                     
                     const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
 
                     return (
-                        <div key={msg.id} className="group/row">
+                        <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
                             <div
                                 className={cn(
                                     "flex w-full items-end gap-2",
@@ -309,26 +321,43 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                     </div>
                                 )}
                             
-                                <div className={cn("max-w-[75%]")}>
+                                <div className={cn("max-w-[75%] flex flex-col", isOwnMessage ? "items-end" : "items-start")}>
+                                    {msg.replyTo && (
+                                        <a 
+                                          href={`#message-${msg.replyTo.messageId}`}
+                                          onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
+                                          className="mb-1 cursor-pointer group/reply"
+                                        >
+                                            <div className="p-2 rounded-xl bg-black/20 hover:bg-black/30 transition-colors max-w-full">
+                                                <div className="flex items-center gap-1.5 text-xs text-primary font-bold">
+                                                    <Reply className="h-3 w-3" />
+                                                    <span>{msg.replyTo.senderName}</span>
+                                                </div>
+                                                <p className="text-slate-300 mt-1 truncate text-sm">
+                                                    {msg.replyTo.text}
+                                                </p>
+                                            </div>
+                                        </a>
+                                    )}
+
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                         <div
                                             className={cn(
-                                                "p-2 px-3 text-sm text-foreground rounded-2xl",
+                                                "p-2 px-3 text-sm text-foreground",
                                                 isOwnMessage
                                                     ? "bg-primary text-primary-foreground"
                                                     : "bg-muted",
-                                                isFirstInGroup && (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'),
-                                                isLastInGroup && (isOwnMessage ? 'rounded-tl-md' : 'rounded-tr-md'),
-                                                isMiddleOfGroup && (isOwnMessage ? 'rounded-r-md rounded-l-2xl' : 'rounded-l-md rounded-r-2xl'),
+                                                // Default to fully rounded
+                                                "rounded-2xl",
+                                                // Adjust for group start/end
+                                                isFirstInGroup && !isLastInGroup ? (isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md') : '',
+                                                isLastInGroup && !isFirstInGroup ? (isOwnMessage ? 'rounded-tr-md' : 'rounded-tl-md') : '',
+                                                !isFirstInGroup && !isLastInGroup ? (isOwnMessage ? 'rounded-r-md rounded-l-2xl' : 'rounded-l-md rounded-r-2xl') : '',
+                                                // Adjust for reply
+                                                 !!msg.replyTo && (isOwnMessage ? 'rounded-tr-md' : 'rounded-tl-md')
                                             )}
                                         >
-                                            {msg.replyTo && (
-                                                <a href={`#message-${msg.replyTo.messageId}`} className="block p-2 rounded-md bg-black/20 mb-2 border-l-2 border-primary/50 cursor-pointer hover:bg-black/30 transition-colors">
-                                                    <p className="font-bold text-xs">{msg.replyTo.senderName}</p>
-                                                    <p className="text-xs opacity-80 truncate">{msg.replyTo.text}</p>
-                                                </a>
-                                            )}
                                             <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                         </div>
                                         </TooltipTrigger>
