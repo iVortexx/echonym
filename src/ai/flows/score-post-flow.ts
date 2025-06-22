@@ -35,8 +35,6 @@ const ScorePostOutputSchema = z.object({
 });
 export type ScorePostOutput = z.infer<typeof ScorePostOutputSchema>;
 
-let scorePostFlow: any;
-
 export async function scorePost(
   input: ScorePostInput
 ): Promise<ScorePostOutput> {
@@ -44,12 +42,11 @@ export async function scorePost(
     throw new Error('AI features are disabled. Missing GEMINI_API_KEY.');
   }
 
-  if (!scorePostFlow) {
-    const prompt = ai.definePrompt({
-      name: 'scorePostPrompt',
-      input: {schema: ScorePostInputSchema},
-      output: {schema: ScorePostOutputSchema},
-      prompt: `You are a writing assistant for a community of security researchers.
+  const prompt = ai.definePrompt({
+    name: 'scorePostPrompt',
+    input: {schema: ScorePostInputSchema},
+    output: {schema: ScorePostOutputSchema},
+    prompt: `You are a writing assistant for a community of security researchers.
 Your task is to analyze a user's post and provide a score and feedback.
 
 Analyze the following post:
@@ -62,20 +59,19 @@ Content:
 3.  **Safety Feedback**: Check for potential security risks like exposed API keys, personal information (PII), or credentials. Provide a single sentence summarizing your findings. If there are no obvious risks, state that.
 
 Return your analysis in the specified JSON format.`,
-    });
+  });
 
-    scorePostFlow = ai.defineFlow(
-      {
-        name: 'scorePostFlow',
-        inputSchema: ScorePostInputSchema,
-        outputSchema: ScorePostOutputSchema,
-      },
-      async input => {
-        const {output} = await prompt(input);
-        return output!;
-      }
-    );
-  }
+  const scorePostFlow = ai.defineFlow(
+    {
+      name: 'scorePostFlow',
+      inputSchema: ScorePostInputSchema,
+      outputSchema: ScorePostOutputSchema,
+    },
+    async input => {
+      const {output} = await prompt(input);
+      return output!;
+    }
+  );
   
   return scorePostFlow(input);
 }

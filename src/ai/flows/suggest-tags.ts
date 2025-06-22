@@ -20,19 +20,16 @@ const SuggestTagsOutputSchema = z.object({
 });
 export type SuggestTagsOutput = z.infer<typeof SuggestTagsOutputSchema>;
 
-let suggestTagsFlow: any;
-
 export async function suggestTags(input: SuggestTagsInput): Promise<SuggestTagsOutput> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('AI features are disabled. Missing GEMINI_API_KEY.');
   }
 
-  if (!suggestTagsFlow) {
-    const prompt = ai.definePrompt({
-      name: 'suggestTagsPrompt',
-      input: {schema: SuggestTagsInputSchema},
-      output: {schema: SuggestTagsOutputSchema},
-      prompt: `You are an expert in categorizing technical content within the cybersecurity domain. Your task is to analyze the provided post content and select the most specific and relevant tags from a predefined list.
+  const prompt = ai.definePrompt({
+    name: 'suggestTagsPrompt',
+    input: {schema: SuggestTagsInputSchema},
+    output: {schema: SuggestTagsOutputSchema},
+    prompt: `You are an expert in categorizing technical content within the cybersecurity domain. Your task is to analyze the provided post content and select the most specific and relevant tags from a predefined list.
 
 **Instructions:**
 1.  Carefully read the content to understand its main topic.
@@ -48,19 +45,19 @@ export async function suggestTags(input: SuggestTagsInput): Promise<SuggestTagsO
 **Content to Analyze:**
 {{{content}}}
 `,
-    });
+  });
 
-    suggestTagsFlow = ai.defineFlow(
-      {
-        name: 'suggestTagsFlow',
-        inputSchema: SuggestTagsInputSchema,
-        outputSchema: SuggestTagsOutputSchema,
-      },
-      async input => {
-        const {output} = await prompt(input);
-        return output!;
-      }
-    );
-  }
+  const suggestTagsFlow = ai.defineFlow(
+    {
+      name: 'suggestTagsFlow',
+      inputSchema: SuggestTagsInputSchema,
+      outputSchema: SuggestTagsOutputSchema,
+    },
+    async input => {
+      const {output} = await prompt(input);
+      return output!;
+    }
+  );
+
   return suggestTagsFlow(input);
 }
