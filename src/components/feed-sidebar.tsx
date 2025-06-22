@@ -1,8 +1,8 @@
-
 "use client"
 
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "./ui/button"
 import { Home, Bookmark, EyeOff, Trophy, UserIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
