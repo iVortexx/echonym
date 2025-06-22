@@ -206,13 +206,11 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const nextMessage = messages[i + 1];
 
                     const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
-                    const nextDate = getDateFromTimestamp(nextMessage?.createdAt);
-
+                    
                     const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
-                    const timeDiffWithNext = nextDate && currentDate ? (nextDate.getTime() - currentDate.getTime()) / (1000 * 60) : Infinity;
                     
                     const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5;
-                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId || timeDiffWithNext > 5;
+                    const isLastInGroup = !nextMessage || msg.senderId !== nextMessage.senderId;
                     
                     const showAvatar = !isOwnMessage && isLastInGroup;
 
@@ -248,7 +246,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               "p-2 px-3 rounded-2xl text-sm text-foreground break-words",
                                               isOwnMessage
                                                   ? "bg-primary text-primary-foreground"
-                                                  : "bg-muted"
+                                                  : "bg-muted",
+                                              isLastInGroup && isOwnMessage ? "rounded-br-sm" : "",
+                                              isLastInGroup && !isOwnMessage ? "rounded-bl-sm" : ""
                                           )}
                                       >
                                           <p>{msg.text}</p>
@@ -281,7 +281,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                   <Smile className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="p-0 mb-2 bg-popover border-border rounded-lg" side="top" align="start">
+              <PopoverContent className="p-0 mb-2 w-auto bg-popover border-border rounded-lg" side="top" align="start">
                 <EmojiPicker 
                     onEmojiClick={handleEmojiSelect}
                     emojiStyle={EmojiStyle.NATIVE}
