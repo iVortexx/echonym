@@ -11,12 +11,12 @@ import { ScrollArea } from './ui/scroll-area';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { collection, query, orderBy, onSnapshot, doc, type Timestamp } from 'firebase/firestore';
-import { sendMessage, setTypingStatus } from '@/lib/actions';
+import { sendMessage, setTypingStatus, clearChatUnread } from '@/lib/actions';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
-import { Textarea } from '@/components/ui/textarea';
+import TextareaAutosize from 'react-textarea-autosize';
 import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
@@ -33,8 +33,16 @@ export function ChatBox({ chat }: ChatBoxProps) {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   const { user, chatId } = chat;
+
+  useEffect(() => {
+    if (currentUser) {
+      clearChatUnread(currentUser.uid, chatId);
+    }
+  }, [chatId, currentUser]);
+
 
   // --- Typing Indicator Logic ---
   const debouncedSetTypingFalse = useCallback(
@@ -139,6 +147,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   const handleEmojiSelect = (emoji: { emoji: string }) => {
     setNewMessage(prev => prev + emoji.emoji);
+    setEmojiPickerOpen(false);
   };
   
   const formatTimeAgo = (createdAt: any) => {
@@ -184,7 +193,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
       </header>
 
       <ScrollArea className="flex-1 bg-card/50" viewportRef={scrollAreaRef}>
-        <div className="p-3 space-y-1">
+        <div className="p-3 space-y-2">
             {messages.map((msg) => {
                 const isOwnMessage = msg.senderId === currentUser?.uid;
                 return (
@@ -202,7 +211,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                             )}>
                                 <p>{msg.text}</p>
                             </div>
-                             <p className={cn("text-xs opacity-0 group-hover:opacity-70 transition-opacity duration-300 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
+                             <p className={cn("text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-1", isOwnMessage ? "text-right" : "text-left")}>{formatTimeAgo(msg.createdAt)}</p>
                         </div>
                     </div>
                 );
@@ -217,27 +226,29 @@ export function ChatBox({ chat }: ChatBoxProps) {
             </motion.div>
         )}
       </div>
-      <div className="p-1 border-t border-primary/20">
-        <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-1">
-           <Popover>
+      <div className="p-2 border-t border-primary/20">
+        <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+           <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 flex-shrink-0 text-slate-400 hover:text-primary">
+                <Button variant="ghost" size="icon" type="button" className="h-9 w-9 flex-shrink-0 text-slate-400 hover:text-primary">
                   <Smile className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 border-none mb-2 bg-transparent shadow-none" side="top" align="start">
+              <PopoverContent className="w-auto p-0 mb-2 bg-popover border-border rounded-lg" side="top" align="start">
                 <EmojiPicker 
                     onEmojiClick={handleEmojiSelect}
-                    emojiStyle={EmojiStyle.TWITTER}
+                    emojiStyle={EmojiStyle.NATIVE}
                     theme="dark"
                     searchDisabled
                     skinTonesDisabled
                     lazyLoadEmojis
+                    height={350}
                     categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
+                    previewConfig={{ showPreview: false }}
                 />
               </PopoverContent>
             </Popover>
-          <Textarea
+          <TextareaAutosize
             value={newMessage}
             onChange={(e) => handleTyping(e.target.value)}
             onKeyDown={(e) => {
@@ -250,7 +261,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
             rows={1}
             className="flex-1 bg-input border-border rounded-lg resize-none p-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all max-h-[120px]"
           />
-          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0 bg-primary hover:bg-primary/90 disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
+          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0 bg-primary hover:bg-primary/90 rounded-lg disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </form>

@@ -58,8 +58,8 @@ export async function createPost(rawInput: unknown, userId: string) {
   let summary: string | undefined;
   if (process.env.GEMINI_API_KEY && content.length > 300) { // Only summarize longer posts
     try {
-      const { summarizePost: summarizePostFlow } = await import('@/ai/flows/summarize-post-flow');
-      const summaryResult = await summarizePostFlow({ content });
+      const { summarizePost } = await import('@/ai/flows/summarize-post-flow');
+      const summaryResult = await summarizePost({ content });
       summary = summaryResult.summary;
     } catch (e) {
       console.error("Failed to generate summary:", e);
@@ -71,8 +71,8 @@ export async function createPost(rawInput: unknown, userId: string) {
   if (!tags || tags.length === 0) {
     if (process.env.GEMINI_API_KEY) {
         try {
-          const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
-          const suggested = await suggestTagsFlow({ content });
+          const { suggestTags } = await import('@/ai/flows/suggest-tags');
+          const suggested = await suggestTags({ content });
           tags = suggested.tags;
         } catch (e) {
           console.error("Failed to generate tags:", e);
@@ -164,8 +164,8 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
         if (!tags || tags.length === 0) {
             if (process.env.GEMINI_API_KEY) {
                 try {
-                    const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
-                    const suggested = await suggestTagsFlow({ content });
+                    const { suggestTags } = await import('@/ai/flows/suggest-tags');
+                    const suggested = await suggestTags({ content });
                     tags = suggested.tags;
                 } catch (e) {
                     console.error("Failed to generate tags for update:", e);
@@ -482,8 +482,8 @@ export async function getTagSuggestions(content: string) {
     return { tags: [] }
   }
   try {
-    const { suggestTags: suggestTagsFlow } = await import('@/ai/flows/suggest-tags');
-    const result = await suggestTagsFlow({ content })
+    const { suggestTags } = await import('@/ai/flows/suggest-tags');
+    const result = await suggestTags({ content })
     return { tags: result.tags || [] }
   } catch (error: any) {
     console.error("Error fetching tag suggestions:", error)
@@ -497,8 +497,8 @@ export async function scorePost(input: { title: string; content: string; }) {
     return { score: 0, clarity: "AI analysis unavailable.", safety: "AI analysis unavailable." }
   }
   try {
-    const { scorePost: scorePostFlow } = await import('@/ai/flows/score-post-flow');
-    const result = await scorePostFlow(input)
+    const { scorePost } = await import('@/ai/flows/score-post-flow');
+    const result = await scorePost(input)
     return result
   } catch (error: any) {
     console.error("Error fetching post score:", error)
