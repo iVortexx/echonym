@@ -359,7 +359,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
                         
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm text-foreground relative break-all",
+                          "p-2 px-3 text-sm text-foreground relative",
                           isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
                           'rounded-2xl',
                           {
@@ -404,7 +404,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         </div>
                                     )}
                                 
-                                    <div className={cn("max-w-[75%] flex flex-col", isOwnMessage ? "items-end" : "items-start")}>
+                                    <div className={cn("max-w-[75%] flex flex-col min-w-0", isOwnMessage ? "items-end" : "items-start")}>
                                         {msg.replyTo && (
                                             <a 
                                               href={`#message-${msg.replyTo.messageId}`}
@@ -415,7 +415,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               )}
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
-                                              <div className="italic text-slate-400 line-clamp-2">
+                                              <div className="italic text-slate-400 line-clamp-2 break-all">
                                                 {`"${msg.replyTo.text}"`}
                                               </div>
                                             </a>
