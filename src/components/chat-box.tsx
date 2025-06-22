@@ -269,10 +269,10 @@ export function ChatBox({ chat }: ChatBoxProps) {
         )}
       </div>
       <div className="p-2 border-t border-primary/20">
-        <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+        <form onSubmit={handleSendMessage} className="flex items-end gap-2 p-1.5 bg-input rounded-xl border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" type="button" className="h-9 w-9 flex-shrink-0 text-slate-400 hover:text-primary">
+                <Button variant="ghost" size="icon" type="button" className="h-8 w-8 flex-shrink-0 text-slate-400 hover:text-primary rounded-full">
                   <Smile className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
@@ -301,9 +301,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
             }}
             placeholder="Send a message..."
             rows={1}
-            className="flex-1 bg-input border-border rounded-lg resize-none p-2 text-sm focus:ring-1 focus:ring-primary focus:outline-none transition-all max-h-[120px]"
+            className="flex-1 bg-transparent border-none resize-none p-1 text-sm focus:ring-0 focus:outline-none transition-all max-h-[120px]"
           />
-          <Button type="submit" size="icon" className="h-9 w-9 flex-shrink-0 bg-primary hover:bg-primary/90 rounded-lg disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
+          <Button type="submit" size="icon" className="h-8 w-8 flex-shrink-0 bg-primary hover:bg-primary/90 rounded-full disabled:bg-slate-700 disabled:opacity-60" disabled={!newMessage.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </form>
