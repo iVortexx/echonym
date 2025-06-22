@@ -126,15 +126,9 @@ function ChatLauncher() {
     return (
         <Popover open={isLauncherOpen} onOpenChange={toggleLauncher}>
             <PopoverTrigger asChild>
-                 <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.5, type: 'spring' }}
-                >
                 <Button size="icon" className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 flex items-center justify-center">
                     {isLauncherOpen ? <X className="h-6 w-6"/> : <MessageSquarePlus className="h-6 w-6"/>}
                 </Button>
-                </motion.div>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 mr-4 mb-2 bg-card border-border backdrop-blur-sm" side="top" align="end">
                 <ChatHub />

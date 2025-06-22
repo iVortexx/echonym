@@ -1163,20 +1163,37 @@ export async function toggleMessageReaction(chatId: string, messageId: string, e
       const messageData = messageDoc.data() as ChatMessage;
       const currentReactions = messageData.reactions || {};
       
-      // Check if the user is clicking the same emoji that's already on the message.
-      const isTogglingOff = currentReactions[emoji]?.includes(userId);
-
-      let newReactions = {};
-
-      if (isTogglingOff) {
-        // User is removing their reaction, so we clear all reactions.
-        newReactions = {};
-      } else {
-        // User is adding a new reaction or changing the reaction.
-        // This new reaction becomes the only one on the message.
-        newReactions = { [emoji]: [userId] };
+      const existingEmoji = Object.keys(currentReactions)[0];
+      const newReactions = { ...currentReactions };
+      
+      // Case 1: Clicked emoji is different from the existing one (or there is no existing one)
+      // This replaces the reaction entirely.
+      if (emoji !== existingEmoji) {
+          transaction.update(messageRef, { reactions: { [emoji]: [userId] } });
+          return;
       }
 
+      // Case 2: Clicked emoji is the same as the existing one.
+      // We either add or remove the user from the list.
+      const userList: string[] = newReactions[existingEmoji] || [];
+      const userIndex = userList.indexOf(userId);
+
+      if (userIndex > -1) {
+        // User has already reacted with this emoji, so remove them.
+        userList.splice(userIndex, 1);
+      } else {
+        // User has not reacted, so add them.
+        userList.push(userId);
+      }
+
+      if (userList.length === 0) {
+        // If no users are left reacting, remove the emoji key completely.
+        delete newReactions[existingEmoji];
+      } else {
+        // Otherwise, update the list.
+        newReactions[existingEmoji] = userList;
+      }
+      
       transaction.update(messageRef, { reactions: newReactions });
     });
     return { success: true };
@@ -1185,5 +1202,3 @@ export async function toggleMessageReaction(chatId: string, messageId: string, e
     return { error: 'Failed to update reaction.' };
   }
 }
-
-    
