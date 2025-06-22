@@ -56,7 +56,7 @@ Follow these instructions to get a local copy up and running for development and
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/echonym.git
+    git clone https://github.com/mishcoders/echonym
     cd echonym
     ```
 
@@ -106,6 +106,3 @@ All Genkit flows are defined in the `src/ai/flows/` directory.
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License.
