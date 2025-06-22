@@ -1088,17 +1088,17 @@ export async function sendMessage(chatId: string, senderId: string, text: string
         });
         
         const messageData = { text, senderId };
-        batch.update(chatRef, { lastMessage: messageData, updatedAt: serverTimestamp() });
+        batch.set(chatRef, { lastMessage: messageData, updatedAt: serverTimestamp() }, { merge: true });
 
         const senderChatRef = doc(db, `users/${senderId}/chats/${chatId}`);
-        batch.update(senderChatRef, { lastMessage: messageData, updatedAt: serverTimestamp() });
+        batch.set(senderChatRef, { lastMessage: messageData, updatedAt: serverTimestamp() }, { merge: true });
 
         const receiverChatRef = doc(db, `users/${receiverId}/chats/${chatId}`);
-        batch.update(receiverChatRef, {
+        batch.set(receiverChatRef, {
             lastMessage: messageData,
             unreadCount: increment(1),
             updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
 
         const notificationRef = doc(collection(db, `users/${receiverId}/notifications`));
         batch.set(notificationRef, {
