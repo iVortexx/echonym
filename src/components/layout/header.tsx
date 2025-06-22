@@ -13,10 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserIcon, PlusCircle, Home, Fingerprint } from "lucide-react"
+import { UserIcon, PlusCircle, Home } from "lucide-react"
 import { UserBadge } from "@/components/user-badge"
 import { NotificationBell } from "../notification-bell"
 import { MobileSidebar } from "./mobile-sidebar"
+import Image from "next/image"
 
 export function Header() {
   const { user } = useAuth()
@@ -29,7 +30,7 @@ export function Header() {
             <MobileSidebar />
           </div>
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Fingerprint className="h-6 w-6 text-primary" />
+            <Image src="https://placehold.co/32x32.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm" data-ai-hint="logo" />
             <span className="hidden sm:inline-block font-bold font-sans text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Echonym
             </span>

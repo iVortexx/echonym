@@ -25,9 +25,6 @@ import {
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote } from "./types"
 import { buildAvatarUrl } from "./utils"
-import { summarizePost } from "@/ai/flows/summarize-post-flow"
-import { suggestTags } from "@/ai/flows/suggest-tags"
-import { scorePost as scorePostFlow } from "@/ai/flows/score-post-flow"
 
 const PostSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -60,6 +57,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   let summary: string | undefined;
   if (content.length > 300) { // Only summarize longer posts
     try {
+      const { summarizePost } = await import('@/ai/flows/summarize-post-flow');
       const summaryResult = await summarizePost({ content });
       summary = summaryResult.summary;
     } catch (e) {
@@ -71,6 +69,7 @@ export async function createPost(rawInput: unknown, userId: string) {
   
   if (!tags || tags.length === 0) {
     try {
+      const { suggestTags } = await import('@/ai/flows/suggest-tags');
       const suggested = await suggestTags({ content });
       tags = suggested.tags;
       if (!tags || tags.length === 0) {
@@ -161,6 +160,7 @@ export async function updatePost(postId: string, rawInput: unknown, userId: stri
 
         if (!tags || tags.length === 0) {
             try {
+                const { suggestTags } = await import('@/ai/flows/suggest-tags');
                 const suggested = await suggestTags({ content });
                 tags = suggested.tags;
                 if (!tags || tags.length === 0) {
@@ -478,6 +478,7 @@ export async function getTagSuggestions(content: string) {
     return { tags: [] }
   }
   try {
+    const { suggestTags } = await import('@/ai/flows/suggest-tags');
     const result = await suggestTags({ content })
     return { tags: result.tags || [] }
   } catch (error: any) {
@@ -493,6 +494,7 @@ export async function scorePost(input: { title: string; content: string; }) {
     return { score: 0, clarity: "Please provide a title and content for your echo.", safety: "N/A" }
   }
   try {
+    const { scorePost: scorePostFlow } = await import('@/ai/flows/score-post-flow');
     const result = await scorePostFlow(input)
     return result
   } catch (error: any) {
@@ -934,7 +936,7 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid:string):
         const oldUserData = userSnapshot.docs[0].data();
 
         // If the user document is already linked to this auth UID, we don't need to do anything.
-        if (oldUserData.activeAuthUid === newAuthUid) {
+        if (oldUserData.uid === newAuthUid) {
             const user = { uid: userDocRef.id, ...oldUserData } as User;
              return { success: true, user };
         }
@@ -943,17 +945,17 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid:string):
         
         // Unlink any other user document that might currently be using the newAuthUid.
         // This prevents a single auth UID from being linked to two different user profiles.
-        const oldLinkQuery = query(usersRef, where("activeAuthUid", "==", newAuthUid), limit(1));
+        const oldLinkQuery = query(usersRef, where("uid", "==", newAuthUid), limit(1));
         const oldLinkSnapshot = await getDocs(oldLinkQuery);
         if (!oldLinkSnapshot.empty) {
             oldLinkSnapshot.forEach(doc => {
                 // Set the old link to null to break the connection, freeing up the auth UID.
-                batch.update(doc.ref, { activeAuthUid: null });
+                batch.update(doc.ref, { uid: null });
             });
         }
         
         // Link the new auth session to the restored user document
-        batch.update(userDocRef, { activeAuthUid: newAuthUid });
+        batch.update(userDocRef, { uid: newAuthUid });
         
         await batch.commit();
 
@@ -965,4 +967,24 @@ export async function linkNewAuthSession(recoveryId: string, newAuthUid:string):
         console.error("Error linking new auth session:", e);
         return { success: false, error: "Failed to link new session." };
     }
+}
+
+export async function getTopUsers(): Promise<User[]> {
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, orderBy("xp", "desc"), limit(10));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => {
+      const user = { uid: doc.id, ...doc.data() } as User;
+      return {
+        ...user,
+        createdAt: user.createdAt && typeof (user.createdAt as any).toDate === 'function'
+          ? (user.createdAt as Timestamp).toDate().toISOString()
+          : (user.createdAt as string),
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching top users:", error);
+    return [];
+  }
 }
