@@ -86,19 +86,11 @@ export function FeedSidebar() {
 
     return (
         <aside className={cn(
-            "sticky top-20 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ease-in-out",
+            "sticky top-20 h-[calc(100vh-6rem)] flex flex-col transition-all duration-300 ease-in-out border-r border-border",
             isCollapsed ? "w-20" : "w-64"
         )}>
-             <div className="h-full flex flex-col relative">
-                 <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-4 top-8 h-8 w-8 rounded-full border bg-background hover:bg-muted z-10"
-                >
-                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                </Button>
-                <nav className="mt-8">
+             <div className="flex-1 flex flex-col min-h-0">
+                <nav className="mt-8 px-2">
                     <ul className="space-y-2">
                         {menuItems.map((item) => (
                             <li key={item.href}>
@@ -132,12 +124,22 @@ export function FeedSidebar() {
                     </ul>
                 </nav>
                  <div className={cn(
-                    "flex flex-col flex-1 min-h-0 transition-opacity duration-300 mt-6",
+                    "flex flex-col flex-1 min-h-0 transition-opacity duration-300 mt-6 px-2 pb-4",
                     isCollapsed ? "opacity-0 invisible h-0" : "opacity-100 visible"
                 )}>
                    <Leaderboard />
                 </div>
              </div>
+             <div className="p-2 border-t border-border">
+                <Button
+                    variant="ghost"
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="w-full justify-center"
+                >
+                    {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                    {!isCollapsed && <span>Collapse</span>}
+                </Button>
+            </div>
         </aside>
     )
 }
