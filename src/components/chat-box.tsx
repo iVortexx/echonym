@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
 import TextareaAutosize from 'react-textarea-autosize';
-import EmojiPicker, { EmojiStyle, type EmojiClickData } from 'emoji-picker-react';
+import EmojiPicker, { EmojiStyle, type EmojiClickData, Categories } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import twemoji from 'twemoji';
@@ -42,6 +42,15 @@ const getDateFromTimestamp = (timestamp: Timestamp | string | undefined): Date |
 };
 
 const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emojiData: EmojiClickData) => void, onReply: () => void }) => {
+    const emojiPickerCategories = [
+        { name: 'Recently Used', category: Categories.SUGGESTED },
+        { name: 'Smileys & People', category: Categories.SMILEYS_PEOPLE },
+        { name: 'Animals & Nature', category: Categories.ANIMALS_NATURE },
+        { name: 'Food & Drink', category: Categories.FOOD_DRINK },
+        { name: 'Objects', category: Categories.OBJECTS },
+        { name: 'Symbols', category: Categories.SYMBOLS },
+    ];
+
     return (
         <div className="flex items-center gap-1 p-1 rounded-lg bg-card border border-border shadow-md">
              <Popover>
@@ -51,15 +60,13 @@ const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emojiData:
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-auto bg-popover border-border rounded-lg" side="top" align="center">
-                    <EmojiPicker 
+                    <EmojiPicker
                         onEmojiClick={onEmojiSelect}
                         emojiStyle={EmojiStyle.TWITTER}
                         theme="dark"
-                        searchDisabled
                         skinTonesDisabled
-                        lazyLoadEmojis
-                        height={300}
-                        categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
+                        height={350}
+                        categories={emojiPickerCategories}
                         previewConfig={{ showPreview: false }}
                     />
                 </PopoverContent>
@@ -92,6 +99,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const { user, chatId } = chat;
+
+  const emojiPickerCategories = [
+    { name: 'Recently Used', category: Categories.SUGGESTED },
+    { name: 'Smileys & People', category: Categories.SMILEYS_PEOPLE },
+    { name: 'Animals & Nature', category: Categories.ANIMALS_NATURE },
+    { name: 'Food & Drink', category: Categories.FOOD_DRINK },
+    { name: 'Objects', category: Categories.OBJECTS },
+    { name: 'Symbols', category: Categories.SYMBOLS },
+  ];
 
   function isEmojiOnly(text: string): boolean {
     const trimmed = text.trim();
@@ -400,7 +416,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const isOnlyEmoji = isEmojiOnly(msg.text);
 
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm relative rounded-2xl",
+                          "p-2 px-3 text-sm relative rounded-2xl break-all",
                           isOwnMessage ? "bg-cyan-900 text-slate-100" : "bg-muted text-foreground",
                           {
                             'rounded-tr-md': !isFirstInGroup && isOwnMessage,
@@ -443,7 +459,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                 
                                     <div className={cn("max-w-[75%] flex flex-col min-w-0", isOwnMessage ? "items-end" : "items-start")}>
                                         {msg.replyTo && (
-                                            <a 
+                                            <a
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
@@ -462,7 +478,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses, 'min-w-0')}>
-                                                <div className={cn("break-all", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -539,15 +555,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="p-0 mb-2 w-auto bg-popover border-border rounded-lg" side="top" align="start">
-                <EmojiPicker 
+                <EmojiPicker
                     onEmojiClick={handleMainEmojiSelect}
                     emojiStyle={EmojiStyle.TWITTER}
                     theme="dark"
-                    searchDisabled
                     skinTonesDisabled
-                    lazyLoadEmojis
-                    height={300}
-                    categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
+                    height={350}
+                    categories={emojiPickerCategories}
                     previewConfig={{ showPreview: false }}
                 />
               </PopoverContent>
@@ -573,5 +587,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
-    
