@@ -20,7 +20,8 @@ import {
   deleteDoc,
   arrayUnion,
   arrayRemove,
-  writeBatch
+  writeBatch,
+  setDoc
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
 import type { Post, VoteType, User, Vote, Chat, ChatMessage } from "./types"
@@ -994,37 +995,32 @@ export async function getOrCreateChat(currentUserId: string, targetUserId: strin
     const chatRef = doc(db, "chats", chatId);
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const chatDoc = await transaction.get(chatRef);
-            if (!chatDoc.exists()) {
-                const [currentUserSnap, targetUserSnap] = await Promise.all([
-                    getDoc(doc(db, "users", currentUserId)),
-                    getDoc(doc(db, "users", targetUserId)),
-                ]);
-
-                if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
-                    throw new Error("One or both users not found.");
-                }
-                
-                const currentUser = currentUserSnap.data() as User;
-                const targetUser = targetUserSnap.data() as User;
-
-                const newChat: Chat = {
-                    id: chatId,
-                    users: [currentUserId, targetUserId],
-                    userNames: {
-                        [currentUserId]: currentUser.anonName,
-                        [targetUserId]: targetUser.anonName
-                    },
-                    userAvatars: {
-                         [currentUserId]: currentUser.avatarUrl,
-                         [targetUserId]: targetUser.avatarUrl
-                    },
-                    updatedAt: serverTimestamp(),
-                };
-                transaction.set(chatRef, newChat);
+        const chatDoc = await getDoc(chatRef);
+        if (!chatDoc.exists()) {
+             const [currentUserSnap, targetUserSnap] = await Promise.all([
+                getDoc(doc(db, "users", currentUserId)),
+                getDoc(doc(db, "users", targetUserId)),
+            ]);
+             if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
+                throw new Error("One or both users not found.");
             }
-        });
+            const currentUser = currentUserSnap.data() as User;
+            const targetUser = targetUserSnap.data() as User;
+             const newChat: Chat = {
+                id: chatId,
+                users: [currentUserId, targetUserId],
+                userNames: {
+                    [currentUserId]: currentUser.anonName,
+                    [targetUserId]: targetUser.anonName
+                },
+                userAvatars: {
+                     [currentUserId]: currentUser.avatarUrl,
+                     [targetUserId]: targetUser.avatarUrl
+                },
+                updatedAt: serverTimestamp(),
+            };
+            await setDoc(chatRef, newChat);
+        }
         return { chatId };
     } catch (e: any) {
         console.error("Error getting or creating chat:", e);
@@ -1042,59 +1038,81 @@ export async function sendMessage(chatId: string, senderId: string, text: string
     const newMessageRef = doc(messagesRef);
 
     try {
-        await runTransaction(db, async (transaction) => {
-            const chatSnap = await transaction.get(chatRef);
-            if (!chatSnap.exists()) {
-                throw new Error("Chat not found.");
-            }
-            const chatData = chatSnap.data() as Chat;
-            const senderSnap = await transaction.get(doc(db, "users", senderId));
-            if (!senderSnap.exists()) {
-                throw new Error("Sender not found.");
-            }
-            const senderData = senderSnap.data() as User;
+        const batch = writeBatch(db);
 
-            const receiverId = chatData.users.find(uid => uid !== senderId);
-            if (!receiverId) {
-                throw new Error("Could not determine receiver.");
-            }
-            
-            const message: Omit<ChatMessage, 'id' | 'createdAt'> = {
-                chatId,
-                senderId,
-                text,
-            };
-            
-            transaction.set(newMessageRef, {
-                ...message,
-                createdAt: serverTimestamp()
-            });
-            
-            transaction.update(chatRef, {
-                lastMessage: {
-                    text,
-                    senderId,
-                    timestamp: serverTimestamp()
-                },
-                updatedAt: serverTimestamp()
-            });
+        const chatSnap = await getDoc(chatRef);
+        if (!chatSnap.exists()) throw new Error("Chat not found.");
+        const chatData = chatSnap.data() as Chat;
+        const senderSnap = await getDoc(doc(db, "users", senderId));
+        if (!senderSnap.exists()) throw new Error("Sender not found.");
+        const senderData = senderSnap.data() as User;
 
-            // Create notification for receiver
-            const notificationRef = doc(collection(db, `users/${receiverId}/notifications`));
-            transaction.set(notificationRef, {
-                type: 'new_message',
-                fromUserId: senderId,
-                fromUserName: senderData.anonName,
-                fromUserAvatar: senderData.avatarUrl,
-                chatId,
-                read: false,
-                createdAt: serverTimestamp(),
-            });
+        const receiverId = chatData.users.find(uid => uid !== senderId);
+        if (!receiverId) throw new Error("Could not determine receiver.");
+
+        const message: Omit<ChatMessage, 'id' | 'createdAt'> = {
+            chatId,
+            senderId,
+            text,
+        };
+        
+        batch.set(newMessageRef, {
+            ...message,
+            createdAt: serverTimestamp()
         });
+        
+        batch.update(chatRef, {
+            lastMessage: { text, senderId },
+            updatedAt: serverTimestamp()
+        });
+
+        const notificationRef = doc(collection(db, `users/${receiverId}/notifications`));
+        batch.set(notificationRef, {
+            type: 'new_message',
+            fromUserId: senderId,
+            fromUserName: senderData.anonName,
+            fromUserAvatar: senderData.avatarUrl,
+            chatId,
+            read: false,
+            createdAt: serverTimestamp(),
+        });
+        
+        await batch.commit();
 
         return { success: true };
     } catch (e: any) {
         console.error("Error sending message:", e);
         return { success: false, error: e.message || "Failed to send message." };
+    }
+}
+
+export async function getRecentChats(userId: string): Promise<Chat[]> {
+    if (!userId) return [];
+    try {
+        const chatsRef = collection(db, "chats");
+        const q = query(
+            chatsRef,
+            where("users", "array-contains", userId),
+            orderBy("updatedAt", "desc"),
+            limit(20)
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as Chat);
+    } catch (e) {
+        console.error("Error getting recent chats:", e);
+        return [];
+    }
+}
+
+export async function setTypingStatus(chatId: string, userId: string, isTyping: boolean) {
+    if (!chatId || !userId) return;
+    try {
+        const typingRef = doc(db, `chats/${chatId}/typing/${userId}`);
+        await setDoc(typingRef, {
+            isTyping,
+            updatedAt: serverTimestamp()
+        });
+    } catch (e) {
+        console.error("Error setting typing status:", e);
     }
 }

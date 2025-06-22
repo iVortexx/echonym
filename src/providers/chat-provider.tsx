@@ -1,59 +1,122 @@
+
 "use client";
 
-import React, { createContext, useState, ReactNode, useCallback } from 'react';
-import type { User } from '@/lib/types';
-import { getOrCreateChat } from '@/lib/actions';
+import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import type { User, Chat } from '@/lib/types';
+import { getOrCreateChat, getRecentChats, getUsersByIds } from '@/lib/actions';
 import { useAuth } from '@/hooks/use-auth';
 
-interface OpenChat {
+export interface OpenChat {
   user: User;
   chatId: string;
+  state: 'open' | 'minimized';
 }
 
 interface ChatContextType {
-  openChats: OpenChat[];
+  openChats: Record<string, OpenChat>;
+  recentChats: Chat[];
+  isLauncherOpen: boolean;
   openChat: (targetUser: User) => void;
   closeChat: (chatId: string) => void;
+  minimizeChat: (chatId: string) => void;
+  restoreChat: (chatId: string) => void;
+  toggleLauncher: (isOpen?: boolean) => void;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
-  const [openChats, setOpenChats] = useState<OpenChat[]>([]);
+  const [openChats, setOpenChats] = useState<Record<string, OpenChat>>({});
+  const [recentChats, setRecentChats] = useState<Chat[]>([]);
+  const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const { user: currentUser } = useAuth();
+
+  useEffect(() => {
+    if (!currentUser) {
+        setRecentChats([]);
+        return;
+    }
+    
+    let isMounted = true;
+    async function fetchRecentData() {
+        const chats = await getRecentChats(currentUser!.uid);
+        const otherUserIds = chats.map(c => c.users.find(uid => uid !== currentUser!.uid)).filter(Boolean) as string[];
+        const otherUsers = await getUsersByIds(otherUserIds);
+        const usersMap = new Map(otherUsers.map(u => [u.uid, u]));
+
+        const chatsWithUsers = chats.map(chat => {
+            const otherUserId = chat.users.find(uid => uid !== currentUser!.uid);
+            return {
+                ...chat,
+                otherUser: otherUserId ? usersMap.get(otherUserId) : undefined,
+            };
+        });
+
+        if (isMounted) {
+            setRecentChats(chatsWithUsers);
+        }
+    }
+    fetchRecentData();
+    return () => { isMounted = false; }
+  }, [currentUser]);
+
 
   const openChat = useCallback(async (targetUser: User) => {
     if (!currentUser) return;
     
-    // Check if chat is already open
-    const existingChat = openChats.find(c => c.user.uid === targetUser.uid);
-    if (existingChat) {
-      // Optional: logic to focus the existing chat window
+    const chatId = [currentUser.uid, targetUser.uid].sort().join('_');
+    
+    if (openChats[chatId]) {
+      restoreChat(chatId);
       return;
     }
 
-    // Limit to 3 open chats for UI sanity
-    if (openChats.length >= 3) {
-      // Replace the oldest chat
-      setOpenChats(prev => prev.slice(1));
+    const openCount = Object.values(openChats).filter(c => c.state === 'open').length;
+    if (openCount >= 3) {
+      // Optional: Maybe show a toast that chat limit is reached
+      return;
     }
 
     const result = await getOrCreateChat(currentUser.uid, targetUser.uid);
 
     if (result.chatId) {
-      setOpenChats(prev => [...prev, { user: targetUser, chatId: result.chatId! }]);
+      setOpenChats(prev => ({
+          ...prev,
+          [result.chatId!]: { user: targetUser, chatId: result.chatId!, state: 'open' }
+      }));
     } else {
       console.error("Failed to open chat:", result.error);
-      // Optionally show a toast notification to the user
     }
   }, [currentUser, openChats]);
 
   const closeChat = useCallback((chatId: string) => {
-    setOpenChats(prev => prev.filter(c => c.chatId !== chatId));
+    setOpenChats(prev => {
+        const newChats = { ...prev };
+        delete newChats[chatId];
+        return newChats;
+    });
+  }, []);
+  
+  const minimizeChat = useCallback((chatId: string) => {
+    setOpenChats(prev => ({
+        ...prev,
+        [chatId]: { ...prev[chatId], state: 'minimized' }
+    }));
+  }, []);
+
+  const restoreChat = useCallback((chatId: string) => {
+    setOpenChats(prev => ({
+        ...prev,
+        [chatId]: { ...prev[chatId], state: 'open' }
+    }));
+  }, []);
+
+  const toggleLauncher = useCallback((isOpen?: boolean) => {
+    setIsLauncherOpen(prev => isOpen === undefined ? !prev : isOpen);
   }, []);
 
   return (
-    <ChatContext.Provider value={{ openChats, openChat, closeChat }}>
+    <ChatContext.Provider value={{ openChats, recentChats, isLauncherOpen, openChat, closeChat, minimizeChat, restoreChat, toggleLauncher }}>
       {children}
     </ChatContext.Provider>
   );

@@ -2,7 +2,7 @@
 "use client";
 
 import { useContext } from 'react';
-import { ChatContext } from '@/providers/chat-provider';
+import { ChatContext, type OpenChat } from '@/providers/chat-provider';
 
 export const useChat = () => {
   const context = useContext(ChatContext);
@@ -11,3 +11,5 @@ export const useChat = () => {
   }
   return context;
 };
+
+export type { OpenChat };

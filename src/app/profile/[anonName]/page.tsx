@@ -32,6 +32,7 @@ import { doc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useChat } from "@/hooks/use-chat"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 function StatCard({ icon: Icon, label, value, children, isClickable }: { icon: React.ElementType, label: string, value: string | number, children?: React.ReactNode, isClickable?: boolean }) {
   return (
@@ -328,10 +329,19 @@ export default function ProfilePage() {
                     <Button onClick={handleFollowToggle} disabled={isFollowLoading} variant="outline" size="sm" className="font-mono">
                       {isFollowLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (isFollowing ? 'Unfollow' : 'Follow')}
                     </Button>
-                    <Button onClick={() => openChat(displayUser)} variant="outline" size="sm" className="font-mono">
-                        <MessageSquare className="h-4 w-4 mr-2"/>
-                        Chat
-                    </Button>
+                    <TooltipProvider delayDuration={0}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button onClick={() => openChat(displayUser)} variant="outline" size="sm" className="font-mono">
+                                    <MessageSquare className="h-4 w-4 mr-2"/>
+                                    Chat
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>Message {displayUser.anonName}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 </div>
               )}
             </div>

@@ -68,9 +68,10 @@ export interface Chat {
   lastMessage?: {
     text: string;
     senderId: string;
-    timestamp: Timestamp | string;
   };
   updatedAt: Timestamp | string;
+  // For client-side use
+  otherUser?: User;
 }
 
 export interface ChatMessage {
@@ -79,6 +80,11 @@ export interface ChatMessage {
   senderId: string;
   text: string;
   createdAt: Timestamp | string;
+}
+
+export interface TypingStatus {
+  isTyping: boolean;
+  updatedAt: Timestamp | string;
 }
 
 export interface Notification {
