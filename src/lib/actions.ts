@@ -1161,32 +1161,23 @@ export async function toggleMessageReaction(chatId: string, messageId: string, e
       }
 
       const messageData = messageDoc.data() as ChatMessage;
-      const reactions = messageData.reactions || {};
+      const currentReactions = messageData.reactions || {};
       
-      const alreadyReactedWithSameEmoji = reactions[emoji]?.includes(userId);
+      // Check if the user is clicking the same emoji that's already on the message.
+      const isTogglingOff = currentReactions[emoji]?.includes(userId);
 
-      // First, remove any existing reaction by this user from ALL emojis.
-      for (const existingEmoji in reactions) {
-        const reactors = reactions[existingEmoji];
-        const userIndex = reactors.indexOf(userId);
-        if (userIndex > -1) {
-          reactors.splice(userIndex, 1);
-          if (reactors.length === 0) {
-            delete reactions[existingEmoji];
-          } else {
-            reactions[existingEmoji] = reactors;
-          }
-        }
+      let newReactions = {};
+
+      if (isTogglingOff) {
+        // User is removing their reaction, so we clear all reactions.
+        newReactions = {};
+      } else {
+        // User is adding a new reaction or changing the reaction.
+        // This new reaction becomes the only one on the message.
+        newReactions = { [emoji]: [userId] };
       }
 
-      // If the user wasn't just toggling off the *same* emoji, add the new one.
-      if (!alreadyReactedWithSameEmoji) {
-        const newEmojiReactors = reactions[emoji] || [];
-        newEmojiReactors.push(userId);
-        reactions[emoji] = newEmojiReactors;
-      }
-
-      transaction.update(messageRef, { reactions });
+      transaction.update(messageRef, { reactions: newReactions });
     });
     return { success: true };
   } catch (e: any) {
