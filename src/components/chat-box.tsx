@@ -291,18 +291,16 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     const twemojiConfig = { folder: 'svg', ext: '.svg', base: 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/' };
                     
                     const bubbleClasses = cn(
-                      "p-2 px-3 text-sm text-foreground",
+                      "p-2 px-3 text-sm text-foreground relative z-10",
                       isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
                       {
-                        "rounded-2xl": true,
-                        // Outgoing messages (on the right)
-                        "rounded-br-md": isOwnMessage && isFirstInGroup && !isLastInGroup,
-                        "rounded-tr-md rounded-br-md": isOwnMessage && !isFirstInGroup && !isLastInGroup,
-                        "rounded-tr-md": isOwnMessage && !isFirstInGroup && isLastInGroup,
-                        // Incoming messages (on the left)
-                        "rounded-bl-md": !isOwnMessage && isFirstInGroup && !isLastInGroup,
-                        "rounded-tl-md rounded-bl-md": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
-                        "rounded-tl-md": !isOwnMessage && !isFirstInGroup && isLastInGroup,
+                        "rounded-2xl": isFirstInGroup && isLastInGroup,
+                        "rounded-tr-2xl rounded-tl-2xl rounded-br-md rounded-bl-2xl": isOwnMessage && isFirstInGroup && !isLastInGroup,
+                        "rounded-tr-md rounded-tl-2xl rounded-br-md rounded-bl-2xl": isOwnMessage && !isFirstInGroup && !isLastInGroup,
+                        "rounded-tr-md rounded-tl-2xl rounded-br-2xl rounded-bl-2xl": isOwnMessage && !isFirstInGroup && isLastInGroup,
+                        "rounded-tl-2xl rounded-tr-2xl rounded-bl-md rounded-br-2xl": !isOwnMessage && isFirstInGroup && !isLastInGroup,
+                        "rounded-tl-md rounded-tr-2xl rounded-bl-md rounded-br-2xl": !isOwnMessage && !isFirstInGroup && !isLastInGroup,
+                        "rounded-tl-md rounded-tr-2xl rounded-bl-2xl rounded-br-2xl": !isOwnMessage && !isFirstInGroup && isLastInGroup,
                       }
                     );
 
@@ -343,23 +341,18 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <a 
                                           href={`#message-${msg.replyTo.messageId}`}
                                           onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
-                                          className="mb-1 cursor-pointer group/reply"
+                                          className={cn(
+                                              "max-w-[85%] text-sm text-slate-400 bg-background rounded-2xl px-3 py-1.5 cursor-pointer hover:bg-muted/80 transition-colors z-0",
+                                              isOwnMessage ? "self-end" : "self-start"
+                                          )}
                                         >
-                                            <div className="p-2 rounded-xl bg-black/20 hover:bg-black/30 transition-colors max-w-full">
-                                                <div className="flex items-center gap-1.5 text-xs text-primary font-bold">
-                                                    <Reply className="h-3 w-3" />
-                                                    <span>{msg.replyTo.senderName}</span>
-                                                </div>
-                                                <p className="text-slate-300 mt-1 truncate text-sm">
-                                                    {msg.replyTo.text}
-                                                </p>
-                                            </div>
+                                            <p className="truncate">{msg.replyTo.text}</p>
                                         </a>
                                     )}
 
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                        <div className={bubbleClasses}>
+                                        <div className={cn(bubbleClasses, msg.replyTo && "-mt-3")}>
                                             <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                         </div>
                                         </TooltipTrigger>
