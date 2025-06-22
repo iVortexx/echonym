@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 function ChatHub() {
-    const { recentChats, openChat } = useChat();
+    const { recentChats, openChat, toggleLauncher } = useChat();
     const { user: currentUser } = useAuth();
     const [followers, setFollowers] = useState<UserType[]>([]);
     const [following, setFollowing] = useState<UserType[]>([]);
@@ -41,6 +41,7 @@ function ChatHub() {
 
     const handleUserClick = (user: UserType) => {
         openChat(user);
+        toggleLauncher(false);
     };
 
     const FollowUserList = ({ users, isLoading }: { users: UserType[], isLoading: boolean }) => (
@@ -129,8 +130,8 @@ function ChatLauncher() {
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.5, type: 'spring' }}
                 >
-                <Button size="icon" className="rounded-full w-14 h-14 shadow-lg bg-primary hover:bg-primary/90">
-                    {isLauncherOpen ? <X/> : <MessageSquarePlus />}
+                <Button size="icon" className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 flex items-center justify-center">
+                    {isLauncherOpen ? <X className="h-6 w-6"/> : <MessageSquarePlus className="h-6 w-6"/>}
                 </Button>
                 </motion.div>
             </PopoverTrigger>
@@ -145,10 +146,10 @@ function ChatLauncher() {
 function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId: string) => void }) {
     return (
         <motion.div layoutId={`chatbox-${chat.chatId}`}>
-             <TooltipProvider>
+             <TooltipProvider delayDuration={0}>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <button onClick={() => onRestore(chat.chatId)} className="h-14 w-14 rounded-full overflow-hidden border-2 border-primary shadow-lg">
+                        <button onClick={() => onRestore(chat.chatId)} className="h-12 w-12 rounded-full overflow-hidden border-2 border-primary shadow-lg hover:ring-2 hover:ring-primary/50 transition-all">
                             <Avatar className="h-full w-full">
                                 <AvatarImage src={chat.user.avatarUrl} alt={chat.user.anonName} />
                                 <AvatarFallback><UserIcon /></AvatarFallback>
@@ -156,7 +157,7 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                         </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">
-                        <p>{chat.user.anonName}</p>
+                        <p>Chat with {chat.user.anonName}</p>
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
@@ -171,22 +172,21 @@ export function ChatLayout() {
   const openChat = Object.values(openChats).find(c => c.state === 'open');
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] flex items-end gap-4">
-        <div className="flex items-end gap-4">
-            <AnimatePresence>
-                {minimized.map((chat) => (
-                    <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
-                ))}
-            </AnimatePresence>
-        </div>
+    <>
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-row-reverse items-center gap-4">
+        <ChatLauncher />
+        <AnimatePresence>
+            {minimized.map((chat) => (
+                <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
+            ))}
+        </AnimatePresence>
+      </div>
       
-      <ChatLauncher />
-      
-      <div className="fixed bottom-0 right-24 z-[100] flex items-end gap-4">
+      <div className="fixed bottom-0 right-24 z-[100]">
         <AnimatePresence>
             {openChat && <ChatBox key={openChat.chatId} chat={openChat} />}
         </AnimatePresence>
       </div>
-    </div>
+    </>
   );
 }
