@@ -50,14 +50,27 @@ export function getNextBadge(xp: number) {
     return null;
 }
 
-export function buildAvatarUrl(options: Record<string, string | string[]>) {
+export function buildAvatarUrl(options: Record<string, any>) {
   const baseUrl = 'https://api.dicebear.com/8.x/adventurer/svg';
   const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(options)) {
+  
+  const finalOptions = { ...options };
+
+  // This ensures glasses/features appear when selected by the user.
+  if (finalOptions.glasses) {
+    finalOptions.glassesProbability = 100;
+  }
+  if (finalOptions.features && finalOptions.features.length > 0) {
+    finalOptions.featuresProbability = 100;
+  }
+
+  for (const [key, value] of Object.entries(finalOptions)) {
     if (Array.isArray(value)) {
-      params.set(key, value.join(','));
-    } else {
-      params.set(key, value);
+      if (value.length > 0) {
+        params.set(key, value.join(','));
+      }
+    } else if (value !== undefined && value !== null) {
+      params.set(key, String(value));
     }
   }
   return `${baseUrl}?${params.toString()}`;

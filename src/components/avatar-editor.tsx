@@ -158,10 +158,17 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
   };
   
   const handleColorChange = (key: string, value: string) => {
-     setOptions((prev) => ({
-      ...prev,
-      [key]: value.replace("#", ""),
-    }))
+    setOptions((prev) => {
+        const newOptions = { ...prev };
+        delete newOptions.seed;
+        newOptions[key] = value.replace("#", "");
+
+        // If changing background color, ensure type is solid to make it visible
+        if (key === "backgroundColor") {
+            newOptions.backgroundType = "solid";
+        }
+        return newOptions;
+    });
   }
 
   const handleReroll = () => {
