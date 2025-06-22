@@ -164,3 +164,11 @@ export const mouth = [
   "variant29",
   "variant30",
 ] as const;
+
+export const skinColors = [
+  "#ffdbac",
+  "#f1c27d",
+  "#e0ac69",
+  "#c68642",
+  "#8d5524",
+] as const;

@@ -27,6 +27,7 @@ import {
   eyebrows,
   eyes,
   mouth,
+  skinColors,
 } from "@/lib/dicebear-options"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -49,7 +50,12 @@ const StyleSelector = ({
   isOptional?: boolean
 }) => {
   const displayOptions = isOptional ? ["None", ...options] : [...options]
-  const currentIndex = Math.max(0, value ? displayOptions.indexOf(value) : 0)
+  
+  // Find the index, if the current value is not in the options, default to index 0
+  let currentIndex = displayOptions.indexOf(value as string)
+  if (currentIndex === -1) {
+    currentIndex = 0
+  }
 
   const handlePrev = () => {
     const newIndex = (currentIndex - 1 + displayOptions.length) % displayOptions.length
@@ -201,8 +207,9 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
           </TabsContent>
 
           <TabsContent value="colors" className="mt-4">
-            <div className="space-y-4 p-4 bg-card rounded-lg">
+            <div className="space-y-4 p-4 bg-card rounded-lg max-h-[400px] overflow-y-auto">
               {[
+                { name: "Skin Color", key: "skinColor", options: skinColors },
                 { name: "Hair Color", key: "hairColor", options: hairColors },
                 { name: "Background Color", key: "backgroundColor", options: backgroundColors },
               ].map((cat) => (
