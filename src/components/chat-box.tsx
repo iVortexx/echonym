@@ -234,7 +234,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                   <Smile className="h-5 w-5" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 mb-2 bg-popover border-border rounded-lg" side="top" align="start">
+              <PopoverContent className="p-0 mb-2 bg-popover border-border rounded-lg" side="top" align="start">
                 <EmojiPicker 
                     onEmojiClick={handleEmojiSelect}
                     emojiStyle={EmojiStyle.NATIVE}
@@ -242,7 +242,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                     searchDisabled
                     skinTonesDisabled
                     lazyLoadEmojis
-                    height={350}
+                    height={300}
                     categories={['smileys_people', 'animals_nature', 'food_drink', 'objects', 'symbols']}
                     previewConfig={{ showPreview: false }}
                 />
