@@ -361,15 +361,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const bubbleClasses = cn(
                           "p-2 px-3 text-sm text-foreground relative z-10",
                           isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
+                          'rounded-2xl', // Start with all corners rounded
                           {
-                            "rounded-tr-2xl": isOwnMessage,
-                            "rounded-tl-2xl": !isOwnMessage,
-                            "rounded-br-2xl": isLastInGroup && isOwnMessage,
-                            "rounded-bl-2xl": isLastInGroup && !isOwnMessage,
-                            "rounded-bl-md": !isLastInGroup && !isOwnMessage,
-                            "rounded-br-md": !isLastInGroup && isOwnMessage,
-                            "rounded-tl-md": !isFirstInGroup && !isOwnMessage,
-                            "rounded-tr-md": !isFirstInGroup && isOwnMessage,
+                            // For own messages (on the right), flatten corners that connect to other messages.
+                            'rounded-tr-md': !isFirstInGroup && isOwnMessage,
+                            'rounded-br-md': !isLastInGroup && isOwnMessage,
+                            
+                            // For received messages (on the left), flatten corners that connect.
+                            'rounded-tl-md': !isFirstInGroup && !isOwnMessage,
+                            'rounded-bl-md': !isLastInGroup && !isOwnMessage,
                           }
                         );
 
@@ -380,8 +380,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                     className={cn(
                                         "flex w-full items-end gap-2",
                                         isOwnMessage ? "justify-end" : "justify-start",
-                                        isFirstInGroup ? "mt-4" : "mt-0.5",
-                                        msg.replyTo ? ' -mt-2' : ''
+                                        isFirstInGroup ? "mt-4" : "mt-0.5"
                                     )}
                                 >
                                     {isOwnMessage && (
@@ -413,7 +412,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
                                                   "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-md px-2 py-1 mb-0.5 cursor-pointer hover:bg-muted transition-colors",
-                                                  isOwnMessage ? "rounded-br-none" : "rounded-bl-none",
                                                   "relative z-0"
                                               )}
                                             >
@@ -427,7 +425,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses)}>
-                                                <div className="break-all" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
