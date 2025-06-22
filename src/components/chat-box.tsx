@@ -208,7 +208,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
         });
 
         if (newMessages.length > 0) {
-            newMessages.sort((a, b) => getDateFromTimestamp(a.createdAt)!.getTime() - getDateFromTimestamp(b.createdAt)!.getTime());
+            newMessages.sort((a, b) => getDateFromTimestamp(b.createdAt)!.getTime() - getDateFromTimestamp(a.createdAt)!.getTime());
             setMessages(prev => [...prev, ...newMessages]);
             setUserHasScrolled(false);
         }
@@ -252,18 +252,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
     const textToSend = newMessage;
     setNewMessage("");
 
-    let senderName = '';
-    if (replyingTo) {
-      if (replyingTo.senderId === currentUser.uid) {
-        senderName = currentUser.anonName;
-      } else {
-        senderName = user.anonName;
-      }
-    }
-
     const replyPayload = replyingTo ? {
       messageId: replyingTo.id,
-      senderName: senderName,
       text: replyingTo.text,
     } : undefined;
 
@@ -371,18 +361,15 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const bubbleClasses = cn(
                           "p-2 px-3 text-sm text-foreground relative z-10",
                           isOwnMessage ? "bg-primary text-primary-foreground" : "bg-muted",
-                          // Default all corners, then selectively sharpen them
-                          isOwnMessage ? "rounded-tl-2xl rounded-bl-2xl" : "rounded-tr-2xl rounded-br-2xl",
                           {
-                            "rounded-tr-2xl": isOwnMessage && isFirstInGroup,
-                            "rounded-br-2xl": isOwnMessage && isLastInGroup,
-                            "rounded-tr-md": isOwnMessage && !isFirstInGroup,
-                            "rounded-br-md": isOwnMessage && !isLastInGroup,
-
-                            "rounded-tl-2xl": !isOwnMessage && isFirstInGroup,
-                            "rounded-bl-2xl": !isOwnMessage && isLastInGroup,
-                            "rounded-tl-md": !isOwnMessage && !isFirstInGroup,
-                            "rounded-bl-md": !isOwnMessage && !isLastInGroup,
+                            "rounded-tr-2xl": isOwnMessage,
+                            "rounded-tl-2xl": !isOwnMessage,
+                            "rounded-br-2xl": isLastInGroup && isOwnMessage,
+                            "rounded-bl-2xl": isLastInGroup && !isOwnMessage,
+                            "rounded-bl-md": !isLastInGroup && !isOwnMessage,
+                            "rounded-br-md": !isLastInGroup && isOwnMessage,
+                            "rounded-tl-md": !isFirstInGroup && !isOwnMessage,
+                            "rounded-tr-md": !isFirstInGroup && isOwnMessage,
                           }
                         );
 
@@ -393,7 +380,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                     className={cn(
                                         "flex w-full items-end gap-2",
                                         isOwnMessage ? "justify-end" : "justify-start",
-                                        isFirstInGroup ? "mt-4" : "mt-0.5"
+                                        isFirstInGroup ? "mt-4" : "mt-0.5",
+                                        msg.replyTo ? ' -mt-2' : ''
                                     )}
                                 >
                                     {isOwnMessage && (
@@ -424,11 +412,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
-                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-md px-2 py-1 cursor-pointer hover:bg-muted transition-colors",
+                                                  "flex items-center gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-md px-2 py-1 mb-0.5 cursor-pointer hover:bg-muted transition-colors",
+                                                  isOwnMessage ? "rounded-br-none" : "rounded-bl-none",
+                                                  "relative z-0"
                                               )}
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
-                                              <div className="italic text-slate-400">
+                                              <div className="italic text-slate-400 line-clamp-2">
                                                 {`"${(msg.replyTo.text.length > 70 ? `${msg.replyTo.text.substring(0, 70)}...` : msg.replyTo.text)}"`}
                                               </div>
                                             </a>
@@ -437,7 +427,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                             <div className={cn(bubbleClasses)}>
-                                                <div className="break-words" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                <div className="break-all" dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
                                             <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
@@ -501,7 +491,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
             <button onClick={() => setReplyingTo(null)} className="absolute top-1 right-1 p-1 rounded-full hover:bg-slate-700">
                 <X className="h-3 w-3"/>
             </button>
-            <p>Replying to <span className="font-bold text-accent">{replyingTo.senderId === currentUser?.uid ? currentUser.anonName : user.anonName}</span></p>
+            <p>Replying to <span className="font-bold text-accent">{replyingTo.senderId === currentUser?.uid ? 'yourself' : user.anonName}</span></p>
             <p className="italic text-slate-400 truncate">"{replyingTo.text}"</p>
         </div>
       )}
@@ -548,5 +538,3 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
-
-    
