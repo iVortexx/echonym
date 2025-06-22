@@ -1074,7 +1074,6 @@ export async function sendMessage(chatId: string, senderId: string, text: string
 
         const senderSnap = await getDoc(doc(db, "users", senderId));
         if (!senderSnap.exists()) throw new Error("Sender not found.");
-        const senderData = senderSnap.data() as User;
 
         const receiverId = chatData.users.find(uid => uid !== senderId);
         if (!receiverId) throw new Error("Could not determine receiver.");
@@ -1106,17 +1105,6 @@ export async function sendMessage(chatId: string, senderId: string, text: string
             unreadCount: increment(1),
             updatedAt: serverTimestamp()
         }, { merge: true });
-
-        const notificationRef = doc(collection(db, `users/${receiverId}/notifications`));
-        batch.set(notificationRef, {
-            type: 'new_message',
-            fromUserId: senderId,
-            fromUserName: senderData.anonName,
-            fromUserAvatar: senderData.avatarUrl,
-            chatId,
-            read: false,
-            createdAt: serverTimestamp(),
-        });
         
         await batch.commit();
 

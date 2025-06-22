@@ -31,8 +31,6 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
         return <GitBranch className="h-4 w-4 text-green-400" />;
       case 'welcome':
         return <Sparkles className="h-4 w-4 text-yellow-400" />;
-      case 'new_message':
-          return <MessageCircle className="h-4 w-4 text-primary" />;
       default:
         return <Bell className="h-4 w-4 text-slate-400" />;
     }
@@ -49,7 +47,6 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
         {notification.type === 'new_follower' && 'started following you.'}
         {notification.type === 'new_comment' && 'commented on your echo:'}
         {notification.type === 'new_reply' && 'replied to your comment.'}
-        {notification.type === 'new_message' && 'sent you a message.'}
         {notification.type === 'new_comment' && notification.commentSnippet && (
           <span className="block text-slate-400 italic mt-1">"{notification.commentSnippet}..."</span>
         )}
@@ -67,8 +64,6 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
             return `/post/${notification.targetPostId}#comment-${notification.targetCommentId}`;
         case 'welcome':
             return '/profile';
-        case 'new_message':
-            return '#'; // Handled by openChat
         default:
             return '#';
     }
@@ -77,12 +72,11 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Mark as read before navigating or opening chat
     if (user && !notification.read) {
       await markNotificationAsRead(user.uid, notification.id);
     }
     
-    onOpen(); // Close the notification popover
+    onOpen();
 
     if (notification.type === 'new_message') {
         if (notification.fromUserId && notification.fromUserName) {
@@ -91,7 +85,7 @@ function NotificationItem({ notification, onOpen }: { notification: Notification
                 anonName: notification.fromUserName,
                 avatarUrl: notification.fromUserAvatar
             };
-            openChat(partialUser as UserType); // openChat handles partial user
+            openChat(partialUser as UserType);
         }
         return;
     }

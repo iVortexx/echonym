@@ -88,6 +88,7 @@ function ChatHub() {
                     }}
                     onSelectUser={handleUserClick}
                     lastMessage={chat.lastMessage?.text}
+                    unreadCount={chat.unreadCount}
                   />
                ))
            )}
@@ -144,8 +145,12 @@ function ChatLauncher() {
 
 
 function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId: string) => void }) {
+    const { recentChats } = useChat();
+    const chatData = recentChats.find(rc => rc.id === chat.chatId);
+    const unreadCount = chatData?.unreadCount || 0;
+
     return (
-        <motion.div layoutId={`chatbox-${chat.chatId}`}>
+        <motion.div layoutId={`chatbox-${chat.chatId}`} className="relative">
              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -161,6 +166,11 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
+            {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white pointer-events-none">
+                    {unreadCount}
+                </div>
+            )}
         </motion.div>
     )
 }
