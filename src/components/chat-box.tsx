@@ -347,13 +347,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                           )}
                                         >
                                           <Reply className="h-3 w-3 flex-shrink-0 text-slate-300" />
-                                          <div className="flex-1 truncate">
-                                            <span className="font-semibold text-slate-300 mr-1">
-                                              {msg.replyTo.senderName}
-                                            </span>
-                                            <span className="italic text-slate-400">
-                                              {msg.replyTo.text}
-                                            </span>
+                                          <div className="flex-1 truncate italic text-slate-400">
+                                            {`"${(msg.replyTo.text.length > 70 ? `${msg.replyTo.text.substring(0, 70)}...` : msg.replyTo.text)}"`}
                                           </div>
                                         </a>
                                     )}
