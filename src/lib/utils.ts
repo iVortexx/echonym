@@ -54,7 +54,11 @@ export function buildAvatarUrl(options: Record<string, any>) {
   const baseUrl = 'https://api.dicebear.com/8.x/adventurer/svg';
   const params = new URLSearchParams();
   
-  const finalOptions = { ...options };
+  const finalOptions = { 
+    ...options,
+    scale: 115,
+    translateY: 10,
+  };
 
   // This ensures glasses/features appear when selected by the user.
   if (finalOptions.glasses && finalOptions.glasses !== 'none') {
