@@ -68,6 +68,7 @@ export interface Chat {
   lastMessage?: {
     text: string;
     senderId: string;
+    createdAt: Timestamp | string;
   };
   updatedAt: Timestamp | string;
 }
@@ -80,6 +81,7 @@ export interface UserChat {
   lastMessage?: {
     text: string;
     senderId: string;
+    createdAt: Timestamp | string;
   };
   unreadCount: number;
   updatedAt: Timestamp | string;
@@ -107,7 +109,7 @@ export interface TypingStatus {
 
 export interface Notification {
   id: string;
-  type: 'new_comment' | 'new_reply' | 'new_follower' | 'welcome' | 'new_message';
+  type: 'new_comment' | 'new_reply' | 'new_follower' | 'welcome';
   fromUserId?: string;
   fromUserName?: string;
   fromUserAvatar?: string;

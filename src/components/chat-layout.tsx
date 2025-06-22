@@ -167,8 +167,8 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                 </Tooltip>
             </TooltipProvider>
             {unreadCount > 0 && (
-                <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white pointer-events-none">
-                    {unreadCount}
+                <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white pointer-events-none ring-2 ring-card">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                 </div>
             )}
         </motion.div>
@@ -183,7 +183,7 @@ export function ChatLayout() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-row-reverse items-center gap-4">
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-row-reverse items-end gap-4">
         <ChatLauncher />
         <AnimatePresence>
             {minimized.map((chat) => (
@@ -192,7 +192,7 @@ export function ChatLayout() {
         </AnimatePresence>
       </div>
       
-      <div className="fixed bottom-0 right-24 z-[100]">
+      <div className="fixed bottom-4 right-24 z-[100] sm:bottom-0 sm:right-[calc(4rem+2rem)]">
         <AnimatePresence>
             {openChat && <ChatBox key={openChat.chatId} chat={openChat} />}
         </AnimatePresence>

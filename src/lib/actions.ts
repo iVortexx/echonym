@@ -1074,6 +1074,7 @@ export async function sendMessage(chatId: string, senderId: string, text: string
 
         const senderSnap = await getDoc(doc(db, "users", senderId));
         if (!senderSnap.exists()) throw new Error("Sender not found.");
+        const senderData = senderSnap.data() as User;
 
         const receiverId = chatData.users.find(uid => uid !== senderId);
         if (!receiverId) throw new Error("Could not determine receiver.");
@@ -1085,7 +1086,11 @@ export async function sendMessage(chatId: string, senderId: string, text: string
         };
         
         if (replyTo) {
-            message.replyTo = replyTo;
+            message.replyTo = {
+                messageId: replyTo.messageId,
+                text: replyTo.text,
+                senderName: chatData.userNames[message.senderId] || "User"
+            };
         }
 
         batch.set(newMessageRef, {
@@ -1132,7 +1137,10 @@ export async function clearChatUnread(userId: string, chatId: string) {
     if (!userId || !chatId) return;
     try {
         const chatRef = doc(db, `users/${userId}/chats/${chatId}`);
-        await updateDoc(chatRef, { unreadCount: 0 });
+        const docSnap = await getDoc(chatRef);
+        if (docSnap.exists() && docSnap.data().unreadCount > 0) {
+            await updateDoc(chatRef, { unreadCount: 0 });
+        }
     } catch (e) {
         console.error("Error clearing chat unread count:", e);
     }

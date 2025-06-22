@@ -96,11 +96,14 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   function isEmojiOnly(text: string): boolean {
     const trimmed = text.trim();
-    // A simple heuristic: check for absence of letters/numbers and keep it for short messages.
     if (!trimmed || trimmed.length === 0 || trimmed.length > 20) return false;
-    const hasLettersOrNumbers = /[a-zA-Z0-9]/.test(trimmed);
-    // If it has no letters or numbers, it's likely just emojis and symbols.
-    return !hasLettersOrNumbers;
+    
+    // Use twemoji to parse and then remove the img tags it creates.
+    // If nothing is left but whitespace, it was emoji-only.
+    const parsed = twemoji.parse(trimmed);
+    const stripped = parsed.replace(/<img[^>]*>/g, '').trim();
+
+    return !stripped;
   }
 
   useEffect(() => {
@@ -217,14 +220,17 @@ export function ChatBox({ chat }: ChatBoxProps) {
         });
 
         if (newMessages.length > 0) {
-            newMessages.sort((a, b) => getDateFromTimestamp(b.createdAt)!.getTime() - getDateFromTimestamp(a.createdAt)!.getTime());
+            newMessages.sort((a, b) => getDateFromTimestamp(a.createdAt)!.getTime() - getDateFromTimestamp(b.createdAt)!.getTime());
             setMessages(prev => [...prev, ...newMessages]);
-            setUserHasScrolled(false);
+            if (currentUser) {
+              clearChatUnread(currentUser.uid, chatId);
+            }
+            setUserHasScrolled(false); // New message arrived, reset scroll lock
         }
     });
 
     return () => unsubscribe();
-  }, [chatId]); // Note: `messages` is removed from deps to prevent re-subscribing on every new message
+  }, [chatId, currentUser?.uid]);
 
   useLayoutEffect(() => {
     const scrollDiv = viewportRef.current;
@@ -264,6 +270,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
     const replyPayload = replyingTo ? {
       messageId: replyingTo.id,
       text: replyingTo.text,
+      senderName: '...' // This is now set on the backend
     } : undefined;
 
     await sendMessage(chatId, currentUser.uid, textToSend, replyPayload);
@@ -297,7 +304,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
         
         targetElement.classList.add('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
         setTimeout(() => {
-            targetElement.classList.remove('bg-primary/10', 'transition-colors', 'duration-1000', 'rounded-lg');
+            targetElement.classList.remove('bg-primary/10');
         }, 1500);
     }
   };
@@ -313,14 +320,14 @@ export function ChatBox({ chat }: ChatBoxProps) {
       className="w-80 h-[400px] flex flex-col bg-card border-2 border-primary/50 rounded-xl shadow-2xl shadow-primary/20"
     >
       <header className="flex items-center justify-between p-2 pl-3 border-b border-primary/20 cursor-pointer">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatarUrl} alt={user.anonName} />
             <AvatarFallback className="bg-secondary text-primary">
               <UserIcon className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
-          <span className="font-bold text-sm text-slate-100">{user.anonName}</span>
+          <span className="font-bold text-sm text-slate-100 truncate">{user.anonName}</span>
         </div>
         <div className="flex items-center">
             <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => minimizeChat(chatId)}>
@@ -354,7 +361,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const nextMessage = messages[i + 1];
 
                         const prevDate = getDateFromTimestamp(prevMessage?.createdAt);
-                        
                         const timeDiffWithPrev = prevDate && currentDate ? (currentDate.getTime() - prevDate.getTime()) / (1000 * 60) : Infinity;
 
                         const isFirstInGroup = !prevMessage || msg.senderId !== prevMessage.senderId || timeDiffWithPrev > 5 || !!msg.replyTo;
@@ -370,17 +376,16 @@ export function ChatBox({ chat }: ChatBoxProps) {
                         const isOnlyEmoji = isEmojiOnly(msg.text);
 
                         const bubbleClasses = cn(
-                          "p-2 px-3 text-sm relative min-w-0",
+                          "p-2 px-3 text-sm relative",
                           isOwnMessage ? "bg-cyan-900 text-slate-100" : "bg-muted text-foreground",
                           'rounded-2xl',
                           {
-                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
                             'rounded-br-md': isLastInGroup && isOwnMessage,
-                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
+                            'rounded-tr-md': isFirstInGroup && isOwnMessage,
                             'rounded-bl-md': isLastInGroup && !isOwnMessage,
+                            'rounded-tl-md': isFirstInGroup && !isOwnMessage,
                           }
                         );
-
 
                         return (
                             <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
@@ -419,12 +424,13 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                               href={`#message-${msg.replyTo.messageId}`}
                                               onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
                                               className={cn(
-                                                  "flex items-start gap-2 max-w-full text-xs text-slate-400 bg-muted/50 rounded-t-lg px-2 py-1 cursor-pointer hover:bg-muted transition-colors w-full",
-                                                  isFirstInGroup ? "-mb-px" : "-mb-px" // Kept for consistency
+                                                  "flex items-start gap-1.5 text-xs text-slate-400 bg-black/10 rounded-t-lg px-2 py-1.5 cursor-pointer hover:bg-black/20 transition-colors w-full",
+                                                  "border-l-2 border-accent/80",
+                                                  "-mb-px" // Stick to the message bubble below
                                               )}
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
-                                              <div className="italic text-slate-400 line-clamp-2 break-words">
+                                              <div className="italic text-slate-400 line-clamp-2 break-all">
                                                 {`"${msg.replyTo.text}"`}
                                               </div>
                                             </a>
@@ -432,7 +438,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
                                         <Tooltip>
                                             <TooltipTrigger asChild>
-                                            <div className={cn(bubbleClasses)}>
+                                            <div className={cn(bubbleClasses, 'min-w-0')}>
                                                 <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
                                             </div>
                                             </TooltipTrigger>
@@ -455,7 +461,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                                                     : 'bg-card border-border hover:border-accent'
                                                                 )}
                                                                 >
-                                                                <span dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, twemojiConfig) }}/>
+                                                                <span className="inline-block" dangerouslySetInnerHTML={{ __html: twemoji.parse(emoji, twemojiConfig) }}/>
                                                                 <span>{userIds.length}</span>
                                                             </button>
                                                         </TooltipTrigger>
@@ -544,3 +550,4 @@ export function ChatBox({ chat }: ChatBoxProps) {
     </motion.div>
   );
 }
+
