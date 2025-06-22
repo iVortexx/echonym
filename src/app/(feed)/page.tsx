@@ -2,7 +2,7 @@
 "use client"
 
 import { PostFeed } from "@/components/post-feed"
-import { Flame, Rocket, Sparkles, Search, Fingerprint } from "lucide-react"
+import { Flame, Rocket, Sparkles, Search } from "lucide-react"
 import { collection, query, orderBy, limit, where, onSnapshot, Query, DocumentData } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import type { Post } from "@/lib/types"
@@ -11,6 +11,7 @@ import Link from "next/link"
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Input } from "@/components/ui/input"
+import Image from "next/image"
 
 type SortOrder = "latest" | "trending" | "top";
 
@@ -86,7 +87,7 @@ export default function Home() {
       <div className="space-y-8">
         <div className="mb-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Fingerprint className="h-8 w-8 text-primary" />
+            <Image src="/logo.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm" />
             <h1 className="text-3xl font-sans font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Echonym
             </h1>
