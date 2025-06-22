@@ -49,7 +49,7 @@ const StyleSelector = ({
   isOptional?: boolean
 }) => {
   const displayOptions = isOptional ? ["None", ...options] : [...options]
-  const currentIndex = value ? displayOptions.indexOf(value) : 0
+  const currentIndex = Math.max(0, value ? displayOptions.indexOf(value) : 0)
 
   const handlePrev = () => {
     const newIndex = (currentIndex - 1 + displayOptions.length) % displayOptions.length
@@ -117,7 +117,9 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
 
         // If changing background color, ensure type is solid to make it visible
         if (key === "backgroundColor") {
-            newOptions.backgroundType = "solid";
+            if (newOptions.backgroundType !== 'solid') {
+                newOptions.backgroundType = "solid";
+            }
         }
         return newOptions;
     });
@@ -127,7 +129,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
     const getRandomOption = (arr: readonly string[]) => arr[Math.floor(Math.random() * arr.length)]
     
     const newOptions: Record<string, any> = {
-        backgroundType: getRandomOption(backgroundTypes),
+        backgroundType: Math.random() > 0.5 ? getRandomOption(backgroundTypes) : undefined,
         backgroundColor: getRandomOption(backgroundColors).replace("#", ""),
         features: Math.random() > 0.5 ? getRandomOption(features) : undefined,
         glasses: Math.random() > 0.7 ? getRandomOption(glassesStyles) : undefined, // optional, less frequent
@@ -193,7 +195,7 @@ export function AvatarEditor({ user, onSave }: AvatarEditorProps) {
                     <StyleSelector label="Mouth" value={options.mouth} options={mouth} onChange={(v) => handleOptionChange('mouth', v)} />
                     <StyleSelector label="Glasses" value={options.glasses} options={glassesStyles} onChange={(v) => handleOptionChange('glasses', v)} isOptional={true}/>
                     <StyleSelector label="Feature" value={options.features} options={features} onChange={(v) => handleOptionChange('features', v)} isOptional={true}/>
-                    <StyleSelector label="Background" value={options.backgroundType} options={backgroundTypes} onChange={(v) => handleOptionChange('backgroundType', v)} />
+                    <StyleSelector label="Background" value={options.backgroundType} options={backgroundTypes} onChange={(v) => handleOptionChange('backgroundType', v)} isOptional={true} />
                 </div>
             </div>
           </TabsContent>
