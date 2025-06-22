@@ -7,11 +7,11 @@ export default function FeedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-      <div className="hidden md:block md:col-span-1">
+    <div className="flex items-start gap-8">
+      <div className="hidden md:block">
         <FeedSidebar />
       </div>
-      <main className="md:col-span-3">{children}</main>
+      <main className="flex-1 min-w-0">{children}</main>
     </div>
   );
 }

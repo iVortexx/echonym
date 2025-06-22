@@ -87,7 +87,7 @@ export default function Home() {
       <div className="space-y-8">
         <div className="mb-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <Image src="/logo.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm" />
+            <Image src="/logo.png" width={48} height={48} alt="Echonym Logo" className="rounded-sm" />
             <h1 className="text-3xl font-sans font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Echonym
             </h1>

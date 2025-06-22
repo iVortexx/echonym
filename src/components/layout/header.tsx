@@ -30,7 +30,7 @@ export function Header() {
             <MobileSidebar />
           </div>
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Image src="/logo.png" width={32} height={32} alt="Echonym Logo" className="rounded-sm" />
+            <Image src="/logo.png" width={36} height={36} alt="Echonym Logo" className="rounded-sm" />
             <span className="hidden sm:inline-block font-bold font-sans text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Echonym
             </span>
