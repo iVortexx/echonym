@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const webpack = require('webpack');
+
 const nextConfig = {
   /* config options here */
   images: {
@@ -18,6 +20,22 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  webpack(config) {
+    config.plugins.push(
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^@opentelemetry\/exporter-jaeger$/,
+      }),
+      new webpack.IgnorePlugin({
+        resourceRegExp: /^require-in-the-middle$/,
+      })
+    );
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+    return config;
   },
 };
 
