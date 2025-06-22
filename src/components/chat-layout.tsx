@@ -124,18 +124,16 @@ function ChatHub() {
 function ChatLauncher() {
     const { isLauncherOpen, toggleLauncher } = useChat();
     return (
-        <motion.div>
-            <Popover open={isLauncherOpen} onOpenChange={toggleLauncher}>
-                <PopoverTrigger asChild>
-                    <Button size="icon" className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 flex items-center justify-center">
-                        {isLauncherOpen ? <X className="h-6 w-6"/> : <MessageSquarePlus className="h-6 w-6"/>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 mr-4 mb-2 bg-card border-border backdrop-blur-sm" side="top" align="end">
-                    <ChatHub />
-                </PopoverContent>
-            </Popover>
-        </motion.div>
+        <Popover open={isLauncherOpen} onOpenChange={toggleLauncher}>
+            <PopoverTrigger asChild>
+                <Button size="icon" className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 flex items-center justify-center">
+                    {isLauncherOpen ? <X className="h-6 w-6"/> : <MessageSquarePlus className="h-6 w-6"/>}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 mr-4 mb-2 bg-card border-border backdrop-blur-sm" side="top" align="end">
+                <ChatHub />
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -143,7 +141,7 @@ function ChatLauncher() {
 function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId: string) => void }) {
     const { recentChats } = useChat();
     const chatData = recentChats.find(rc => rc.id === chat.chatId);
-    const unreadCount = chatData?.unreadCount || 0;
+    const unreadCount = chatData?.unreadCount;
 
     return (
         <motion.div layoutId={`chatbox-${chat.chatId}`} className="relative">
@@ -162,7 +160,7 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
-            {unreadCount > 0 && (
+            {typeof unreadCount === 'number' && unreadCount > 0 && (
                 <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white pointer-events-none ring-2 ring-card">
                     {unreadCount > 9 ? '9+' : unreadCount}
                 </div>

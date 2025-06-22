@@ -18,7 +18,7 @@ export const UserRow = ({ user, onSelectUser, lastMessage, unreadCount }: { user
             <UserIcon className="h-5 w-5" />
           </AvatarFallback>
         </Avatar>
-         {!!unreadCount && unreadCount > 0 && (
+         {typeof unreadCount === 'number' && unreadCount > 0 && (
           <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-card">
             {unreadCount > 9 ? '9+' : unreadCount}
           </div>
