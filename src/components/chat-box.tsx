@@ -90,7 +90,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
   const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const componentMountedTime = useRef(new Date());
 
   const { user, chatId } = chat;
 
@@ -199,28 +198,34 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   // Real-time listener for new messages & modifications
   useEffect(() => {
-    if (!chatId || !currentUser?.uid) return;
-    
+    // Wait for the initial paginated load to complete
+    if (!chatId || !currentUser?.uid || isLoading) return;
+
+    // Listen to all changes in the collection, ordered by time.
+    // The initial `getDocs` handles the first page, and this listener keeps everything after that in sync.
     const messagesRef = collection(db, `chats/${chatId}/messages`);
-    const q = query(messagesRef, where('createdAt', '>', componentMountedTime.current));
+    const q = query(messagesRef, orderBy('createdAt'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (snapshot.docChanges().length === 0) {
-            return;
-        }
+        const changes = snapshot.docChanges();
+        if (changes.length === 0) return;
 
         setMessages((prevMessages) => {
+            // Use a Map to efficiently merge the initial data with real-time updates (new messages, reactions, etc.)
             const messagesMap = new Map(prevMessages.map((msg) => [msg.id, msg]));
 
-            for (const change of snapshot.docChanges()) {
+            for (const change of changes) {
+                const messageData = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
                 if (change.type === 'added' || change.type === 'modified') {
-                    const messageData = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
                     messagesMap.set(change.doc.id, messageData);
+                } else if (change.type === 'removed') {
+                    messagesMap.delete(change.doc.id);
                 }
             }
 
             const newMessages = Array.from(messagesMap.values());
             
+            // Re-sort to ensure order is always correct
             newMessages.sort((a, b) => {
                 const dateA = getDateFromTimestamp(a.createdAt);
                 const dateB = getDateFromTimestamp(b.createdAt);
@@ -232,12 +237,24 @@ export function ChatBox({ chat }: ChatBoxProps) {
             return newMessages;
         });
         
-        clearChatUnread(currentUser.uid, chatId);
-        setUserHasScrolled(false);
+        // If new messages were added, handle scrolling and clearing unread status
+        const hasNewMessages = changes.some(c => c.type === 'added');
+        if (hasNewMessages) {
+            const wasSentByMe = changes.some(c => c.type === 'added' && c.doc.data().senderId === currentUser.uid);
+            
+            const scrollDiv = viewportRef.current;
+            const isAtBottom = scrollDiv ? scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5 : false;
+
+            // Scroll down if the user is already at the bottom, or if they sent the new message.
+            if (isAtBottom || wasSentByMe) {
+                 setUserHasScrolled(false);
+            }
+            clearChatUnread(currentUser.uid, chatId);
+        }
     });
 
     return () => unsubscribe();
-  }, [chatId, currentUser?.uid]);
+  }, [chatId, currentUser?.uid, isLoading]);
 
   useLayoutEffect(() => {
     const scrollDiv = viewportRef.current;

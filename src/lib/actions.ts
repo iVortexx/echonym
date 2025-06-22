@@ -1162,23 +1162,28 @@ export async function toggleMessageReaction(chatId: string, messageId: string, e
 
       const messageData = messageDoc.data() as ChatMessage;
       const reactions = messageData.reactions || {};
-      const emojiReactors = reactions[emoji] || [];
+      
+      const alreadyReactedWithSameEmoji = reactions[emoji]?.includes(userId);
 
-      const userIndex = emojiReactors.indexOf(userId);
-
-      if (userIndex > -1) {
-        // User has already reacted with this emoji, so remove them
-        emojiReactors.splice(userIndex, 1);
-      } else {
-        // User has not reacted, so add them
-        emojiReactors.push(userId);
+      // First, remove any existing reaction by this user from ALL emojis.
+      for (const existingEmoji in reactions) {
+        const reactors = reactions[existingEmoji];
+        const userIndex = reactors.indexOf(userId);
+        if (userIndex > -1) {
+          reactors.splice(userIndex, 1);
+          if (reactors.length === 0) {
+            delete reactions[existingEmoji];
+          } else {
+            reactions[existingEmoji] = reactors;
+          }
+        }
       }
 
-      if (emojiReactors.length === 0) {
-        // If no one is reacting with this emoji anymore, remove the emoji key
-        delete reactions[emoji];
-      } else {
-        reactions[emoji] = emojiReactors;
+      // If the user wasn't just toggling off the *same* emoji, add the new one.
+      if (!alreadyReactedWithSameEmoji) {
+        const newEmojiReactors = reactions[emoji] || [];
+        newEmojiReactors.push(userId);
+        reactions[emoji] = newEmojiReactors;
       }
 
       transaction.update(messageRef, { reactions });
