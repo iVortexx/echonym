@@ -11,11 +11,9 @@ import { MessageSquarePlus, X } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import type { User as UserType } from "@/lib/types";
 import { getFollowers, getFollowing } from "@/lib/actions";
-import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
-import { UserIcon } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import { UserSearchSidebar } from "./user-search-sidebar";
+import { UserSearchSidebar, UserRow } from "./user-search-sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
@@ -46,7 +44,7 @@ function ChatHub() {
 
     const UserList = ({ users, isLoading }: { users: UserType[], isLoading: boolean }) => (
         <ScrollArea className="h-64">
-             <div className="space-y-2 pr-4">
+             <div className="space-y-1 pr-4">
                 {isLoading ? (
                     [...Array(3)].map((_, i) => (
                         <div key={i} className="flex items-center gap-3 p-2">
@@ -58,13 +56,7 @@ function ChatHub() {
                      <p className="text-center text-sm text-slate-500 py-8">No users found.</p>
                 ) : (
                     users.map(u => (
-                        <div key={u.uid} onClick={() => handleUserClick(u)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-primary/10 cursor-pointer">
-                            <Avatar className="h-10 w-10">
-                                <AvatarImage src={u.avatarUrl} alt={u.anonName} />
-                                <AvatarFallback><UserIcon className="h-5 w-5"/></AvatarFallback>
-                            </Avatar>
-                            <span className="font-mono text-primary">{u.anonName}</span>
-                        </div>
+                       <UserRow key={u.uid} user={u} onSelectUser={handleUserClick} />
                     ))
                 )}
              </div>

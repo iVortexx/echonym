@@ -15,7 +15,7 @@ interface UserSearchSidebarProps {
   onSelectUser?: (user: User) => void;
 }
 
-const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (user: User) => void }) => {
+export const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (user: User) => void }) => {
   const content = (
     <>
       <Avatar className="h-10 w-10">
@@ -85,11 +85,11 @@ export function UserSearchSidebar({ onSelectUser }: UserSearchSidebarProps) {
           className="bg-input border-border text-slate-200 pl-9"
         />
       </div>
-      <div className="space-y-3 h-96 overflow-y-auto pr-2">
+      <div className="space-y-1 h-96 overflow-y-auto pr-2">
         {loading && (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 p-2">
                 <Skeleton className="h-10 w-10 rounded-full bg-muted" />
                 <Skeleton className="h-5 w-32 bg-muted" />
               </div>
