@@ -22,33 +22,41 @@ const SummarizePostOutputSchema = z.object({
 });
 export type SummarizePostOutput = z.infer<typeof SummarizePostOutputSchema>;
 
+let summarizePostFlow: any;
+
 export async function summarizePost(
   input: SummarizePostInput
 ): Promise<SummarizePostOutput> {
-  return summarizePostFlow(input);
-}
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error('AI features are disabled. Missing GEMINI_API_KEY.');
+  }
 
-const prompt = ai.definePrompt({
-  name: 'summarizePostPrompt',
-  input: {schema: SummarizePostInputSchema},
-  output: {schema: SummarizePostOutputSchema},
-  prompt: `You are an expert at summarizing technical articles and posts.
+  if (!summarizePostFlow) {
+    const prompt = ai.definePrompt({
+      name: 'summarizePostPrompt',
+      input: {schema: SummarizePostInputSchema},
+      output: {schema: SummarizePostOutputSchema},
+      prompt: `You are an expert at summarizing technical articles and posts.
 Analyze the following content and generate a single, concise sentence that acts as a "TL;DR" (Too Long; Didn't Read).
 The summary should capture the main point or finding of the post.
 
 Content:
 {{{content}}}
 `,
-});
+    });
 
-const summarizePostFlow = ai.defineFlow(
-  {
-    name: 'summarizePostFlow',
-    inputSchema: SummarizePostInputSchema,
-    outputSchema: SummarizePostOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+    summarizePostFlow = ai.defineFlow(
+      {
+        name: 'summarizePostFlow',
+        inputSchema: SummarizePostInputSchema,
+        outputSchema: SummarizePostOutputSchema,
+      },
+      async input => {
+        const {output} = await prompt(input);
+        return output!;
+      }
+    );
   }
-);
+
+  return summarizePostFlow(input);
+}
