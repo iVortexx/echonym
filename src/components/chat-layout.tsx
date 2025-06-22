@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
 import { MessageSquarePlus, X, UserIcon } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
-import type { User as UserType } from "@/lib/types";
+import type { User as UserType, UserChat } from "@/lib/types";
 import { getFollowers, getFollowing } from "@/lib/actions";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
@@ -43,26 +43,56 @@ function ChatHub() {
         toggleLauncher(false);
     };
 
-    const UserList = ({ users, isLoading }: { users: UserType[], isLoading: boolean }) => (
-        <ScrollArea className="h-64">
-             <div className="space-y-1 pr-4">
-                {isLoading ? (
-                    [...Array(3)].map((_, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2">
-                            <Skeleton className="h-10 w-10 rounded-full" />
-                            <Skeleton className="h-4 w-32" />
-                        </div>
-                    ))
-                ) : users.length === 0 ? (
-                     <p className="text-center text-sm text-slate-500 py-8">No users found.</p>
-                ) : (
-                    users.map(u => (
-                       <UserRow key={u.uid} user={u} onSelectUser={handleUserClick} />
-                    ))
-                )}
-             </div>
-        </ScrollArea>
+    const FollowUserList = ({ users, isLoading }: { users: UserType[], isLoading: boolean }) => (
+         <div className="space-y-1 pr-4">
+            {isLoading ? (
+                [...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                ))
+            ) : users.length === 0 ? (
+                 <p className="text-center text-sm text-slate-500 py-8">No users found.</p>
+            ) : (
+                users.map(u => (
+                   <UserRow key={u.uid} user={u} onSelectUser={handleUserClick} />
+                ))
+            )}
+         </div>
     );
+
+    const RecentChatList = ({ chats, isLoading }: { chats: UserChat[], isLoading: boolean }) => (
+        <div className="space-y-1 pr-4">
+           {isLoading ? (
+               [...Array(3)].map((_, i) => (
+                   <div key={i} className="flex items-center gap-3 p-2">
+                       <Skeleton className="h-10 w-10 rounded-full" />
+                       <div className="flex-1 space-y-1">
+                           <Skeleton className="h-4 w-24" />
+                           <Skeleton className="h-3 w-32" />
+                       </div>
+                   </div>
+               ))
+           ) : chats.length === 0 ? (
+                <p className="text-center text-sm text-slate-500 py-8">No recent chats.</p>
+           ) : (
+               chats.map(chat => (
+                  <UserRow 
+                    key={chat.id} 
+                    user={{
+                        uid: chat.withUserId,
+                        anonName: chat.withUserName,
+                        avatarUrl: chat.withUserAvatar
+                    }}
+                    onSelectUser={handleUserClick}
+                    lastMessage={chat.lastMessage?.text}
+                  />
+               ))
+           )}
+        </div>
+   );
+
 
     return (
         <div className="w-80">
@@ -73,15 +103,17 @@ function ChatHub() {
                     <TabsTrigger value="follows">Follows</TabsTrigger>
                     <TabsTrigger value="search">Search</TabsTrigger>
                 </TabsList>
-                <TabsContent value="recent" className="mt-2">
-                    <UserList users={recentChats.map(c => c.otherUser).filter(Boolean) as UserType[]} isLoading={false} />
-                </TabsContent>
-                <TabsContent value="follows" className="mt-2">
-                    <UserList users={following} isLoading={loadingFollow} />
-                </TabsContent>
-                <TabsContent value="search" className="mt-2">
-                    <UserSearchSidebar onSelectUser={handleUserClick} />
-                </TabsContent>
+                 <ScrollArea className="h-64 mt-2">
+                    <TabsContent value="recent">
+                        <RecentChatList chats={recentChats} isLoading={!currentUser} />
+                    </TabsContent>
+                    <TabsContent value="follows">
+                        <FollowUserList users={following} isLoading={loadingFollow} />
+                    </TabsContent>
+                    <TabsContent value="search">
+                        <UserSearchSidebar onSelectUser={handleUserClick} />
+                    </TabsContent>
+                </ScrollArea>
             </Tabs>
         </div>
     );

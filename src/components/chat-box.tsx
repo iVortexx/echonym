@@ -30,6 +30,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
   const [newMessage, setNewMessage] = useState("");
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
 
   const { user, chatId } = chat;
 
@@ -83,17 +84,46 @@ export function ChatBox({ chat }: ChatBoxProps) {
   }, [chatId]);
 
   useEffect(() => {
-    // Auto-scroll to bottom
-    if (scrollAreaRef.current) {
-        setTimeout(() => {
-            scrollAreaRef.current?.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
-        }, 100);
+    const scrollDiv = scrollAreaRef.current;
+    if (!scrollDiv) return;
+
+    // A small tolerance for floating point numbers and borders
+    const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 1;
+
+    if (!userHasScrolled || isAtBottom) {
+      setTimeout(() => {
+        scrollDiv.scrollTo({ top: scrollDiv.scrollHeight, behavior: 'smooth' });
+      }, 100);
+       setUserHasScrolled(false); // Reset after auto-scroll
     }
   }, [messages]);
+
+  const handleManualScroll = () => {
+    const scrollDiv = scrollAreaRef.current;
+    if (!scrollDiv) return;
+
+    const isAtBottom = scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 1;
+    if (!isAtBottom) {
+        setUserHasScrolled(true);
+    } else {
+        setUserHasScrolled(false);
+    }
+  }
+  
+  useEffect(() => {
+      const scrollDiv = scrollAreaRef.current;
+      if (scrollDiv) {
+          scrollDiv.addEventListener('scroll', handleManualScroll);
+          return () => scrollDiv.removeEventListener('scroll', handleManualScroll);
+      }
+  }, []);
+
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
+    
+    setUserHasScrolled(false); // Allow auto-scroll for own message
 
     const textToSend = newMessage;
     setNewMessage("");

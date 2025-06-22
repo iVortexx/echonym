@@ -15,7 +15,9 @@ interface UserSearchSidebarProps {
   onSelectUser?: (user: User) => void;
 }
 
-export const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (user: User) => void }) => {
+export const UserRow = ({ user, onSelectUser, lastMessage }: { user: Partial<User>, onSelectUser?: (user: User) => void, lastMessage?: string }) => {
+  const userToSelect = user as User; 
+
   const content = (
     <>
       <Avatar className="h-10 w-10">
@@ -24,14 +26,17 @@ export const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (us
           <UserIcon className="h-5 w-5" />
         </AvatarFallback>
       </Avatar>
-      <span className="font-mono text-primary">{user.anonName}</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-mono text-primary truncate">{user.anonName}</p>
+        {lastMessage && <p className="text-xs text-slate-400 truncate">{lastMessage}</p>}
+      </div>
     </>
   );
 
   if (onSelectUser) {
     return (
       <button
-        onClick={() => onSelectUser(user)}
+        onClick={() => onSelectUser(userToSelect)}
         className="flex w-full items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors text-left"
       >
         {content}
@@ -41,7 +46,7 @@ export const UserRow = ({ user, onSelectUser }: { user: User, onSelectUser?: (us
 
   return (
     <Link
-      href={`/profile/${encodeURIComponent(user.anonName)}`}
+      href={`/profile/${encodeURIComponent(user.anonName || '')}`}
       className="flex items-center gap-3 p-2 rounded-md hover:bg-primary/10 transition-colors"
     >
       {content}
@@ -85,7 +90,7 @@ export function UserSearchSidebar({ onSelectUser }: UserSearchSidebarProps) {
           className="bg-input border-border text-slate-200 pl-9"
         />
       </div>
-      <div className="space-y-1 h-96 overflow-y-auto pr-2">
+      <div className="space-y-1 h-full overflow-y-auto pr-2">
         {loading && (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (

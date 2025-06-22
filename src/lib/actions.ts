@@ -24,7 +24,7 @@ import {
   setDoc
 } from "firebase/firestore"
 import { revalidatePath } from "next/cache"
-import type { Post, VoteType, User, Vote, Chat, ChatMessage } from "./types"
+import type { Post, VoteType, User, Vote, Chat, ChatMessage, UserChat } from "./types"
 import { buildAvatarUrl } from "./utils"
 import { scorePost as scorePostFlow } from '@/ai/flows/score-post-flow';
 import { suggestTags as suggestTagsFlow } from '@/ai/flows/suggest-tags';
@@ -995,32 +995,57 @@ export async function getOrCreateChat(currentUserId: string, targetUserId: strin
     const chatRef = doc(db, "chats", chatId);
 
     try {
-        const chatDoc = await getDoc(chatRef);
-        if (!chatDoc.exists()) {
-             const [currentUserSnap, targetUserSnap] = await Promise.all([
-                getDoc(doc(db, "users", currentUserId)),
-                getDoc(doc(db, "users", targetUserId)),
-            ]);
-             if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
-                throw new Error("One or both users not found.");
+        await runTransaction(db, async (transaction) => {
+            const chatDoc = await transaction.get(chatRef);
+            if (!chatDoc.exists()) {
+                const [currentUserSnap, targetUserSnap] = await Promise.all([
+                    transaction.get(doc(db, "users", currentUserId)),
+                    transaction.get(doc(db, "users", targetUserId)),
+                ]);
+
+                if (!currentUserSnap.exists() || !targetUserSnap.exists()) {
+                    throw new Error("One or both users not found.");
+                }
+
+                const currentUser = currentUserSnap.data() as User;
+                const targetUser = targetUserSnap.data() as User;
+
+                const newChat: Chat = {
+                    id: chatId,
+                    users: [currentUserId, targetUserId],
+                    userNames: {
+                        [currentUserId]: currentUser.anonName,
+                        [targetUserId]: targetUser.anonName
+                    },
+                    userAvatars: {
+                         [currentUserId]: currentUser.avatarUrl,
+                         [targetUserId]: targetUser.avatarUrl
+                    },
+                    updatedAt: serverTimestamp(),
+                };
+                transaction.set(chatRef, newChat);
+
+                const senderChatRef = doc(db, `users/${currentUserId}/chats/${chatId}`);
+                transaction.set(senderChatRef, {
+                    id: chatId,
+                    withUserId: targetUserId,
+                    withUserName: targetUser.anonName,
+                    withUserAvatar: targetUser.avatarUrl,
+                    unreadCount: 0,
+                    updatedAt: serverTimestamp(),
+                });
+
+                const receiverChatRef = doc(db, `users/${targetUserId}/chats/${chatId}`);
+                transaction.set(receiverChatRef, {
+                    id: chatId,
+                    withUserId: currentUserId,
+                    withUserName: currentUser.anonName,
+                    withUserAvatar: currentUser.avatarUrl,
+                    unreadCount: 0,
+                    updatedAt: serverTimestamp(),
+                });
             }
-            const currentUser = currentUserSnap.data() as User;
-            const targetUser = targetUserSnap.data() as User;
-             const newChat: Chat = {
-                id: chatId,
-                users: [currentUserId, targetUserId],
-                userNames: {
-                    [currentUserId]: currentUser.anonName,
-                    [targetUserId]: targetUser.anonName
-                },
-                userAvatars: {
-                     [currentUserId]: currentUser.avatarUrl,
-                     [targetUserId]: targetUser.avatarUrl
-                },
-                updatedAt: serverTimestamp(),
-            };
-            await setDoc(chatRef, newChat);
-        }
+        });
         return { chatId };
     } catch (e: any) {
         console.error("Error getting or creating chat:", e);
@@ -1043,6 +1068,7 @@ export async function sendMessage(chatId: string, senderId: string, text: string
         const chatSnap = await getDoc(chatRef);
         if (!chatSnap.exists()) throw new Error("Chat not found.");
         const chatData = chatSnap.data() as Chat;
+
         const senderSnap = await getDoc(doc(db, "users", senderId));
         if (!senderSnap.exists()) throw new Error("Sender not found.");
         const senderData = senderSnap.data() as User;
@@ -1061,8 +1087,16 @@ export async function sendMessage(chatId: string, senderId: string, text: string
             createdAt: serverTimestamp()
         });
         
-        batch.update(chatRef, {
-            lastMessage: { text, senderId },
+        const messageData = { text, senderId };
+        batch.update(chatRef, { lastMessage: messageData, updatedAt: serverTimestamp() });
+
+        const senderChatRef = doc(db, `users/${senderId}/chats/${chatId}`);
+        batch.update(senderChatRef, { lastMessage: messageData, updatedAt: serverTimestamp() });
+
+        const receiverChatRef = doc(db, `users/${receiverId}/chats/${chatId}`);
+        batch.update(receiverChatRef, {
+            lastMessage: messageData,
+            unreadCount: increment(1),
             updatedAt: serverTimestamp()
         });
 
@@ -1083,24 +1117,6 @@ export async function sendMessage(chatId: string, senderId: string, text: string
     } catch (e: any) {
         console.error("Error sending message:", e);
         return { success: false, error: e.message || "Failed to send message." };
-    }
-}
-
-export async function getRecentChats(userId: string): Promise<Chat[]> {
-    if (!userId) return [];
-    try {
-        const chatsRef = collection(db, "chats");
-        const q = query(
-            chatsRef,
-            where("users", "array-contains", userId),
-            orderBy("updatedAt", "desc"),
-            limit(20)
-        );
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as Chat);
-    } catch (e) {
-        console.error("Error getting recent chats:", e);
-        return [];
     }
 }
 

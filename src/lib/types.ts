@@ -70,8 +70,19 @@ export interface Chat {
     senderId: string;
   };
   updatedAt: Timestamp | string;
-  // For client-side use
-  otherUser?: User;
+}
+
+export interface UserChat {
+  id: string; // same as chatId
+  withUserId: string;
+  withUserName: string;
+  withUserAvatar?: string;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+  };
+  unreadCount: number;
+  updatedAt: Timestamp | string;
 }
 
 export interface ChatMessage {
