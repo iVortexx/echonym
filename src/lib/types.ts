@@ -99,6 +99,8 @@ export interface ChatMessage {
     senderName: string;
     text: string;
   };
+  status?: 'sending' | 'failed';
+  tempId?: string;
 }
 
 
