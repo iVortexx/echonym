@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useState, ReactNode, useCallback, useEffect } from 'react';
@@ -66,62 +67,60 @@ export const ChatProvider = ({ children }: { children: ReactNode }) => {
     setIsLauncherOpen(false); // Close the drawer when a chat is opened
 
     const result = await getOrCreateChat(currentUser.uid, targetUser.uid);
-
-    if (result.chatId) {
-      setOpenChats(prev => {
-          let currentChats = { ...prev };
-          
-          // If chat is already present, just bring it to front.
-          if (currentChats[result.chatId]) {
-              const newChats: Record<string, OpenChat> = {};
-              // Minimize all
-              for (const key in currentChats) {
-                   if (currentChats[key]) {
-                      newChats[key] = { ...currentChats[key], state: 'minimized' };
-                   }
-              }
-              // Re-open the target chat and update its timestamp
-              newChats[result.chatId] = { ...currentChats[result.chatId], state: 'open', openedAt: Date.now() };
-              return newChats;
-          }
-
-          // Enforce a limit of 5 chats
-          const CHAT_LIMIT = 5;
-          const chatKeys = Object.keys(currentChats);
-          if (chatKeys.length >= CHAT_LIMIT) {
-              // Find the oldest chat (one with the smallest `openedAt` timestamp)
-              const oldestChatId = chatKeys.reduce((oldest, key) => {
-                  if (!oldest || currentChats[key].openedAt < currentChats[oldest].openedAt) {
-                      return key;
-                  }
-                  return oldest;
-              }, null as string | null);
-
-              if (oldestChatId) {
-                  delete currentChats[oldestChatId];
-              }
-          }
-
-          const newChats: Record<string, OpenChat> = {};
-          // Minimize all existing chats
-          for (const key in currentChats) {
-              if (currentChats[key]) {
-                newChats[key] = { ...currentChats[key], state: 'minimized' };
-              }
-          }
-
-          // Add and open the new chat
-          newChats[result.chatId] = { 
-              user: targetUser, 
-              chatId: result.chatId, 
-              state: 'open',
-              openedAt: Date.now() 
-          };
-          return newChats;
-      });
-    } else {
-      console.error("Failed to open chat:", result.error);
+    if (!result.chatId) {
+        console.error("Failed to open chat:", result.error);
+        return;
     }
+
+    const { chatId } = result;
+
+    setOpenChats(prev => {
+        // If the chat is already open, do nothing.
+        if (prev[chatId]?.state === 'open') {
+            return prev;
+        }
+
+        // Minimize all existing chats
+        const minimizedChats: Record<string, OpenChat> = {};
+        for (const key in prev) {
+            if (prev[key]) {
+                minimizedChats[key] = { ...prev[key], state: 'minimized' };
+            }
+        }
+
+        // Check if the chat to open is new or just minimized
+        const isNewChat = !minimizedChats[chatId];
+        
+        let finalChats = { ...minimizedChats };
+
+        if (isNewChat) {
+            // Enforce a limit of 5 chats for NEW chats only
+            const CHAT_LIMIT = 5;
+            const chatKeys = Object.keys(finalChats);
+            if (chatKeys.length >= CHAT_LIMIT) {
+                // Find and remove the oldest chat
+                const oldestChatId = chatKeys.reduce((oldest, key) => 
+                    (!oldest || finalChats[key].openedAt < finalChats[oldest].openedAt) ? key : oldest, 
+                    null as string | null
+                );
+                if (oldestChatId) {
+                    delete finalChats[oldestChatId];
+                }
+            }
+            // Add the new chat
+            finalChats[chatId] = { 
+                user: targetUser, 
+                chatId: chatId, 
+                state: 'open',
+                openedAt: Date.now() 
+            };
+        } else {
+            // Restore the minimized chat and set it to open
+            finalChats[chatId] = { ...finalChats[chatId], state: 'open', openedAt: Date.now() };
+        }
+
+        return finalChats;
+    });
   }, [currentUser]);
 
   const closeChat = useCallback((chatId: string) => {
