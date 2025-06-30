@@ -350,7 +350,7 @@ export async function handleVote(
   userId: string,
   itemId: string,
   itemType: "post" | "comment",
-  voteType: VoteType,
+  voteType: "up" | "down",
   postId?: string
 ) {
   if (!userId) return { error: "Not authenticated" };
