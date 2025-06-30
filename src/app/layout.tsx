@@ -34,7 +34,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${sourceCodePro.variable}`}
     >
-      <body className="font-sans bg-background">
+      <body className="font-sans bg-background dark">
         <AuthProvider>
           <ChatProvider>
             <Header />

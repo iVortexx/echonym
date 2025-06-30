@@ -1,4 +1,3 @@
-
 "use client"
 
 import { PostFeed } from "@/components/post-feed";

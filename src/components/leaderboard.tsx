@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -30,13 +29,13 @@ export function Leaderboard() {
     }, []);
 
     return (
-        <div className="bg-card border border-border rounded-lg p-4 space-y-4 flex-1 flex flex-col min-h-0">
+        <div className="bg-card border border-border rounded-lg p-4 space-y-4 flex-1 flex flex-col min-h-0 overflow-hidden">
             <h3 className="font-mono text-lg text-primary flex items-center shrink-0">
                 <Trophy className="mr-2 h-5 w-5 text-yellow-400" />
                 Leaderboard
             </h3>
-            <ScrollArea className="flex-1 -mr-4">
-                <div className="space-y-3 pr-4">
+            <ScrollArea className="flex-1 max-h-[60vh] min-h-0 overflow-auto">
+                <div className="space-y-3 pr-2">
                     {loading ? (
                         [...Array(5)].map((_, i) => (
                             <div key={i} className="flex items-center gap-3">
@@ -49,7 +48,7 @@ export function Leaderboard() {
                         ))
                     ) : (
                         topUsers.map((user, index) => (
-                           <Link href={`/profile/${encodeURIComponent(user.anonName)}`} key={user.uid} className="flex items-center gap-2 p-1 -mx-1 rounded-md hover:bg-primary/10 transition-colors">
+                           <Link href={`/profile/${encodeURIComponent(user.anonName)}`} key={user.uid} className="flex items-center gap-2 p-1 rounded-md hover:bg-primary/10 transition-colors">
                                 <span className="font-mono text-sm text-slate-400 w-5 text-center">{index + 1}</span>
                                 <Avatar className="h-8 w-8 flex-shrink-0">
                                     <AvatarImage src={user.avatarUrl} alt={user.anonName} />

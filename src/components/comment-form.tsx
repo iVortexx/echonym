@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -9,8 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
-import { Send, UserIcon } from "lucide-react"
+import { Send, UserIcon, Smile } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { EmojiPicker, EmojiStyle, EmojiPickerTheme, type EmojiClickData, Categories } from './ui/emoji-picker'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 
 interface CommentFormProps {
   postId: string
@@ -32,6 +33,15 @@ export function CommentForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const emojiPickerCategories = [
+    { name: 'Recently Used', category: Categories.SUGGESTED },
+    { name: 'Smileys & People', category: Categories.SMILEYS_PEOPLE },
+    { name: 'Animals & Nature', category: Categories.ANIMALS_NATURE },
+    { name: 'Food & Drink', category: Categories.FOOD_DRINK },
+    { name: 'Objects', category: Categories.OBJECTS },
+    { name: 'Symbols', category: Categories.SYMBOLS },
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +71,11 @@ export function CommentForm({
     }
   }
 
+  const handleMainEmojiSelect = (emojiData: EmojiClickData) => {
+    setContent((prev) => prev + emojiData.emoji)
+    setEmojiPickerOpen(false)
+  }
+
   if (!user) return null
 
   return (
@@ -79,8 +94,28 @@ export function CommentForm({
             placeholder={parentId ? "Write a reply..." : "Add a comment..."}
             rows={1}
             autoFocus={autofocus}
-            className="bg-slate-800/70 border-slate-700 text-slate-200 placeholder:text-slate-500 resize-none min-h-[40px] pr-12 focus:min-h-[80px] transition-all duration-300"
+            className="bg-slate-800/70 border-slate-700 text-slate-200 placeholder:text-slate-500 resize-none min-h-[40px] pr-20 focus:min-h-[80px] transition-all duration-300"
           />
+          <div className="absolute right-10 top-1/2 -translate-y-1/2">
+            <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" type="button" className="h-8 w-8 flex-shrink-0 text-slate-400 hover:text-primary rounded-full">
+                  <Smile className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 mb-2 w-auto bg-popover border-border rounded-lg" side="top" align="start">
+                <EmojiPicker
+                  onEmojiClick={handleMainEmojiSelect}
+                  emojiStyle={EmojiStyle.TWITTER}
+                  theme={EmojiPickerTheme.DARK}
+                  skinTonesDisabled
+                  height={350}
+                  categories={emojiPickerCategories}
+                  previewConfig={{ showPreview: false }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="absolute right-2 top-1/2 -translate-y-1/2">
             <Button
               type="submit"
