@@ -1,5 +1,6 @@
-
-import { FeedSidebar } from "@/components/feed-sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function FeedLayout({
   children,
@@ -7,15 +8,14 @@ export default function FeedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start">
-      <div className="hidden md:block">
-        <FeedSidebar />
-      </div>
+    <SidebarProvider>
+      <AppSidebar />
+          <SidebarTrigger />
       <main className="flex-1 min-w-0 py-8">
         <div className="mx-auto max-w-3xl px-4">
-            {children}
+          {children}
         </div>
       </main>
-    </div>
+    </SidebarProvider>
   );
 }

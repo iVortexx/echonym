@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
@@ -17,7 +16,7 @@ import { cn } from '@/lib/utils';
 import type { ChatMessage, TypingStatus } from '@/lib/types';
 import { debounce } from 'lodash';
 import TextareaAutosize from 'react-textarea-autosize';
-import EmojiPicker, { EmojiStyle, type EmojiClickData, Categories } from 'emoji-picker-react';
+import { EmojiPicker, EmojiStyle, type EmojiClickData, Categories, EmojiPickerTheme } from './ui/emoji-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import twemoji from 'twemoji';
@@ -63,7 +62,7 @@ const MessageActions = ({ onEmojiSelect, onReply }: { onEmojiSelect: (emojiData:
                     <EmojiPicker
                         onEmojiClick={onEmojiSelect}
                         emojiStyle={EmojiStyle.TWITTER}
-                        theme="dark"
+                        theme={EmojiPickerTheme.DARK}
                         skinTonesDisabled
                         height={350}
                         categories={emojiPickerCategories}
@@ -426,6 +425,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
                           }
                         );
 
+                        const replyTo = msg.replyTo;
+
                         return (
                             <div key={msg.id} id={`message-${msg.id}`} className="group/row scroll-mt-16 transition-colors duration-500">
                                 <div
@@ -458,10 +459,10 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                     )}
                                 
                                     <div className={cn("max-w-[75%] flex flex-col min-w-0", isOwnMessage ? "items-end" : "items-start")}>
-                                        {msg.replyTo && (
+                                        {replyTo ? (
                                             <a
-                                              href={`#message-${msg.replyTo.messageId}`}
-                                              onClick={(e) => handleScrollToReply(e, msg.replyTo.messageId)}
+                                              href={`#message-${replyTo.messageId}`}
+                                              onClick={(e) => handleScrollToReply(e, replyTo.messageId)}
                                               className={cn(
                                                   "flex items-start gap-1.5 text-xs text-slate-400 bg-black/10 rounded-t-lg px-2 py-1.5 cursor-pointer hover:bg-black/20 transition-colors w-full",
                                                   "border-l-2 border-accent/80",
@@ -470,10 +471,10 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                             >
                                               <Reply className="h-3 w-3 flex-shrink-0 text-slate-300 mt-0.5" />
                                               <div className="italic text-slate-400 line-clamp-2 break-all">
-                                                {`"${msg.replyTo.text.substring(0, 70)}${msg.replyTo.text.length > 70 ? "..." : ""}"`}
+                                                {`"${replyTo.text.substring(0, 70)}${replyTo.text.length > 70 ? "..." : ""}"`}
                                               </div>
                                             </a>
-                                        )}
+                                        ) : null}
 
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -558,7 +559,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 <EmojiPicker
                     onEmojiClick={handleMainEmojiSelect}
                     emojiStyle={EmojiStyle.TWITTER}
-                    theme="dark"
+                    theme={EmojiPickerTheme.DARK}
                     skinTonesDisabled
                     height={350}
                     categories={emojiPickerCategories}
