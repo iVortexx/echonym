@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Minus, Send, UserIcon, Loader2, Smile, Reply } from 'lucide-react';
+import { X, Minus, Send, UserIcon, Loader2, Smile, Reply, AlertCircle } from 'lucide-react';
 import { useChat, type OpenChat } from '@/hooks/use-chat';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -20,6 +21,7 @@ import { EmojiPicker, EmojiStyle, type EmojiClickData, Categories, EmojiPickerTh
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import twemoji from 'twemoji';
+import { useToast } from '@/hooks/use-toast';
 
 
 interface ChatBoxProps {
@@ -82,6 +84,7 @@ const MESSAGE_LIMIT = 25;
 export function ChatBox({ chat }: ChatBoxProps) {
   const { closeChat, minimizeChat } = useChat();
   const { user: currentUser } = useAuth();
+  const { toast } = useToast();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -213,11 +216,8 @@ export function ChatBox({ chat }: ChatBoxProps) {
 
   // Real-time listener for new messages & modifications
   useEffect(() => {
-    // Wait for the initial paginated load to complete
     if (!chatId || !currentUser?.uid || isLoading) return;
 
-    // Listen to all changes in the collection, ordered by time.
-    // The initial `getDocs` handles the first page, and this listener keeps everything after that in sync.
     const messagesRef = collection(db, `chats/${chatId}/messages`);
     const q = query(messagesRef, orderBy('createdAt'));
 
@@ -226,8 +226,7 @@ export function ChatBox({ chat }: ChatBoxProps) {
         if (changes.length === 0) return;
 
         setMessages((prevMessages) => {
-            // Use a Map to efficiently merge the initial data with real-time updates (new messages, reactions, etc.)
-            const messagesMap = new Map(prevMessages.map((msg) => [msg.id, msg]));
+            const messagesMap = new Map(prevMessages.filter(m => !m.status).map((msg) => [msg.id, msg]));
 
             for (const change of changes) {
                 const messageData = { id: change.doc.id, ...change.doc.data() } as ChatMessage;
@@ -238,10 +237,12 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 }
             }
 
-            const newMessages = Array.from(messagesMap.values());
+            const persistedTempIds = new Set(Array.from(messagesMap.values()).map(m => m.tempId).filter(Boolean));
+            const finalOptimisticMessages = prevMessages.filter(m => m.status && !persistedTempIds.has(m.tempId));
+
+            const finalMessages = [...Array.from(messagesMap.values()), ...finalOptimisticMessages];
             
-            // Re-sort to ensure order is always correct
-            newMessages.sort((a, b) => {
+            finalMessages.sort((a, b) => {
                 const dateA = getDateFromTimestamp(a.createdAt);
                 const dateB = getDateFromTimestamp(b.createdAt);
                 if (!dateA) return -1;
@@ -249,10 +250,9 @@ export function ChatBox({ chat }: ChatBoxProps) {
                 return dateA.getTime() - dateB.getTime();
             });
 
-            return newMessages;
+            return finalMessages;
         });
         
-        // If new messages were added, handle scrolling and clearing unread status
         const hasNewMessages = changes.some(c => c.type === 'added');
         if (hasNewMessages) {
             const wasSentByMe = changes.some(c => c.type === 'added' && c.doc.data().senderId === currentUser.uid);
@@ -260,7 +260,6 @@ export function ChatBox({ chat }: ChatBoxProps) {
             const scrollDiv = viewportRef.current;
             const isAtBottom = scrollDiv ? scrollDiv.scrollHeight - scrollDiv.scrollTop <= scrollDiv.clientHeight + 5 : false;
 
-            // Scroll down if the user is already at the bottom, or if they sent the new message.
             if (isAtBottom || wasSentByMe) {
                  setUserHasScrolled(false);
             }
@@ -297,6 +296,44 @@ export function ChatBox({ chat }: ChatBoxProps) {
   }, [handleManualScroll]);
 
 
+  const performSendMessage = async (text: string, replyPayload?: ChatMessage['replyTo'], tempIdOverride?: string) => {
+    if (!currentUser) return;
+
+    const tempId = tempIdOverride || crypto.randomUUID();
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      tempId: tempId,
+      chatId: chatId,
+      senderId: currentUser.uid,
+      text: text,
+      createdAt: new Date().toISOString(),
+      status: 'sending',
+      replyTo: replyPayload,
+    };
+
+    setMessages(prev => {
+      const withoutOld = tempIdOverride ? prev.filter(m => m.tempId !== tempIdOverride) : prev;
+      return [...withoutOld, optimisticMessage];
+    });
+
+    debouncedSetTypingFalse.cancel();
+    setTypingStatus(chatId, currentUser.uid, false);
+    setTimeout(() => scrollToBottom('smooth'), 0);
+
+    const result = await sendMessage(chatId, currentUser.uid, text, replyPayload, tempId);
+
+    if (!result.success) {
+      setMessages(prev => prev.map(msg => 
+        msg.tempId === tempId ? { ...msg, status: 'failed' } : msg
+      ));
+      toast({
+        variant: "destructive",
+        title: "Message failed to send",
+        description: result.error,
+      });
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent | React.KeyboardEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUser) return;
@@ -304,22 +341,21 @@ export function ChatBox({ chat }: ChatBoxProps) {
     setUserHasScrolled(false);
     
     const textToSend = newMessage;
-    setNewMessage("");
-
     const replyPayload = replyingTo ? {
       messageId: replyingTo.id,
       text: replyingTo.text,
-      senderName: '...' // This is now set on the backend
+      senderName: '...'
     } : undefined;
 
-    await sendMessage(chatId, currentUser.uid, textToSend, replyPayload);
+    setNewMessage("");
     setReplyingTo(null);
-    debouncedSetTypingFalse.cancel();
-    if (currentUser) {
-      setTypingStatus(chatId, currentUser.uid, false);
-    }
-    setTimeout(() => scrollToBottom('smooth'), 0);
+
+    await performSendMessage(textToSend, replyPayload);
   };
+
+  const handleRetrySend = async (failedMessage: ChatMessage) => {
+    await performSendMessage(failedMessage.text, failedMessage.replyTo, failedMessage.tempId);
+  }
 
   const handleMainEmojiSelect = (emojiData: EmojiClickData) => {
     setNewMessage(prev => prev + emojiData.emoji);
@@ -476,16 +512,33 @@ export function ChatBox({ chat }: ChatBoxProps) {
                                             </a>
                                         ) : null}
 
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                            <div className={cn(bubbleClasses, 'min-w-0')}>
-                                                <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
-                                            </div>
-                                            </TooltipTrigger>
-                                            <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
-                                                <p>{format(currentDate, "PPpp")}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                        <div className="flex items-center gap-2">
+                                            {isOwnMessage && msg.status === 'sending' && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
+                                            {isOwnMessage && msg.status === 'failed' && (
+                                                <TooltipProvider delayDuration={0}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <button onClick={() => handleRetrySend(msg)} className="text-red-500 hover:text-red-400">
+                                                                <AlertCircle className="h-4 w-4" />
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Failed to send. Click to retry.</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                <div className={cn(bubbleClasses, 'min-w-0')}>
+                                                    <div className={cn("break-words", isOnlyEmoji && "text-3xl")} dangerouslySetInnerHTML={{ __html: twemoji.parse(msg.text, twemojiConfig) }} />
+                                                </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side={isOwnMessage ? 'left' : 'right'}>
+                                                    <p>{format(currentDate, "PPpp")}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </div>
                                         {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                                             <div className={cn("flex flex-wrap gap-1 mt-1", isOwnMessage ? "justify-end pl-8" : "justify-start pr-8")}>
                                                 {Object.entries(msg.reactions).map(([emoji, userIds]) => (

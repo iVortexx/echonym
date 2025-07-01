@@ -350,7 +350,7 @@ export async function handleVote(
   userId: string,
   itemId: string,
   itemType: "post" | "comment",
-  voteType: VoteType,
+  voteType: "up" | "down",
   postId?: string
 ) {
   if (!userId) return { error: "Not authenticated" };
@@ -1056,7 +1056,7 @@ export async function getOrCreateChat(currentUserId: string, targetUserId: strin
     }
 }
 
-export async function sendMessage(chatId: string, senderId: string, text: string, replyTo?: ChatMessage['replyTo']): Promise<{ success: boolean; error?: string }> {
+export async function sendMessage(chatId: string, senderId: string, text: string, replyTo?: ChatMessage['replyTo'], tempId?: string): Promise<{ success: boolean; error?: string, messageId?: string }> {
     if (!text.trim()) {
         return { success: false, error: "Message cannot be empty." };
     }
@@ -1074,8 +1074,7 @@ export async function sendMessage(chatId: string, senderId: string, text: string
 
         const senderSnap = await getDoc(doc(db, "users", senderId));
         if (!senderSnap.exists()) throw new Error("Sender not found.");
-        const senderData = senderSnap.data() as User;
-
+        
         const receiverId = chatData.users.find(uid => uid !== senderId);
         if (!receiverId) throw new Error("Could not determine receiver.");
 
@@ -1089,8 +1088,12 @@ export async function sendMessage(chatId: string, senderId: string, text: string
             message.replyTo = {
                 messageId: replyTo.messageId,
                 text: replyTo.text,
-                senderName: chatData.userNames[message.senderId] || "User"
+                senderName: chatData.userNames[senderId] || "User"
             };
+        }
+
+        if (tempId) {
+            message.tempId = tempId;
         }
 
         batch.set(newMessageRef, {
@@ -1113,7 +1116,7 @@ export async function sendMessage(chatId: string, senderId: string, text: string
         
         await batch.commit();
 
-        return { success: true };
+        return { success: true, messageId: newMessageRef.id };
     } catch (e: any) {
         console.error("Error sending message:", e);
         return { success: false, error: e.message || "Failed to send message." };

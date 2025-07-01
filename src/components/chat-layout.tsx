@@ -143,13 +143,13 @@ function ChatLauncher() {
 }
 
 
-function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId: string) => void }) {
+function MinimizedChat({ chat, onRestore, onClose }: { chat: OpenChat, onRestore: (chatId: string) => void, onClose: (chatId: string) => void }) {
     const { recentChats } = useChat();
     const chatData = recentChats.find(rc => rc.id === chat.chatId);
     const unreadCount = chatData?.unreadCount;
 
     return (
-        <motion.div layoutId={`chatbox-${chat.chatId}`} className="relative">
+        <motion.div layoutId={`chatbox-${chat.chatId}`} className="relative group">
              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -165,6 +165,18 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
                     </TooltipContent>
                 </Tooltip>
             </TooltipProvider>
+
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClose(chat.chatId);
+                }}
+                className="absolute -top-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-white opacity-0 ring-2 ring-card transition-opacity duration-200 group-hover:opacity-100 hover:bg-red-500"
+                aria-label="Close chat"
+            >
+                <X className="h-3 w-3" />
+            </button>
+
             {typeof unreadCount === 'number' && unreadCount > 0 && (
                 <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white pointer-events-none ring-2 ring-card">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -175,7 +187,7 @@ function MinimizedChat({ chat, onRestore }: { chat: OpenChat, onRestore: (chatId
 }
 
 export function ChatLayout() {
-  const { openChats, restoreChat } = useChat();
+  const { openChats, restoreChat, closeChat } = useChat();
 
   const minimized = Object.values(openChats).filter(c => c.state === 'minimized');
   const openChat = Object.values(openChats).find(c => c.state === 'open');
@@ -190,7 +202,7 @@ export function ChatLayout() {
         {/* Minimized chats appear above the launcher */}
         <AnimatePresence>
             {minimized.map((chat) => (
-                <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} />
+                <MinimizedChat key={chat.chatId} chat={chat} onRestore={restoreChat} onClose={closeChat} />
             ))}
         </AnimatePresence>
       </div>
